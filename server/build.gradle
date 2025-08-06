@@ -57,6 +57,10 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	// JUnit Test
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	// MariaDB JDBC 드라이버 의존성 추가
+	implementation("org.mariadb.jdbc:mariadb-java-client:3.1.4")
+	//BnkProject02Applicaion 실행용
+	implementation 'org.springframework.boot:spring-boot-starter'
 }
 
 dependencyManagement {
