@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name="tbl_user")
+@Table(name = "tbl_user")
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -24,4 +24,6 @@ public class User {
     private String name;
 
     private String phone;
+
+    private String email;
 }
