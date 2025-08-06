@@ -28,6 +28,12 @@ ext {
 }
 
 dependencies {
+
+	implementation files('libs/ojdbc11.jar')
+    implementation files('libs/oraclepki.jar')
+    implementation files('libs/osdt_core.jar')
+    implementation files('libs/osdt_cert.jar')
+
 	// open ai
 	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 	// jpa
@@ -58,6 +64,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	// JUnit Test
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	//SpringSecurity 암호화만 사용
+	implementation("org.springframework.boot:spring-boot-starter-security")
 }
 
 dependencyManagement {
