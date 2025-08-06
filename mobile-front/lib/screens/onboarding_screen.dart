@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/screens/login_screen.dart';
+import 'package:mobile_front/screens/signup/signup_screen.dart';
 
 class OnboardingScreen extends StatelessWidget {
   @override
@@ -30,6 +32,10 @@ class OnboardingScreen extends StatelessWidget {
                   height: 48,
                   child: ElevatedButton(
                     onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => LoginScreen()),
+                      );
                       // TODO: 로그인 화면 이동
                     },
                     style: ElevatedButton.styleFrom(
@@ -53,6 +59,10 @@ class OnboardingScreen extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () {
                       // TODO: 회원가입 화면 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => SignupScreen()),
+                      );
                     },
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Colors.black),
