@@ -4,11 +4,14 @@ class Fund {
   final double rate;
   final int balance;
 
+  bool featured;          // 홈 화면에 노출할 펀드
+
   Fund({
     required this.id,
     required this.name,
     required this.rate,
     required this.balance,
+    this.featured = true,  // 기본값: 노출
   });
 
   factory Fund.fromJson(Map<String, dynamic> json) {
@@ -23,6 +26,7 @@ class Fund {
       name: json['name'] as String,
       rate: parseDouble(json['rate']),
       balance: parseInt(json['balance']),
+      featured: json['featured'] ?? true,
     );
   }
 }

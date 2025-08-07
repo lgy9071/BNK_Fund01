@@ -31,7 +31,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final totalBalance = widget.myFunds.fold<int>(0, (sum, f) => sum + f.balance);
+    final _showFunds =
+           widget.myFunds.where((f) => f.featured).toList(growable: false);
+       final totalBalance =
+           _showFunds.fold<int>(0, (s, f) => s + f.balance);
 
     return Scaffold(
       body: SafeArea(
@@ -151,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   const SizedBox(height: 14),
                                   _FundsPager(
-                                    myFunds: widget.myFunds,
+                                    myFunds: _showFunds,
                                     indicatorActive: Colors.white,
                                   ),
                                 ],
@@ -295,48 +298,62 @@ class _FundMiniCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 수익률에 따라 빨강/파랑 색 지정
+    final rateColor = fund.rate >= 0 ? Colors.red : Colors.blue;
+
     return SizedBox(
       height: _FundsPagerState._cardHeight,
       child: Card(
         color: Colors.white,
         elevation: .8,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
+              // ── 좌측: 펀드명 + 수익률 ──
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // 펀드명
                     Text(
                       fund.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 17,
                         fontWeight: FontWeight.w700,
                         height: 1.1,
                       ),
                     ),
                     const SizedBox(height: 6),
+                    // 수익률 (컬러 적용)
                     Text(
                       '수익률: ${fund.rate.toStringAsFixed(2)}%',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
                         height: 1.15,
-                        color: Colors.grey[700],
+                        color: rateColor,
                       ),
                     ),
                   ],
                 ),
               ),
+
+              // ── 우측: 금액 (크고 굵게) ──
               Text(
-                '₩${fund.balance.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}',
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                '${fund.balance.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',') + '원'}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ],
           ),
