@@ -228,9 +228,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                   minimumSize: const Size(double.infinity, 50),
                 ),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("다음 화면으로 이동합니다.")),
-                  );
+
                 },
                 child: const Text("다음", style: TextStyle(fontSize: 18, color: Colors.white)),
               ),
