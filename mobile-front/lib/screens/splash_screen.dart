@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/screens/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -37,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   width: 250,
                 ),
                 SizedBox(height: 100),
-                CircularProgressIndicator(), // 로딩 애니메이션
+                CircularProgressIndicator(color: AppColors.primaryBlue,), // 로딩 애니메이션
               ],
             ),
           ),
