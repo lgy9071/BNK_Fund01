@@ -17,7 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.fund.api.common.SignupRequest;
 import com.example.fund.api.service.UserApiService;
 
-@CrossOrigin(origins = "http://192.168.100.245:8090")
+//@CrossOrigin(origins = "http://10.71.200.224:8090")
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api")
 public class UserController {
