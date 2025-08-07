@@ -70,7 +70,6 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
           });
         }
       } else {
-        // 오답만 비활성화
         disabledOptions.putIfAbsent(currentStep, () => <String>{}).add(answer);
         messages.add({"type": "warning", "text": step["warning"] ?? ""});
       }
@@ -162,11 +161,14 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                     final triggerWrong = step["triggerWrong"];
                     final isAnswered = answered != null;
                     final disabledSet = disabledOptions[stepIdx] ?? {};
+                    final hideImage = stepIdx == 0; // 첫 번째 질문만 이미지 숨김
 
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Image.asset('assets/images/bear.png', width: 40, height: 40),
+                        hideImage
+                            ? const SizedBox(width: 48)
+                            : Image.asset('assets/images/bear.png', width: 40, height: 40),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Container(
@@ -239,10 +241,14 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   }
 
   Widget _noticeBubble(Map<String, dynamic> msg) {
+    final isFirstNotice = msg["title"] == "상품명에 가입하기 위해 추가 정보를 확인할게요";
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Image.asset('assets/images/bear.png', width: 40, height: 40),
+        isFirstNotice
+            ? Image.asset('assets/images/bear.png', width: 40, height: 40)
+            : const SizedBox(width: 48),
         const SizedBox(width: 8),
         Expanded(
           child: Container(
@@ -282,8 +288,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Image.asset('assets/images/bear.png', width: 40, height: 40),
-        const SizedBox(width: 8),
+        const SizedBox(width: 48),
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(12),
@@ -316,7 +321,6 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     );
   }
 }
-
 
 void main() {
   runApp(const MaterialApp(
