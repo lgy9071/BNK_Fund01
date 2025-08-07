@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'fund_non_deposit.dart';
 
 class FundJoinPage extends StatefulWidget {
   const FundJoinPage({super.key});
@@ -188,9 +189,16 @@ class _FundJoinPageState extends State<FundJoinPage> {
                 isAllChecked ? const Color(0xFF00067D) : Colors.grey.shade300,
                 minimumSize: const Size(double.infinity, 50),
               ),
-              onPressed: isAllChecked ? () {
-                // 동의 버튼 눌렀을 때 처리
-              } : null,
+              onPressed: isAllChecked
+                  ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NonDepositGuidePage(),
+                  ),
+                );
+              }
+                  : null,
               child: Text(
                 '네, 동의합니다',
                 style: TextStyle(
