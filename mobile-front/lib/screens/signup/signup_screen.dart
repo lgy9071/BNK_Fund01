@@ -3,6 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_front/screens/signup/steps/step1_id.dart';
+import 'package:mobile_front/screens/signup/steps/step2_password.dart';
+import 'package:mobile_front/screens/signup/steps/step3_name.dart';
+import 'package:mobile_front/screens/signup/steps/step4_phone.dart';
+import 'package:mobile_front/screens/signup/steps/step5_email.dart';
+import 'package:mobile_front/screens/signup/steps/step6_success.dart';
 
 
 class SignupScreen extends StatefulWidget {
@@ -51,16 +56,20 @@ class _SignupScreenState extends State<SignupScreen> {
           physics: NeverScrollableScrollPhysics(),
           children: [
             Step1IdScreen(userId: userId, onNext: (val) { userId = val; _nextPage(); }),
-            // Step2_Password(password: password, onNext: (val) { password = val; _nextPage(); }, onBack: _prevPage),
-            // Step3_Name(name: name, onNext: (val) { name = val; _nextPage(); }, onBack: _prevPage),
-            // Step4_Phone(phone: phone, onNext: (val) { phone = val; _nextPage(); }, onBack: _prevPage),
-            // Step5_Email(email: email, onNext: (val) {
-            //   email = val;
-            //   // 최종 POST 전송
-            //   _sendSignupRequest();
-            //   _nextPage();
-            // }, onBack: _prevPage),
-            // Step6_Success(), // 회원가입 완료 화면
+            Step2PasswordScreen(password: password, onNext: (val) { password = val; _nextPage(); }, onBack: _prevPage),
+            Step3NameScreen(name: name, onNext: (val) { name = val; _nextPage(); }, onBack: _prevPage),
+            Step4PhoneScreen(phone: phone, onNext: (val) { phone = val; _nextPage(); }, onBack: _prevPage),
+            Step5EmailScreen(
+              email: email,
+              onComplete: (val) {
+                email = val;
+                _sendSignupRequest();
+                _nextPage();
+              },
+              onBack: _prevPage,
+            ),
+
+            SignupCompleteScreen(), // 회원가입 완료 화면
           ],
         ),
       ),
@@ -69,7 +78,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   void _sendSignupRequest() async {
     final body = {
-      "userId": userId,
+      "username": userId,
       "password": password,
       "name": name,
       "phone": phone,

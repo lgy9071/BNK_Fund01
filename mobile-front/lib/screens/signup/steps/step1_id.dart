@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:mobile_front/core/constants/colors.dart';
 
 class Step1IdScreen extends StatefulWidget {
   final String userId;
@@ -88,12 +89,12 @@ class _Step1IdScreenState extends State<Step1IdScreen> {
     final bool nextEnabled = _isValid && !_isDuplicate;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        leading: BackButton(color: Colors.black),
-        title: Center(
-          child: Text("로고", style: TextStyle(color: Colors.black)),
-        ),
+        leading: BackButton(color: AppColors.primaryBlue),
+        centerTitle: true,
+        title: Text("회원가입", style: TextStyle(fontSize: 18, color: AppColors.primaryBlue),),
         elevation: 0,
       ),
       body: Padding(
@@ -103,32 +104,34 @@ class _Step1IdScreenState extends State<Step1IdScreen> {
           children: [
             const SizedBox(height: 32),
             const Text("아이디", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 10),
             TextField(
               controller: _usernameController,
-              cursorColor: Colors.blue,
+              cursorColor: AppColors.primaryBlue,
               decoration: InputDecoration(
                 hintText: "아이디를 입력하세요",
-                suffixIcon: _isChecking
-                    ? Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                suffix: _isChecking
+                    ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primaryBlue,
                   ),
                 )
                     : _isValid
                     ? (_isDuplicate
-                    ? Icon(Icons.close, color: Colors.red)
-                    : Icon(Icons.check, color: Colors.green))
+                    ? Icon(Icons.close, color: Colors.red, size: 20)
+                    : Icon(Icons.check, color: Colors.green, size: 20))
                     : null,
+                contentPadding: EdgeInsets.symmetric(vertical: 8), // 글자 너무 위로 안가게
                 focusedBorder: UnderlineInputBorder(
                   borderSide: BorderSide(
                     color: _isDuplicate
                         ? Colors.red
                         : _isValid
-                        ? Colors.blue
-                        : Colors.grey,
+                        ? AppColors.primaryBlue
+                        : AppColors.primaryBlue,
                   ),
                 ),
               ),
@@ -148,7 +151,7 @@ class _Step1IdScreenState extends State<Step1IdScreen> {
                   child: LinearProgressIndicator(
                     value: 1 / 5,
                     backgroundColor: Colors.grey[300],
-                    color: Colors.blue,
+                    color: AppColors.primaryBlue,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -163,7 +166,7 @@ class _Step1IdScreenState extends State<Step1IdScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: nextEnabled ? Color(0xFF0064FF) : Colors.grey[300],
                 ),
-                child: const Text("다음"),
+                child: const Text("다음", style: TextStyle(color: Colors.white),),
               ),
             ),
             const SizedBox(height: 16),
