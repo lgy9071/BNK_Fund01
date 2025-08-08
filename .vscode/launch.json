@@ -19,6 +19,16 @@
             "projectName": "BNK_project01-server",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-WebsocketApplication<demo-websocket>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.example.demo.WebsocketApplication",
+            "projectName": "demo-websocket",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
         }
     ]
 }
