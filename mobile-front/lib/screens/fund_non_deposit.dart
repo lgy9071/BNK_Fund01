@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 /// 색상 팔레트 (파란 계열 통일)
 class AppColors {
   static const primary = Color(0xFF0064FF);   // 포인트 파랑
+  static const btn = Color(0xFF2D1ADA);       // 버튼 색상
   static const botBubble = Color(0xFFF3F4F6); // 봇 말풍선 배경
   static const surface = Colors.white;        // 카드/버튼 기본
   static const border = Color(0xFFE5E7EB);    // 회색 보더
@@ -30,12 +31,17 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   final FocusNode _amountFocus = FocusNode();
   bool _shouldFocusAmount = false;
   bool _isFormatting = false;
-  int? _amountValue; // 현재 숫자 값(콤마 제거 후)
+  int? _amountValue;
 
-  // 금액 제출 후 투자 방식 버튼 잠금 + 금액 카드 축소 표시
-  bool _investChoiceLocked = false;
-  bool _amountSubmitted = false;
-  String? _selectedInvestPlan; // 투자 규칙 요약(예: "매주 • 금요일", "한 번만 투자하기")
+  // 상태
+  bool _investChoiceLocked = false; // 금액 제출 후 두 버튼 비활성화
+  bool _amountSubmitted = false;    // 금액 카드에서 입력창/버튼 숨김
+  String? _selectedInvestPlan;      // 예: "매주 • 금요일", "한 번만 투자하기"
+  String _selectedAccount = "성윤지의 통장1"; // 출금계좌
+
+  // “버블 1개” 유지용 인덱스
+  int? _planUserMsgIndex;   // 사용자 버블(투자 규칙) 위치
+  int? _amountMsgIndex;     // 금액 입력 버블 위치
 
   int currentStep = 0;
   final Map<int, String> answers = {};
@@ -99,8 +105,6 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
 
     final digits = _amountController.text.replaceAll(RegExp(r'[^\d]'), '');
 
-    // ❌ 여기서 버튼 잠그지 않음 (요구사항: 완료 누르기 전까지는 선택 가능)
-
     if (digits.isEmpty) {
       _amountValue = null;
       _amountController.value = const TextEditingValue(
@@ -108,7 +112,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
         selection: TextSelection.collapsed(offset: 0),
       );
       _isFormatting = false;
-      setState(() {}); // 버튼 활성화 갱신
+      setState(() {});
       return;
     }
 
@@ -120,17 +124,17 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     );
 
     _isFormatting = false;
-    setState(() {}); // 버튼/상태 갱신
+    setState(() {});
   }
 
-  // 3자리 쉼표 포맷 (1234567 -> 1,234,567)
+  // 3자리 쉼표 포맷
   String _formatCurrency(int n) {
     final s = n.toString();
     final buf = StringBuffer();
     for (int i = 0; i < s.length; i++) {
-      final idxFromEnd = s.length - i;
+      final r = s.length - i;
       buf.write(s[i]);
-      if (idxFromEnd > 1 && idxFromEnd % 3 == 1) buf.write(',');
+      if (r > 1 && r % 3 == 1) buf.write(',');
     }
     return buf.toString();
   }
@@ -142,13 +146,11 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
 
     setState(() {
       if (answer != triggerWrong) {
-        // 정답: 기록 + 사용자 버블
         answers[currentStep] = answer;
         messages.add({"type": "user", "text": answer});
 
         final isLast = currentStep == steps.length - 1;
         if (isLast && answer == "확인했어요") {
-          // 투자 방식 선택(봇 버블)
           messages.add({
             "type": "investChoice",
             "question": "어떻게 투자할까요?",
@@ -166,7 +168,6 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
           }
         }
       } else {
-        // 오답: 보기 비활성화 + 경고 말풍선 추가
         disabledOptions.putIfAbsent(currentStep, () => <String>{}).add(answer);
         messages.add({"type": "warning", "text": step["warning"] ?? ""});
       }
@@ -175,16 +176,52 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     _scrollToBottom();
   }
 
-  // 투자 방식 선택: 바텀시트 (매일/매주/매월 + 세부)
+  // ───────── 투자 방식 선택 공통 처리 (버블 1개 유지) ─────────
+  void _setPlanAndEnsureAmountBubble(String summary) {
+    _selectedInvestPlan = summary;
+
+    setState(() {
+      // 사용자 버블(투자 규칙) — 있으면 업데이트, 없으면 추가
+      if (_planUserMsgIndex == null) {
+        messages.add({"type": "user", "text": summary});
+        _planUserMsgIndex = messages.length - 1;
+      } else {
+        messages[_planUserMsgIndex!]["text"] = summary;
+      }
+
+      // 금액 입력 버블 — 1개만 유지
+      final amountMsg = {
+        "type": "amount",
+        "question": "얼마를 투자할까요?",
+        "placeholder": "투자금액 입력 (천원부터 투자 가능)"
+      };
+      if (_amountMsgIndex == null) {
+        messages.add(amountMsg);
+        _amountMsgIndex = messages.length - 1;
+      } else {
+        messages[_amountMsgIndex!] = amountMsg; // 같은 자리 재사용
+      }
+
+      // 입력 상태 초기화 (키패드 띄우기)
+      _amountController.text = '';
+      _amountValue = null;
+      _amountSubmitted = false;
+      _investChoiceLocked = false; // 제출 전까진 선택 가능
+      _shouldFocusAmount = true;
+    });
+
+    _scrollToBottom();
+  }
+
+  // 투자 방식 선택: 바텀시트
   Future<void> _openScheduleSheet() async {
     final periodOptions = ["매일", "매주", "매월"];
-
     int periodIndex = 1; // 기본: 매주
     int subIndex = 0;
 
     List<String> subListFor(int pIdx) {
       final p = periodOptions[pIdx];
-      if (p == "매일") return ["매일"]; // 매일은 하나만
+      if (p == "매일") return ["매일"];
       if (p == "매주") {
         return ["월요일","화요일","수요일","목요일","금요일","토요일","일요일"];
       }
@@ -203,10 +240,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setSB) {
-            // 오른쪽 목록은 periodIndex에 의해 매 빌드 재계산
             final rightOptions = subListFor(periodIndex);
-
-            // 좌측 변경 시 우측 즉시 교체되도록 key/ctrl 재생성
             final rightPickerKey = ValueKey("right-$periodIndex");
             final rightCtrl = FixedExtentScrollController(initialItem: 0);
             subIndex = 0;
@@ -222,11 +256,9 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                       children: const [
                         SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            "투자 주기 선택",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
+                          child: Text("투자 주기 선택",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         ),
                         SizedBox(width: 8),
                       ],
@@ -236,26 +268,22 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                       height: 180,
                       child: Row(
                         children: [
-                          // 왼쪽: 매일/매주/매월
                           Expanded(
                             child: CupertinoPicker(
                               itemExtent: 36,
                               scrollController: leftCtrl,
                               onSelectedItemChanged: (i) {
-                                setSB(() {
-                                  periodIndex = i; // setSB 호출로 재빌드 → 우측 key/children 교체
-                                });
+                                setSB(() { periodIndex = i; });
                               },
                               children: periodOptions.map((e) => Center(child: Text(e))).toList(),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // 오른쪽: 요일/일자/매일(단일)
                           Expanded(
                             child: CupertinoPicker(
-                              key: rightPickerKey,          // 좌측 변경 → key 변경으로 즉시 갈아끼움
+                              key: rightPickerKey,
                               itemExtent: 36,
-                              scrollController: rightCtrl,  // 항상 0번째
+                              scrollController: rightCtrl,
                               onSelectedItemChanged: (i) => subIndex = i,
                               children: rightOptions.map((e) => Center(child: Text(e))).toList(),
                             ),
@@ -277,7 +305,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                           final p = periodOptions[periodIndex];
                           final s = rightOptions[subIndex];
                           Navigator.pop(ctx);
-                          _confirmInvestPlan("$p • $s");
+                          _setPlanAndEnsureAmountBubble("$p • $s");
                         },
                         child: const Text("확인", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                       ),
@@ -292,43 +320,8 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     );
   }
 
-  // 투자 방식 확정 후: 사용자 버블 + 금액 질문으로 (키패드 자동 오픈)
-  void _confirmInvestPlan(String summary) {
-    _selectedInvestPlan = summary;
-    setState(() {
-      messages.add({"type": "user", "text": summary});
-      messages.add({
-        "type": "amount",
-        "question": "얼마를 투자할까요?",
-        "placeholder": "투자금액 입력 (천원부터 투자 가능)"
-      });
-      _amountController.text = '';
-      _amountValue = null;
-      _amountSubmitted = false;     // 아직 완료 전
-      _investChoiceLocked = false;  // 완료 전엔 선택 가능
-      _shouldFocusAmount = true;    // 키패드 자동
-    });
-    _scrollToBottom();
-  }
-
-  // 한 번만 투자하기 선택
-  void _chooseOneTime() {
-    _selectedInvestPlan = "한 번만 투자하기";
-    setState(() {
-      messages.add({"type": "user", "text": "한 번만 투자하기"});
-      messages.add({
-        "type": "amount",
-        "question": "얼마를 투자할까요?",
-        "placeholder": "투자금액 입력 (천원부터 투자 가능)"
-      });
-      _amountController.text = '';
-      _amountValue = null;
-      _amountSubmitted = false;
-      _investChoiceLocked = false;
-      _shouldFocusAmount = true;
-    });
-    _scrollToBottom();
-  }
+  // 한 번만 투자하기
+  void _chooseOneTime() => _setPlanAndEnsureAmountBubble("한 번만 투자하기");
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -343,28 +336,90 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
 
   bool get _isAmountValid => (_amountValue ?? 0) >= _minAmount;
 
-  // “확인” 클릭: 금액 제출 → 버튼 비활성 + 입력창/버튼 숨김 + 요약 버블
+  // 금액 확인
   void _submitAmount() {
     if (!_isAmountValid) return;
     final formatted = _formatCurrency(_amountValue!);
 
     setState(() {
-      _investChoiceLocked = true; // 두 버튼 잠금
-      _amountSubmitted = true;    // 금액 카드에서 입력창/버튼 숨김
-      messages.add({"type": "user", "text": "$formatted 원"});
-      messages.add({
-        "type": "summary",
+      _investChoiceLocked = true; // 버튼 잠금
+      _amountSubmitted = true;    // 입력창/확인 버튼 숨김
+
+      messages.add({"type": "user", "text": "$formatted 원"}); // 사용자 버블
+      messages.add({                                            // 출금계좌 확인 말풍선
+        "type": "debitConfirm",
         "amount": "$formatted 원",
-        "plan": _selectedInvestPlan ?? "선택 안 함",
+        "account": _selectedAccount,
+        "handled": false,
       });
     });
 
-    // 키보드 내리기 + 입력값 초기화
     FocusScope.of(context).unfocus();
     _amountController.clear();
     _amountValue = null;
-
     _scrollToBottom();
+  }
+
+  // 출금계좌 변경 반영
+  void _updateLastDebitConfirmAccount(String newAccount) {
+    _selectedAccount = newAccount;
+    for (int i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]["type"] == "debitConfirm" && messages[i]["handled"] == false) {
+        setState(() { messages[i]["account"] = newAccount; });
+        break;
+      }
+    }
+  }
+
+  // 출금계좌 확인 완료 → 요약
+  void _confirmDebitAndShowSummary(Map<String, dynamic> msg) {
+    if (msg["handled"] == true) return;
+    setState(() {
+      msg["handled"] = true;
+      messages.add({"type": "user", "text": "확인했어요"});
+      messages.add({
+        "type": "summary",
+        "amount": msg["amount"] ?? "",
+        "plan": _selectedInvestPlan ?? "선택 안 함",
+        "account": _selectedAccount,
+      });
+    });
+    _scrollToBottom();
+  }
+
+  // 계좌 선택 바텀시트
+  Future<void> _openAccountSheet() async {
+    final items = [
+      "성윤지의 통장1",
+      "성윤지의 통장2",
+      "성윤지의 통장3",
+    ];
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, i) {
+              return ListTile(
+                title: Text(items[i]),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _updateLastDebitConfirmAccount(items[i]);
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -388,7 +443,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 상단 안내 박스 (원본 UI 유지)
+            // 상단 안내 박스
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -431,7 +486,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
             ),
             const SizedBox(height: 16),
 
-            // 채팅 리스트 (원본 UI 흐름 유지)
+            // 채팅 리스트
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
@@ -444,9 +499,9 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                   if (msg["type"] == "user") return _userBubble(msg["text"]);
                   if (msg["type"] == "investChoice") return _investChoiceBubble(msg);
                   if (msg["type"] == "amount") {
-                    // 완료 전엔 입력창/확인 버튼 보이고, 완료 후엔 질문 텍스트만 남김
                     return _amountSubmitted ? _amountQuestionOnly(msg) : _amountBubble(msg);
                   }
+                  if (msg["type"] == "debitConfirm") return _debitConfirmBubble(msg);
                   if (msg["type"] == "summary") return _summaryBubble(msg);
 
                   if (msg["type"] == "choice") {
@@ -491,13 +546,11 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                                   final isCorrectAnswer = hasWrong && opt != triggerWrong;
                                   final isDisabled = isAnswered || isManuallyDisabled;
 
-                                  // 스타일
                                   Color bg;
                                   Color fg;
                                   BorderSide side;
 
                                   if (isDisabled) {
-                                    // 비활성화 상태: 둘 다 동일 그레이
                                     bg = AppColors.surface;
                                     fg = AppColors.textMute;
                                     side = const BorderSide(color: AppColors.border);
@@ -627,7 +680,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     );
   }
 
-  // ▶ 투자 방식 선택 말풍선 (경고 없음) — 아바타 포함
+  // ▶ 투자 방식 선택 말풍선
   Widget _investChoiceBubble(Map<String, dynamic> msg) {
     final bool disabled = _investChoiceLocked;
 
@@ -685,7 +738,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     );
   }
 
-  // 금액 입력 완료 후: 질문 텍스트만 남기는 버전
+  // 제출 후: 질문 텍스트만
   Widget _amountQuestionOnly(Map<String, dynamic> msg) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -700,7 +753,8 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
               color: AppColors.botBubble,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Text(msg["question"] ?? "", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            child: Text(msg["question"] ?? "",
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ),
         ),
       ],
@@ -735,7 +789,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
               decoration: InputDecoration(
                 border: InputBorder.none,
                 hintText: msg["placeholder"] ?? "투자금액 입력",
-                suffixText: (_amountValue == null) ? null : "원", // 숫자 입력되면 '원' 표시
+                suffixText: (_amountValue == null) ? null : "원",
               ),
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _submitAmount(),
@@ -764,12 +818,90 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     );
   }
 
-  // 요약 버블 (투자금액 / 투자 규칙)
+  // 출금계좌 확인 버블
+  Widget _debitConfirmBubble(Map<String, dynamic> msg) {
+    final handled = (msg["handled"] as bool?) ?? false;
+    final amount = msg["amount"] as String? ?? "";
+    final account = msg["account"] as String? ?? _selectedAccount;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Image.asset('assets/images/bear.png', width: kAvatar, height: kAvatar),
+        const SizedBox(width: kGap),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: AppColors.botBubble,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("$amount을\n아래 계좌에서 출금할게요.",
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text("· 출금계좌  ", style: TextStyle(color: AppColors.textMute)),
+                    Expanded(child: Text(account, style: const TextStyle(fontWeight: FontWeight.w600))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: handled ? AppColors.botBubble : AppColors.primary,
+                      foregroundColor: handled ? AppColors.textMute : Colors.white,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 46),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: handled ? AppColors.border : AppColors.primary),
+                      ),
+                    ),
+                    onPressed: handled ? null : () => _confirmDebitAndShowSummary(msg),
+                    child: const Text("확인했어요", style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.surface,
+                      foregroundColor: AppColors.text,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 46),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    onPressed: handled ? null : _openAccountSheet,
+                    child: const Text("출금계좌 변경하기", style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ 요약 버블 (아바타 + '펀드 가입하기' 버튼 추가)
   Widget _summaryBubble(Map<String, dynamic> msg) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(width: kGutter),
+        Image.asset('assets/images/bear.png', width: kAvatar, height: kAvatar),
+        const SizedBox(width: kGap),
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(12),
@@ -781,11 +913,39 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("투자금액", style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(msg["amount"] ?? ""),
+                const Text("지금까지 입력한 내용을\n요약해서 보여드릴게요.",
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 12),
+                const Text("· 투자금액", style: TextStyle(color: AppColors.textMute)),
+                Text(msg["amount"] ?? "", style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
-                const Text("투자 규칙", style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(msg["plan"] ?? ""),
+                const Text("· 투자규칙", style: TextStyle(color: AppColors.textMute)),
+                Text(msg["plan"] ?? "", style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                const Text("· 출금계좌", style: TextStyle(color: AppColors.textMute)),
+                Text(msg["account"] ?? "", style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.btn,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      // TODO: 실제 가입 처리
+
+                    },
+                    child: const Text("펀드 가입하기", style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -795,9 +955,9 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   }
 
   Widget _pillButton(String text, {required VoidCallback? onTap, bool disabled = false}) {
-    final bg = disabled ? AppColors.botBubble : AppColors.surface; // 비활성은 회색 배경
-    final fg = disabled ? AppColors.textMute : AppColors.text;     // 비활성은 회색 글자
-    final sideColor = AppColors.border;                             // 회색 테두리
+    final bg = disabled ? AppColors.botBubble : AppColors.surface;
+    final fg = disabled ? AppColors.textMute : AppColors.text;
+    final sideColor = AppColors.border;
 
     return SizedBox(
       width: double.infinity,
@@ -812,7 +972,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
             side: BorderSide(color: sideColor),
           ),
         ),
-        onPressed: disabled ? null : onTap, // 완전 비활성
+        onPressed: disabled ? null : onTap,
         child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
     );
