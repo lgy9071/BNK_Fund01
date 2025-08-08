@@ -1,0 +1,4 @@
+rootProject.name = 'BNK_project02'
+
+include 'server'
+include 'websocket'
