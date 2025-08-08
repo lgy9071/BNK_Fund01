@@ -64,8 +64,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	// JUnit Test
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	//SpringSecurity 암호화만 사용
-	implementation("org.springframework.boot:spring-boot-starter-security")
+	//websecket
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 }
 
 dependencyManagement {
