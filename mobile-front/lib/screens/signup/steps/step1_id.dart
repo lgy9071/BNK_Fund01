@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile_front/core/constants/api.dart';
 import 'dart:convert';
 import 'package:mobile_front/core/constants/colors.dart';
 
@@ -59,7 +60,7 @@ class _Step1IdScreenState extends State<Step1IdScreen> {
 
     try {
       final res = await http.get(
-        Uri.parse("http://192.168.100.245:8090/api/check-id?username=$username"),
+        Uri.parse("${ApiConfig.checkUsername}?username=$username"),
       );
       print(res.body);
       final data = jsonDecode(res.body);

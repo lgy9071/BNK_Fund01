@@ -77,9 +77,10 @@ class _SignupCompleteScreenState extends State<SignupCompleteScreen>
             const SizedBox(height: 80),
             ElevatedButton(
               onPressed: () {
-                Navigator.push(
+                Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (_) => LoginScreen()),
+                      (Route<dynamic> route) => false, // 모든 이전 화면 제거
                 );
               },
               style: ElevatedButton.styleFrom(
