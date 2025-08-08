@@ -1,4 +1,16 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
+/// 색상 팔레트 (파란 계열 통일)
+class AppColors {
+  static const primary = Color(0xFF0064FF);   // 포인트 파랑
+  static const btn = Color(0xFF2D1ADA);       // 버튼 색상
+  static const botBubble = Color(0xFFF3F4F6); // 봇 말풍선 배경
+  static const surface = Colors.white;        // 카드/버튼 기본
+  static const border = Color(0xFFE5E7EB);    // 회색 보더
+  static const text = Colors.black;           // 기본 텍스트
+  static const textMute = Color(0xFF6B7280);  // 보조 텍스트
+}
 
 class NonDepositGuidePage extends StatefulWidget {
   const NonDepositGuidePage({super.key});
@@ -8,10 +20,33 @@ class NonDepositGuidePage extends StatefulWidget {
 }
 
 class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
+  // 공통 여백
+  static const double kAvatar = 40;
+  static const double kGap = 8;
+  static const double kGutter = kAvatar + kGap; // 48
+
+  // 금액 입력
+  static const int _minAmount = 1000;
+  final TextEditingController _amountController = TextEditingController();
+  final FocusNode _amountFocus = FocusNode();
+  bool _shouldFocusAmount = false;
+  bool _isFormatting = false;
+  int? _amountValue;
+
+  // 상태
+  bool _investChoiceLocked = false; // 금액 제출 후 두 버튼 비활성화
+  bool _amountSubmitted = false;    // 금액 카드에서 입력창/버튼 숨김
+  String? _selectedInvestPlan;      // 예: "매주 • 금요일", "한 번만 투자하기"
+  String _selectedAccount = "성윤지의 통장1"; // 출금계좌
+
+  // “버블 1개” 유지용 인덱스
+  int? _planUserMsgIndex;   // 사용자 버블(투자 규칙) 위치
+  int? _amountMsgIndex;     // 금액 입력 버블 위치
+
   int currentStep = 0;
-  Map<int, String> answers = {};
-  Map<int, Set<String>> disabledOptions = {};
-  List<Map<String, dynamic>> messages = [];
+  final Map<int, String> answers = {};
+  final Map<int, Set<String>> disabledOptions = {};
+  final List<Map<String, dynamic>> messages = [];
   final ScrollController _scrollController = ScrollController();
 
   final List<Map<String, dynamic>> steps = [
@@ -32,7 +67,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
       "options": ["확인했어요", "아니오"],
       "warning": "원금 손실 위험 가능성과 최대 원금 손실 규모를 충분히 확인한 후 펀드에 투자할 수 있어요.",
       "triggerWrong": "아니오"
-    }
+    },
   ];
 
   @override
@@ -50,8 +85,61 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
       "question": steps[0]["question"],
       "options": steps[0]["options"]
     });
+
+    _amountController.addListener(_onAmountChanged);
   }
 
+  @override
+  void dispose() {
+    _amountController.removeListener(_onAmountChanged);
+    _amountController.dispose();
+    _amountFocus.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // ───────── 금액 입력 변경 핸들러 ─────────
+  void _onAmountChanged() {
+    if (_isFormatting) return;
+    _isFormatting = true;
+
+    final digits = _amountController.text.replaceAll(RegExp(r'[^\d]'), '');
+
+    if (digits.isEmpty) {
+      _amountValue = null;
+      _amountController.value = const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+      _isFormatting = false;
+      setState(() {});
+      return;
+    }
+
+    _amountValue = int.tryParse(digits);
+    final formatted = _formatCurrency(_amountValue!);
+    _amountController.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+
+    _isFormatting = false;
+    setState(() {});
+  }
+
+  // 3자리 쉼표 포맷
+  String _formatCurrency(int n) {
+    final s = n.toString();
+    final buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      final r = s.length - i;
+      buf.write(s[i]);
+      if (r > 1 && r % 3 == 1) buf.write(',');
+    }
+    return buf.toString();
+  }
+
+  // ───────── 질문 응답 ─────────
   void selectAnswer(String answer) {
     final step = steps[currentStep];
     final triggerWrong = step["triggerWrong"];
@@ -61,13 +149,23 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
         answers[currentStep] = answer;
         messages.add({"type": "user", "text": answer});
 
-        if (currentStep < steps.length - 1) {
-          currentStep++;
+        final isLast = currentStep == steps.length - 1;
+        if (isLast && answer == "확인했어요") {
           messages.add({
-            "type": "choice",
-            "question": steps[currentStep]["question"],
-            "options": steps[currentStep]["options"]
+            "type": "investChoice",
+            "question": "어떻게 투자할까요?",
+            "desc": "가입 후에도 변경할 수 있어요.\n펀드 투자자의 12%가 매월 투자를 하고 있어요.",
+            "options": ["매일/매주/매월 투자하기", "한 번만 투자하기"],
           });
+        } else {
+          if (currentStep < steps.length - 1) {
+            currentStep++;
+            messages.add({
+              "type": "choice",
+              "question": steps[currentStep]["question"],
+              "options": steps[currentStep]["options"]
+            });
+          }
         }
       } else {
         disabledOptions.putIfAbsent(currentStep, () => <String>{}).add(answer);
@@ -75,43 +173,287 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
       }
     });
 
+    _scrollToBottom();
+  }
+
+  // ───────── 투자 방식 선택 공통 처리 (버블 1개 유지) ─────────
+  void _setPlanAndEnsureAmountBubble(String summary) {
+    _selectedInvestPlan = summary;
+
+    setState(() {
+      // 사용자 버블(투자 규칙) — 있으면 업데이트, 없으면 추가
+      if (_planUserMsgIndex == null) {
+        messages.add({"type": "user", "text": summary});
+        _planUserMsgIndex = messages.length - 1;
+      } else {
+        messages[_planUserMsgIndex!]["text"] = summary;
+      }
+
+      // 금액 입력 버블 — 1개만 유지
+      final amountMsg = {
+        "type": "amount",
+        "question": "얼마를 투자할까요?",
+        "placeholder": "투자금액 입력 (천원부터 투자 가능)"
+      };
+      if (_amountMsgIndex == null) {
+        messages.add(amountMsg);
+        _amountMsgIndex = messages.length - 1;
+      } else {
+        messages[_amountMsgIndex!] = amountMsg; // 같은 자리 재사용
+      }
+
+      // 입력 상태 초기화 (키패드 띄우기)
+      _amountController.text = '';
+      _amountValue = null;
+      _amountSubmitted = false;
+      _investChoiceLocked = false; // 제출 전까진 선택 가능
+      _shouldFocusAmount = true;
+    });
+
+    _scrollToBottom();
+  }
+
+  // 투자 방식 선택: 바텀시트
+  Future<void> _openScheduleSheet() async {
+    final periodOptions = ["매일", "매주", "매월"];
+    int periodIndex = 1; // 기본: 매주
+    int subIndex = 0;
+
+    List<String> subListFor(int pIdx) {
+      final p = periodOptions[pIdx];
+      if (p == "매일") return ["매일"];
+      if (p == "매주") {
+        return ["월요일","화요일","수요일","목요일","금요일","토요일","일요일"];
+      }
+      return List<String>.generate(31, (i) => "${i + 1}일");
+    }
+
+    final leftCtrl = FixedExtentScrollController(initialItem: periodIndex);
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSB) {
+            final rightOptions = subListFor(periodIndex);
+            final rightPickerKey = ValueKey("right-$periodIndex");
+            final rightCtrl = FixedExtentScrollController(initialItem: 0);
+            subIndex = 0;
+
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: const [
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text("투자 주기 선택",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                        SizedBox(width: 8),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 180,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: CupertinoPicker(
+                              itemExtent: 36,
+                              scrollController: leftCtrl,
+                              onSelectedItemChanged: (i) {
+                                setSB(() { periodIndex = i; });
+                              },
+                              children: periodOptions.map((e) => Center(child: Text(e))).toList(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: CupertinoPicker(
+                              key: rightPickerKey,
+                              itemExtent: 36,
+                              scrollController: rightCtrl,
+                              onSelectedItemChanged: (i) => subIndex = i,
+                              children: rightOptions.map((e) => Center(child: Text(e))).toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 50),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          final p = periodOptions[periodIndex];
+                          final s = rightOptions[subIndex];
+                          Navigator.pop(ctx);
+                          _setPlanAndEnsureAmountBubble("$p • $s");
+                        },
+                        child: const Text("확인", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // 한 번만 투자하기
+  void _chooseOneTime() => _setPlanAndEnsureAmountBubble("한 번만 투자하기");
+
+  void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
       );
     });
   }
 
+  bool get _isAmountValid => (_amountValue ?? 0) >= _minAmount;
+
+  // 금액 확인
+  void _submitAmount() {
+    if (!_isAmountValid) return;
+    final formatted = _formatCurrency(_amountValue!);
+
+    setState(() {
+      _investChoiceLocked = true; // 버튼 잠금
+      _amountSubmitted = true;    // 입력창/확인 버튼 숨김
+
+      messages.add({"type": "user", "text": "$formatted 원"}); // 사용자 버블
+      messages.add({                                            // 출금계좌 확인 말풍선
+        "type": "debitConfirm",
+        "amount": "$formatted 원",
+        "account": _selectedAccount,
+        "handled": false,
+      });
+    });
+
+    FocusScope.of(context).unfocus();
+    _amountController.clear();
+    _amountValue = null;
+    _scrollToBottom();
+  }
+
+  // 출금계좌 변경 반영
+  void _updateLastDebitConfirmAccount(String newAccount) {
+    _selectedAccount = newAccount;
+    for (int i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]["type"] == "debitConfirm" && messages[i]["handled"] == false) {
+        setState(() { messages[i]["account"] = newAccount; });
+        break;
+      }
+    }
+  }
+
+  // 출금계좌 확인 완료 → 요약
+  void _confirmDebitAndShowSummary(Map<String, dynamic> msg) {
+    if (msg["handled"] == true) return;
+    setState(() {
+      msg["handled"] = true;
+      messages.add({"type": "user", "text": "확인했어요"});
+      messages.add({
+        "type": "summary",
+        "amount": msg["amount"] ?? "",
+        "plan": _selectedInvestPlan ?? "선택 안 함",
+        "account": _selectedAccount,
+      });
+    });
+    _scrollToBottom();
+  }
+
+  // 계좌 선택 바텀시트
+  Future<void> _openAccountSheet() async {
+    final items = [
+      "성윤지의 통장1",
+      "성윤지의 통장2",
+      "성윤지의 통장3",
+    ];
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, i) {
+              return ListTile(
+                title: Text(items[i]),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _updateLastDebitConfirmAccount(items[i]);
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isLastStep = currentStep == steps.length - 1;
-    final selectedAnswer = answers[currentStep];
-    final showNextButton = isLastStep && selectedAnswer == "확인했어요";
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('펀드 가입', style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
+        title: const Text(
+          '펀드 가입',
+          style: TextStyle(color: AppColors.text),
+        ),
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(color: AppColors.text),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // 상단 안내 박스
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: Colors.grey.shade400),
+                color: AppColors.surface,
+                border: Border.all(color: AppColors.border),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text.rich(
                     TextSpan(
                       children: [
@@ -143,6 +485,8 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // 채팅 리스트
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
@@ -153,29 +497,42 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                   if (msg["type"] == "notice") return _noticeBubble(msg);
                   if (msg["type"] == "warning") return _botBubble(msg["text"]);
                   if (msg["type"] == "user") return _userBubble(msg["text"]);
+                  if (msg["type"] == "investChoice") return _investChoiceBubble(msg);
+                  if (msg["type"] == "amount") {
+                    return _amountSubmitted ? _amountQuestionOnly(msg) : _amountBubble(msg);
+                  }
+                  if (msg["type"] == "debitConfirm") return _debitConfirmBubble(msg);
+                  if (msg["type"] == "summary") return _summaryBubble(msg);
 
                   if (msg["type"] == "choice") {
-                    final stepIdx = messages.sublist(0, index + 1).where((m) => m["type"] == "choice").length - 1;
+                    final stepIdx = messages
+                        .sublist(0, index + 1)
+                        .where((m) => m["type"] == "choice")
+                        .length - 1;
+
                     final step = steps[stepIdx];
                     final answered = answers[stepIdx];
                     final triggerWrong = step["triggerWrong"];
                     final isAnswered = answered != null;
                     final disabledSet = disabledOptions[stepIdx] ?? {};
-                    final hideImage = stepIdx == 0; // 첫 번째 질문만 이미지 숨김
+                    final hideImage = stepIdx == 0; // 첫 질문만 아바타 숨김
+                    final hasWrong = disabledSet.isNotEmpty;
 
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        hideImage
-                            ? const SizedBox(width: 48)
-                            : Image.asset('assets/images/bear.png', width: 40, height: 40),
-                        const SizedBox(width: 8),
+                        if (hideImage)
+                          const SizedBox(width: kGutter)
+                        else ...[
+                          Image.asset('assets/images/bear.png', width: kAvatar, height: kAvatar),
+                          const SizedBox(width: kGap),
+                        ],
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color: AppColors.botBubble,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
@@ -183,31 +540,48 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                               children: [
                                 Text(msg["question"] ?? ""),
                                 const SizedBox(height: 8),
-                                ...msg["options"].map<Widget>((opt) {
+                                ...List<Widget>.from((msg["options"] as List).map((opt) {
                                   final isSelected = answered == opt;
                                   final isManuallyDisabled = disabledSet.contains(opt);
-                                  final hasWrongAnswer = disabledSet.isNotEmpty;
-                                  final isCorrectAnswer = hasWrongAnswer && opt != triggerWrong;
-                                  final isHighlighted = isSelected || isCorrectAnswer;
+                                  final isCorrectAnswer = hasWrong && opt != triggerWrong;
                                   final isDisabled = isAnswered || isManuallyDisabled;
+
+                                  Color bg;
+                                  Color fg;
+                                  BorderSide side;
+
+                                  if (isDisabled) {
+                                    bg = AppColors.surface;
+                                    fg = AppColors.textMute;
+                                    side = const BorderSide(color: AppColors.border);
+                                  } else if (isSelected || isCorrectAnswer) {
+                                    bg = AppColors.primary;
+                                    fg = Colors.white;
+                                    side = const BorderSide(color: AppColors.primary);
+                                  } else {
+                                    bg = AppColors.surface;
+                                    fg = AppColors.text;
+                                    side = const BorderSide(color: AppColors.border);
+                                  }
 
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 8),
                                     child: ElevatedButton(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: isHighlighted
-                                            ? const Color(0xFF0059FF)
-                                            : Colors.grey.shade200,
-                                        foregroundColor: isHighlighted
-                                            ? Colors.white
-                                            : Colors.black,
+                                        backgroundColor: bg,
+                                        foregroundColor: fg,
                                         minimumSize: const Size(double.infinity, 44),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(24),
+                                          side: side,
+                                        ),
+                                        elevation: 0,
                                       ),
                                       onPressed: isDisabled ? null : () => selectAnswer(opt),
-                                      child: Text(opt),
+                                      child: Text(opt, style: const TextStyle(fontWeight: FontWeight.w600)),
                                     ),
                                   );
-                                }).toList(),
+                                })),
                               ],
                             ),
                           ),
@@ -220,40 +594,30 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
-            if (showNextButton)
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00067D),
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                onPressed: () {
-
-                },
-                child: const Text("다음", style: TextStyle(fontSize: 18, color: Colors.white)),
-              ),
           ],
         ),
       ),
     );
   }
 
+  // 공지 버블
   Widget _noticeBubble(Map<String, dynamic> msg) {
     final isFirstNotice = msg["title"] == "상품명에 가입하기 위해 추가 정보를 확인할게요";
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        isFirstNotice
-            ? Image.asset('assets/images/bear.png', width: 40, height: 40)
-            : const SizedBox(width: 48),
-        const SizedBox(width: 8),
+        if (isFirstNotice) ...[
+          Image.asset('assets/images/bear.png', width: kAvatar, height: kAvatar),
+          const SizedBox(width: kGap),
+        ] else
+          const SizedBox(width: kGutter),
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: AppColors.botBubble,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -262,13 +626,8 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                 Text.rich(
                   TextSpan(
                     children: [
-                      const TextSpan(
-                        text: '상품명',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(
-                        text: (msg["title"] as String?)?.replaceFirst('상품명', '') ?? '',
-                      ),
+                      const TextSpan(text: '상품명', style: TextStyle(fontWeight: FontWeight.bold)),
+                      TextSpan(text: (msg["title"] as String?)?.replaceFirst('상품명', '') ?? ''),
                     ],
                   ),
                 ),
@@ -282,17 +641,18 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     );
   }
 
+  // 경고 버블(아바타 없는 줄)
   Widget _botBubble(String text) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(width: 48),
+        const SizedBox(width: kGutter),
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: AppColors.botBubble,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(text),
@@ -302,6 +662,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     );
   }
 
+  // 사용자 버블 (파란색)
   Widget _userBubble(String text) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -310,12 +671,310 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
           padding: const EdgeInsets.all(12),
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF0059FF),
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Text(text, style: const TextStyle(color: Colors.white)),
         ),
       ],
+    );
+  }
+
+  // ▶ 투자 방식 선택 말풍선
+  Widget _investChoiceBubble(Map<String, dynamic> msg) {
+    final bool disabled = _investChoiceLocked;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Image.asset('assets/images/bear.png', width: kAvatar, height: kAvatar),
+        const SizedBox(width: kGap),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: AppColors.botBubble,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(msg["question"] ?? "", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 8),
+                Text(msg["desc"] ?? "", style: TextStyle(color: AppColors.textMute)),
+                const SizedBox(height: 12),
+                _pillButton("매일/매주/매월 투자하기",
+                    onTap: disabled ? null : _openScheduleSheet, disabled: disabled),
+                const SizedBox(height: 8),
+                _pillButton("한 번만 투자하기",
+                    onTap: disabled ? null : _chooseOneTime, disabled: disabled),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ▶ 금액 질문 말풍선 (숫자 입력 + 키패드 즉시 + 아바타 포함)
+  Widget _amountBubble(Map<String, dynamic> msg) {
+    if (_shouldFocusAmount) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          FocusScope.of(context).requestFocus(_amountFocus);
+          _shouldFocusAmount = false;
+        }
+      });
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Image.asset('assets/images/bear.png', width: kAvatar, height: kAvatar),
+        const SizedBox(width: kGap),
+        Expanded(child: _amountCard(msg)),
+      ],
+    );
+  }
+
+  // 제출 후: 질문 텍스트만
+  Widget _amountQuestionOnly(Map<String, dynamic> msg) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Image.asset('assets/images/bear.png', width: kAvatar, height: kAvatar),
+        const SizedBox(width: kGap),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: AppColors.botBubble,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(msg["question"] ?? "",
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 금액 입력 카드 + 확인 버튼
+  Widget _amountCard(Map<String, dynamic> msg) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: AppColors.botBubble,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(msg["question"] ?? "", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: TextField(
+              controller: _amountController,
+              focusNode: _amountFocus,
+              keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: false),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: msg["placeholder"] ?? "투자금액 입력",
+                suffixText: (_amountValue == null) ? null : "원",
+              ),
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submitAmount(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isAmountValid ? AppColors.primary : AppColors.surface,
+                foregroundColor: _isAmountValid ? Colors.white : AppColors.textMute,
+                minimumSize: const Size(double.infinity, 46),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  side: BorderSide(color: _isAmountValid ? AppColors.primary : AppColors.border),
+                ),
+              ),
+              onPressed: _isAmountValid ? _submitAmount : null,
+              child: const Text("확인", style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 출금계좌 확인 버블
+  Widget _debitConfirmBubble(Map<String, dynamic> msg) {
+    final handled = (msg["handled"] as bool?) ?? false;
+    final amount = msg["amount"] as String? ?? "";
+    final account = msg["account"] as String? ?? _selectedAccount;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Image.asset('assets/images/bear.png', width: kAvatar, height: kAvatar),
+        const SizedBox(width: kGap),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: AppColors.botBubble,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("$amount을\n아래 계좌에서 출금할게요.",
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text("· 출금계좌  ", style: TextStyle(color: AppColors.textMute)),
+                    Expanded(child: Text(account, style: const TextStyle(fontWeight: FontWeight.w600))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: handled ? AppColors.botBubble : AppColors.primary,
+                      foregroundColor: handled ? AppColors.textMute : Colors.white,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 46),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: handled ? AppColors.border : AppColors.primary),
+                      ),
+                    ),
+                    onPressed: handled ? null : () => _confirmDebitAndShowSummary(msg),
+                    child: const Text("확인했어요", style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.surface,
+                      foregroundColor: AppColors.text,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 46),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    onPressed: handled ? null : _openAccountSheet,
+                    child: const Text("출금계좌 변경하기", style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ 요약 버블 (아바타 + '펀드 가입하기' 버튼 추가)
+  Widget _summaryBubble(Map<String, dynamic> msg) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Image.asset('assets/images/bear.png', width: kAvatar, height: kAvatar),
+        const SizedBox(width: kGap),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: AppColors.botBubble,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("지금까지 입력한 내용을\n요약해서 보여드릴게요.",
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 12),
+                const Text("· 투자금액", style: TextStyle(color: AppColors.textMute)),
+                Text(msg["amount"] ?? "", style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                const Text("· 투자규칙", style: TextStyle(color: AppColors.textMute)),
+                Text(msg["plan"] ?? "", style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                const Text("· 출금계좌", style: TextStyle(color: AppColors.textMute)),
+                Text(msg["account"] ?? "", style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.btn,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      // TODO: 실제 가입 처리
+
+                    },
+                    child: const Text("펀드 가입하기", style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _pillButton(String text, {required VoidCallback? onTap, bool disabled = false}) {
+    final bg = disabled ? AppColors.botBubble : AppColors.surface;
+    final fg = disabled ? AppColors.textMute : AppColors.text;
+    final sideColor = AppColors.border;
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bg,
+          foregroundColor: fg,
+          elevation: 0,
+          minimumSize: const Size(double.infinity, 46),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(color: sideColor),
+          ),
+        ),
+        onPressed: disabled ? null : onTap,
+        child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+      ),
     );
   }
 }
