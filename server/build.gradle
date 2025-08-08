@@ -8,19 +8,16 @@ group = 'com.example'
 version = '0.0.1-SNAPSHOT'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+	toolchain { languageVersion = JavaLanguageVersion.of(21) }
 }
 
 configurations {
-	compileOnly {
-		extendsFrom annotationProcessor
-	}
+	compileOnly { extendsFrom annotationProcessor }
 }
 
 repositories {
 	mavenCentral()
+	// Oracle repo 불필요 (주석/삭제)
 }
 
 ext {
@@ -28,56 +25,48 @@ ext {
 }
 
 dependencies {
-
-	implementation files('libs/ojdbc11.jar')
-    implementation files('libs/oraclepki.jar')
-    implementation files('libs/osdt_core.jar')
-    implementation files('libs/osdt_cert.jar')
-
-	// open ai
-	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
-	// jpa
+	// --- DB / JPA ---
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	// mariaDB driver
-	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
-	// oracle driver
-	runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
-	implementation 'com.oracle.database.jdbc:ojdbc11:23.2.0.0'
-	// thymeleaf
-	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-	// spring web
+
+	// Oracle JDBC + Wallet (전부 로컬 JAR 사용)
+	implementation files('libs/ojdbc11.jar')
+	implementation files('libs/oraclepki.jar')
+	implementation files('libs/osdt_core.jar')
+	implementation files('libs/osdt_cert.jar')
+
+	// MariaDB 드라이버 전부 제거 (둘 다 있으면 충돌)
+	// runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+	// implementation("org.mariadb.jdbc:mariadb-java-client:3.1.4")
+
+	// Maven의 ojdbc 중복 제거
+	// runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
+	// implementation 'com.oracle.database.jdbc:ojdbc11:23.2.0.0'
+
+	// --- Web/Etc ---
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	// validation
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
-	// swagger
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
-	// password BCrypt
+	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.mindrot:jbcrypt:0.4'
-	// pdf
 	implementation 'org.apache.pdfbox:pdfbox:2.0.30'
-	// lombok
+
+	// AI
+	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+
+	// Lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
-	// devtools
+
+	// Dev/Test
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	// spring starter
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	// JUnit Test
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	//SpringSecurity 암호화만 사용
-	implementation("org.springframework.boot:spring-boot-starter-security")
-	// MariaDB JDBC 드라이버 의존성 추가
-	implementation("org.mariadb.jdbc:mariadb-java-client:3.1.4")
-	//BnkProject02Applicaion 실행용
 	implementation 'org.springframework.boot:spring-boot-starter'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 dependencyManagement {
-	imports {
-		mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
-	}
+	imports { mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}" }
 }
 
-tasks.named('test') {
-	useJUnitPlatform()
-}
+tasks.named('test') { useJUnitPlatform() }
