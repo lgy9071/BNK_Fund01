@@ -44,7 +44,7 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
   static const _kDismissThreshold = 80; // 80px 이상 끌면 닫기
 
   void _maybePop() {
-    Navigator.of(context).pop(); // ★ rootNavigator 안 씀 (바로 자신만 pop)
+    Navigator.of(context, rootNavigator: true).pop();
   }
 
   @override
@@ -84,7 +84,7 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                   ),
                   const SizedBox(height: 16),
 
-                  _SectionTitle(title: '♠ 펀드 메뉴'),
+                  _SectionTitle(title: '펀드 메뉴'),
                   const SizedBox(height: 8),
                   _MenuList(items: [
                     _MenuItemData(
@@ -102,7 +102,7 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                   ]),
                   const SizedBox(height: 20),
 
-                  _SectionTitle(title: '♣ 자료실'),
+                  _SectionTitle(title: '자료실'),
                   const SizedBox(height: 8),
                   _MenuList(items: [
                     _MenuItemData(

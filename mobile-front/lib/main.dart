@@ -9,29 +9,52 @@ void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  ThemeMode _mode = ThemeMode.light;
+  void _toggleTheme() {
+    setState(() {
+      _mode = _mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'BNK Fund',
       debugShowCheckedModeBanner: false,
+      themeMode: _mode,
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF0064FF),
           brightness: Brightness.light,
         ),
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const MainScaffold(),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0064FF),
+          brightness: Brightness.dark,
+        ),
+      ),
+      home: MainScaffold(onToggleTheme: _toggleTheme),
     );
   }
 }
 
 class MainScaffold extends StatefulWidget {
-  const MainScaffold({super.key});
+  final VoidCallback onToggleTheme;
+  const MainScaffold({super.key, required this.onToggleTheme});
+
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
 }
@@ -45,6 +68,23 @@ class _MainScaffoldState extends State<MainScaffold> {
     Fund(id: 3, name: '미국기술주 펀드', rate: 6.5, balance: 6_200_000),
     Fund(id: 4, name: '친환경 인프라 펀드', rate: 1.7, balance: 2_800_000),
   ];
+
+  late final List<Widget> _pages;  // <- 한 번만 생성
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomeScreen(
+        myFunds: _myFunds,
+        investType: '공격 투자형',
+        userName: '@@',
+        onToggleTheme: widget.onToggleTheme, // 다크 토글 전달
+      ),
+      const MyFinanceScreen(),
+      const FundJoinScreen(),
+    ];
+  }
 
   Future<void> _openFullMenu() async {
     await showGeneralDialog(
@@ -64,16 +104,25 @@ class _MainScaffoldState extends State<MainScaffold> {
               child: FullMenuOverlay(
                 userName: '이유저',
                 userId: '@user01',
-                onGoFundMain: () { Navigator.of(context, rootNavigator: true).pop(); setState(() => _index = 0); },
-                onGoFundJoin: () { Navigator.of(context, rootNavigator: true).pop(); setState(() => _index = 2); },
-                onGoInvestAnalysis: () { Navigator.of(context, rootNavigator: true).pop(); },
+                onGoFundMain: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  setState(() => _index = 0);
+                },
+                onGoFundJoin: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  setState(() => _index = 2);
+                },
+                onGoInvestAnalysis: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  // TODO: 이동 or 화면 열기
+                },
                 onGoFAQ: () { Navigator.of(context, rootNavigator: true).pop(); },
                 onGoGuide: () { Navigator.of(context, rootNavigator: true).pop(); },
                 onGoMbti: () { Navigator.of(context, rootNavigator: true).pop(); },
                 onGoForum: () { Navigator.of(context, rootNavigator: true).pop(); },
-                onEditProfile: () {},
-                onAsk: () {},
-                onMyQna: () {},
+                onEditProfile: () { Navigator.of(context, rootNavigator: true).pop(); },
+                onAsk: () { Navigator.of(context, rootNavigator: true).pop(); },
+                onMyQna: () { Navigator.of(context, rootNavigator: true).pop(); },
               ),
             ),
           ),
@@ -84,20 +133,14 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      HomeScreen(myFunds: _myFunds, investType: '공격 투자형', userName: '@@'),
-      MyFinanceScreen(),
-      const FundJoinScreen(),
-      const SizedBox.shrink(),
-    ];
-
     return Scaffold(
-      body: _index == 3 ? pages[0] : pages[_index],
+      // ★ IndexedStack으로 상태 보존 (4번 해결 포인트)
+      body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) {
           if (i == 3) {
-            _openFullMenu();
+            _openFullMenu(); // 인덱스 바꾸지 않고 메뉴만 띄움
             return;
           }
           setState(() => _index = i);
