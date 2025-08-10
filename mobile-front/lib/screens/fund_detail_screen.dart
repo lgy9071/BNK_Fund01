@@ -21,7 +21,7 @@ String fmtDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 String fmtAumFromMm(double mm) => '${_won.format(mm / 100)} 억원';
 
-/// ───────────────── data view models (요약)
+/// ───────────────── data view models (요약)  ※ 스키마를 화면용으로 매핑
 class FundBasic {
   final String fundId, fundName, fundType, fundDivision, investmentRegion,
       salesRegionType, groupCode, shortCode, fundClass, publicType,
@@ -110,18 +110,26 @@ class FundAssetSummary {
   });
 }
 
+class FundDocument {
+  final String type, fileName, path;
+  final DateTime uploadedAt;
+  FundDocument({required this.type, required this.fileName, required this.path, required this.uploadedAt});
+}
+
 class FundDetail {
   final FundBasic basic;
   final FundFeeInfo fee;
   final FundStatusDaily daily;
   final FundReturn ret;
   final FundAssetSummary asset;
+  final List<FundDocument> docs;
   FundDetail({
     required this.basic,
     required this.fee,
     required this.daily,
     required this.ret,
     required this.asset,
+    required this.docs,
   });
 
   factory FundDetail.demo(String name) => FundDetail(
@@ -181,6 +189,20 @@ class FundDetail {
       cash: 5,
       etc: 65,
     ),
+    docs: [
+      FundDocument(
+        type: '간이투자설명서',
+        fileName: 'P_20250715_v1.pdf',
+        path: '/docs/K55207BU7140/',
+        uploadedAt: DateTime(2025, 7, 15, 10, 32, 54),
+      ),
+      FundDocument(
+        type: '투자설명서',
+        fileName: 'T_20250715_v1.pdf',
+        path: '/docs/K55207BU7140/',
+        uploadedAt: DateTime(2025, 7, 15, 10, 33, 10),
+      ),
+    ],
   );
 }
 
@@ -298,7 +320,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
 
             const SizedBox(height: 16),
 
-            // ───── 도넛 (더 큼 + 섹션 라벨 + 토스 블루 팔레트)
+            // ───── 도넛 (축소 + 섹션 라벨을 링 안쪽에)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Card(
@@ -315,14 +337,14 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
                       const SizedBox(height: 12),
                       LayoutBuilder(
                         builder: (context, c) {
-                          final size = math.min(c.maxWidth, 320.0); // 카드에 맞춰 크게
+                          final size = math.min(c.maxWidth, 240.0); // ← 축소
                           return SizedBox(
-                            height: size,
+                            height: size + 8,
                             child: Stack(
                               alignment: Alignment.center,
                               children: [
                                 PieChart(PieChartData(
-                                  centerSpaceRadius: size * 0.28,
+                                  centerSpaceRadius: size * 0.38, // ← 가운데 공간을 넓혀 라벨이 링 위로
                                   sectionsSpace: 2,
                                   sections: _pieSections(data.asset, size),
                                 )),
@@ -340,17 +362,94 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
                         },
                       ),
                       const SizedBox(height: 10),
-                      _Legend(items: [
-                        LegendItem('주식', tossBlue500, data.asset.stock),
-                        LegendItem('채권', tossBlue400, data.asset.bond),
-                        LegendItem('유동성', tossBlue300, data.asset.cash),
-                        LegendItem('기타', tossBlue200, data.asset.etc),
-                      ]),
+
+                      // 표 방식(텍스트)으로도 제공
+                      _AssetTable(
+                        rows: const [
+                          ('주식', tossBlue500),
+                          ('채권', tossBlue400),
+                          ('유동성', tossBlue300),
+                          ('기타', tossBlue200),
+                        ],
+                        values: [ 'stock', 'bond', 'cash', 'etc' ],
+                        asset: data.asset,
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
+
+            const SizedBox(height: 12),
+
+            // ───── 기본 정보
+            _InfoCard(
+              title: '펀드 기본 정보',
+              rows: [
+                ('펀드 ID', data.basic.fundId),
+                ('펀드명', data.basic.fundName),
+                ('상품분류', data.basic.fundType),
+                ('구분', data.basic.fundDivision),
+                ('투자지역', data.basic.investmentRegion),
+                ('판매지역구분', data.basic.salesRegionType),
+                ('분류코드', data.basic.groupCode),
+                ('단축코드', data.basic.shortCode),
+                ('설정일', fmtDate(data.basic.issueDate)),
+                ('최초설정기준가격', '${data.basic.initialNavPrice.toStringAsFixed(2)}'),
+                ('신탁기간(월)', '${data.basic.trustTerm}'),
+                ('신탁회계기간(월)', '${data.basic.accountingPeriod}'),
+                ('특성 분류', data.basic.fundClass),
+                ('공모/사모', data.basic.publicType),
+                ('추가/단위형', data.basic.addUnitType),
+                ('운용상태', data.basic.fundStatus),
+                ('위험 등급', data.basic.riskGrade),
+                ('운용실적공시', data.basic.performanceDisclosure),
+                ('운용사', data.basic.managementCompany),
+              ],
+            ),
+
+            // ───── 보수 및 수수료
+            _InfoCard(
+              title: '보수 및 수수료 (기준: ${fmtDate(data.fee.baseDate)})',
+              rows: [
+                ('운용보수', '${fmtPercent(data.fee.managementFee, digits: 3)}'),
+                ('판매보수', '${fmtPercent(data.fee.salesFee, digits: 3)}'),
+                ('일반사무관리보수', '${fmtPercent(data.fee.adminFee, digits: 3)}'),
+                ('수탁보수', '${fmtPercent(data.fee.trustFee, digits: 3)}'),
+                ('총보수', '${fmtPercent(data.fee.totalFee, digits: 3)}'),
+                ('총비용비율(TER)', '${fmtPercent(data.fee.ter, digits: 4)}'),
+                ('선취수수료', '${fmtPercent(data.fee.frontLoadFee, digits: 2)}'),
+                ('후취수수료', '${fmtPercent(data.fee.rearLoadFee, digits: 2)}'),
+              ],
+            ),
+
+            // ───── 일일 운용 상태
+            _InfoCard(
+              title: '일일 운용 상태 (기준: ${fmtDate(data.daily.baseDate)})',
+              rows: [
+                ('순자산총액(백만원)', _won.format(data.daily.navTotalMm)),
+                ('설정원본(백만원)', _won.format(data.daily.originalPrincipalMm)),
+                ('순자산 기준가(NAV)', data.daily.navPrice.toStringAsFixed(2)),
+                ('전일 대비 등락(절대)', data.daily.navChange1d.toStringAsFixed(4)),
+                ('전일 대비 등락률', '${fmtPercent(data.daily.navChangeRate1d, digits: 2)}'),
+                ('전주 대비 등락(절대)', data.daily.navChange1w.toStringAsFixed(4)),
+                ('전주 대비 등락률', '${fmtPercent(data.daily.navChangeRate1w, digits: 2)}'),
+              ],
+            ),
+
+            // ───── 기간별 수익률
+            _InfoCard(
+              title: '기간별 수익률 (기준: ${fmtDate(data.ret.baseDate)})',
+              rows: [
+                ('1개월', '${fmtPercent(data.ret.r1m, digits: 2)}'),
+                ('3개월', '${fmtPercent(data.ret.r3m, digits: 2)}'),
+                ('6개월', '${fmtPercent(data.ret.r6m, digits: 2)}'),
+                ('12개월', '${fmtPercent(data.ret.r12m, digits: 2)}'),
+              ],
+            ),
+
+            // ───── 공시자료
+            _DocsCard(docs: data.docs),
 
             const SizedBox(height: 110),
           ],
@@ -377,7 +476,6 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
             showTitles: true,
             reservedSize: 26,
             getTitlesWidget: (v, _) {
-              // 0 ~ N 에서 0, 중간, 끝 라벨
               if (v == 0) return const Text('초', style: TextStyle(fontSize: 10));
               if (v == spots.last.x) return const Text('지금', style: TextStyle(fontSize: 10));
               return const SizedBox.shrink();
@@ -387,7 +485,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
       ),
       minX: 0,
       maxX: spots.last.x,
-      minY: minY * 0.995, // 여백
+      minY: minY * 0.995,
       maxY: maxY * 1.005,
       borderData: FlBorderData(show: false),
       lineTouchData: const LineTouchData(handleBuiltInTouches: true),
@@ -411,7 +509,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
     );
   }
 
-  /// 기간별 라인 샘플 데이터 (수익률을 바탕으로 완만하게 증가/변동 형태로 생성)
+  /// 기간별 라인 샘플 데이터
   List<FlSpot> _spotsForRange(_TimeTab t) {
     final n = switch (t) { _TimeTab.m1 => 30, _TimeTab.m3 => 90, _TimeTab.m6 => 180, _TimeTab.y1 => 365, _TimeTab.y3 => 365 * 3 };
     final targetPct = switch (t) {
@@ -427,7 +525,6 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
     final List<FlSpot> out = [];
     for (int i = 0; i <= n; i++) {
       final t01 = i / n;
-      // 부드러운 곡선 + 약간의 등락(시뮬레이션)
       final base = start + (end - start) * (3 * t01 * t01 - 2 * t01 * t01 * t01);
       final wiggle = 0.005 * math.sin(i / 8.0) + 0.003 * math.cos(i / 5.0);
       final y = (base + wiggle).clamp(0.9, 1.5);
@@ -486,7 +583,7 @@ class _PeriodTabs extends StatelessWidget {
   }
 }
 
-/// 상단 요약 3카드(더 큼 + 넘침 방지)
+/// 상단 요약 3카드
 class _SummaryRow extends StatelessWidget {
   final double navPrice;
   final double navChangeRate1d;
@@ -508,7 +605,7 @@ class _SummaryRow extends StatelessWidget {
     Widget box(String title, Widget value) {
       return Expanded(
         child: Container(
-          height: 96, // ↑ 더 키움
+          height: 96,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
@@ -519,7 +616,7 @@ class _SummaryRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(' ', style: TextStyle(fontSize: 3)), // 위 여백용 미세 트릭
+              const Text(' ', style: TextStyle(fontSize: 3)),
               Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black54)),
               const Spacer(),
               FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: value),
@@ -555,7 +652,7 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-/// 도넛 섹션 라벨 포함
+/// 도넛 섹션: 라벨을 링 **안쪽**에 보이도록 (titlePositionPercentageOffset ↓)
 List<PieChartSectionData> _pieSections(FundAssetSummary a, double size) {
   final items = [
     ('주식', a.stock, tossBlue500),
@@ -573,39 +670,130 @@ List<PieChartSectionData> _pieSections(FundAssetSummary a, double size) {
     return PieChartSectionData(
       value: it.$2,
       color: it.$3,
-      radius: (size * 0.28) + (isMax ? 10 : 0),
+      radius: (size * 0.26) + (isMax ? 8 : 0),
       title: '${it.$1}\n${it.$2.toStringAsFixed(1)}%',
-      titleStyle: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
-      titlePositionPercentageOffset: .6, // 도넛 링 안쪽에 라벨
+      titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+      titlePositionPercentageOffset: .48, // ← 링 내부로
       badgePositionPercentageOffset: 1.0,
     );
   });
 }
 
-/// 범례
-class _Legend extends StatelessWidget {
-  final List<LegendItem> items;
-  const _Legend({required this.items});
+/// 도넛 하단 텍스트 표
+class _AssetTable extends StatelessWidget {
+  final List<(String, Color)> rows;
+  final List<String> values; // 'stock' | 'bond' | 'cash' | 'etc'
+  final FundAssetSummary asset;
+  const _AssetTable({required this.rows, required this.values, required this.asset});
+
+  double _valByKey(String k) => switch (k) {
+    'stock' => asset.stock,
+    'bond'  => asset.bond,
+    'cash'  => asset.cash,
+    _       => asset.etc,
+  };
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 8,
-      children: items
-          .map((e) => Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: e.color, shape: BoxShape.circle)),
-        const SizedBox(width: 6),
-        Text('${e.label} ${fmtPercent(e.value)}', style: const TextStyle(fontWeight: FontWeight.w600)),
-      ]))
-          .toList(),
+    return DataTable(
+      headingRowHeight: 32,
+      dataRowMinHeight: 32,
+      dataRowMaxHeight: 36,
+      columns: const [
+        DataColumn(label: Text('자산')),
+        DataColumn(label: Text('비중')),
+        DataColumn(label: Text('기준일')),
+      ],
+      rows: List.generate(rows.length, (i) {
+        final label = rows[i].$1;
+        final color = rows[i].$2;
+        final v = _valByKey(values[i]);
+        return DataRow(cells: [
+          DataCell(Row(children: [
+            Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Text(label),
+          ])),
+          DataCell(Text('${v.toStringAsFixed(1)}%')),
+          DataCell(Text(fmtDate(asset.baseDate))),
+        ]);
+      }),
     );
   }
 }
 
-class LegendItem {
-  final String label;
-  final Color color;
-  final double value;
-  LegendItem(this.label, this.color, this.value);
+/// 공통 정보 카드
+class _InfoCard extends StatelessWidget {
+  final String title;
+  final List<(String, String)> rows;
+  const _InfoCard({required this.title, required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              ...rows.map((e) => _kv(e.$1, e.$2)).toList(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _kv(String k, String v) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 130, child: Text(k, style: const TextStyle(color: Colors.black54))),
+        const SizedBox(width: 10),
+        Expanded(child: Text(v, maxLines: 3, overflow: TextOverflow.ellipsis)),
+      ],
+    ),
+  );
+}
+
+/// 공시자료 카드
+class _DocsCard extends StatelessWidget {
+  final List<FundDocument> docs;
+  const _DocsCard({required this.docs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('공시자료', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              ...docs.map((d) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.description_outlined),
+                title: Text(d.type),
+                subtitle: Text('${d.fileName} · 업로드 ${fmtDate(d.uploadedAt)}'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  // TODO: 파일 뷰/다운로드 라우팅 연결
+                },
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
