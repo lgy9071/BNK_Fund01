@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_front/core/constants/colors.dart';
-import 'package:mobile_front/screens/splash_screen.dart';
 import 'models/fund.dart';
 import 'screens/home_screen.dart';
 import 'widgets/full_menu_overlay.dart';
 import 'screens/fund_join_screen.dart';
 import 'screens/my_finance_screen.dart';
+import 'dev_jiyong/main_home.dart';
 
 void main() {
   runApp(MyApp());
@@ -48,17 +47,9 @@ class _MyAppState extends State<MyApp> {
           brightness: Brightness.dark,
         ),
       ),
-      home: MainScaffold(onToggleTheme: _toggleTheme),
+      home: const MainScaffold(),
     );
   }
-}
-
-class MainScaffold extends StatefulWidget {
-  final VoidCallback onToggleTheme;
-  const MainScaffold({super.key, required this.onToggleTheme});
-
-  @override
-  State<MainScaffold> createState() => _MainScaffoldState();
 }
 
 class _MainScaffoldState extends State<MainScaffold> {
@@ -81,7 +72,6 @@ class _MainScaffoldState extends State<MainScaffold> {
         myFunds: _myFunds,
         investType: '공격 투자형',
         userName: '@@',
-        onToggleTheme: widget.onToggleTheme, // 다크 토글 전달
       ),
       const MyFinanceScreen(),
       const FundJoinScreen(),
