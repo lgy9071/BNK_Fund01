@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/screens/signup/steps/step1_id.dart';
 import 'package:mobile_front/screens/signup/steps/step2_password.dart';
 import 'package:mobile_front/screens/signup/steps/step3_name.dart';
@@ -87,7 +88,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.100.245:8090/api/signup'),
+        Uri.parse(ApiConfig.signup),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(body),
       );
