@@ -1,4 +1,3 @@
 rootProject.name = 'BNK_project02'
 
-include 'server'
-include 'was-app', 'api-app', 'common', 'websocket'
+include 'WAS-server', 'AP-server', 'common', 'websocket'
