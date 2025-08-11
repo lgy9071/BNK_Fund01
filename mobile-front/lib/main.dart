@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/screens/home_screen.dart';
 import 'package:mobile_front/screens/login_screen.dart';
 import 'package:mobile_front/screens/splash_screen.dart';
 import 'package:mobile_front/core/routes/routes.dart';
+import 'package:mobile_front/screens/main_scaffold.dart';
 
 // ✅ 추가: 전역 세션 매니저/키 & API 경로
 import 'package:mobile_front/core/constants/api.dart';
@@ -58,7 +60,7 @@ class _MyAppState extends State<MyApp> {
 
       routes: {
         AppRoutes.login: (_) => const LoginScreen(),
-        AppRoutes.home: (_) => const HomeScreen(),
+        AppRoutes.home: (_) => const MainScaffold(),
         AppRoutes.splash: (_) => const SplashScreen(),
       },
       initialRoute: AppRoutes.splash,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/utils/exit_popup.dart';
 import '../models/fund.dart';
 import '../screens/home_screen.dart';
 import '../screens/my_finance_screen.dart';
@@ -39,6 +40,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     await showGeneralDialog(
       context: context,
       barrierDismissible: true,
+      barrierLabel: '닫기',
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (_, __, ___) => const SizedBox.shrink(),
@@ -73,7 +75,14 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (!didPop) {
+            await showExitPopup(context);
+          }
+        },
+      child:  Scaffold(
       body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: CircleNavBar(
         currentIndex: _index,
@@ -82,6 +91,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           setState(() => _index = i);
         },
       ),
+    )
     );
   }
 }

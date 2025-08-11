@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_front/core/constants/api.dart';
+import 'package:mobile_front/core/routes/routes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mobile_front/core/constants/colors.dart';
@@ -80,8 +81,8 @@ class _LoginScreenState extends State<LoginScreen> {
         sessionManager.start();
 
         if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomePage()),
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.home,
               (_) => false,
         );
         //Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
@@ -219,17 +220,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('홈')),
-      body: const Center(child: Text('여기에 실제 홈 구현')),
     );
   }
 }

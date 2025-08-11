@@ -102,7 +102,7 @@ class _FloatingInfoBarState extends State<_FloatingInfoBar>
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.black26, // 살짝 투명
+                      color: Colors.black87, // 살짝 투명
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
