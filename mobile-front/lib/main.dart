@@ -30,11 +30,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   ThemeMode _mode = ThemeMode.light;
-  void _toggleTheme() {
-    setState(() {
-      _mode = _mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
