@@ -10,4 +10,13 @@ class ApiConfig {
 
   // 아이디 중복확인 API
   static const String checkUsername = '$baseUrl/api/check-id';
+
+  //엑세스 토큰
+  static const String extend = '$baseUrl/api/auth/extend';
+
+  // refresh 토큰
+  static const String refresh = '$baseUrl/api/auth/refresh';
+
+  // logout
+  static const String logout = '$baseUrl/api/auth/logout';
 }

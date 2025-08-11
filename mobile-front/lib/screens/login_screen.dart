@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mobile_front/core/constants/api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/screens/signup/signup_screen.dart';
 import 'package:mobile_front/utils/exit_popup.dart';
-import 'package:mobile_front/core/constants/api.dart'; // ApiConfig.login 쓰는 경우 주석 해제
+import 'package:mobile_front/main.dart'; // navigatorKey, sessionManager, ApiConfig
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,41 +48,44 @@ class _LoginScreenState extends State<LoginScreen> {
       final res = await http.post(
         Uri.parse(_loginUrl),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': id, 'password': pw}),
+        body: jsonEncode({
+          'username': id,
+          'password': pw,
+          'autoLogin': _autoLogin, // ✅ 서버에 전달
+        }),
       );
 
       if (res.statusCode == 200) {
         final Map<String, dynamic> body = jsonDecode(res.body);
-        final token = body['accessToken'] as String?;
-        final expiresAt = body['expiresAt'] as String?; // ISO8601
+        final access = body['accessToken'] as String?;
+        final refresh = body['refreshToken'] as String?;
 
-        if (token == null) {
-          _toast('로그인 실패: 토큰이 없습니다.');
+        if (access == null) {
+          _toast('로그인 실패: 액세스 토큰이 없습니다.');
           return;
+        }
+
+        await _secure.write(key: 'accessToken', value: access);
+        if (_autoLogin && refresh != null) {
+          await _secure.write(key: 'refreshToken', value: refresh);
+        } else {
+          await _secure.delete(key: 'refreshToken');
         }
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isAutoLogin', _autoLogin);
 
-        if (_autoLogin) {
-          // 자동로그인 ON → 토큰 저장 (SecureStorage) + 만료시간 저장
-          await _secure.write(key: 'accessToken', value: token);
-          if (expiresAt != null) {
-            await prefs.setString('tokenExpiresAt', expiresAt);
-          }
-        } else {
-          // 자동로그인 OFF → 저장 안 함(있으면 삭제)
-          await _secure.delete(key: 'accessToken');
-          await prefs.remove('tokenExpiresAt');
-        }
+        // ✅ 전역 세션 설정/시작
+        sessionManager.setAutoLogin(_autoLogin);
+        sessionManager.start();
 
         if (!mounted) return;
-        // ✅ 로그인 성공 후 홈으로 이동(스택 비움) — 홈 화면 연결하세요
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const _LoginSuccessPlaceholder()),
-              (route) => false,
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomePage()),
+              (_) => false,
         );
+        //Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
+
       } else if (res.statusCode == 401) {
         _toast('아이디 또는 비밀번호가 올바르지 않습니다.');
       } else {
@@ -95,7 +99,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _toast(String msg) {
-    showFloatingInfoBar(context, msg);
+    final ctx = context;
+    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -104,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
-          await showExitPopup(context); // ← 네가 만든 뒤로가기 핸들러
+          await showExitPopup(context);
         }
       },
       child: Scaffold(
@@ -116,16 +121,9 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 로고
-                  Image.asset(
-                    'assets/images/splash_logo.png',
-                    width: 300,
-                    height: 60,
-                    fit: BoxFit.contain,
-                  ),
+                  Image.asset('assets/images/splash_logo.png', width: 300, height: 60, fit: BoxFit.contain),
                   const SizedBox(height: 40),
 
-                  // 아이디
                   TextFormField(
                     cursorColor: AppColors.primaryBlue,
                     controller: _idController,
@@ -143,7 +141,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 비밀번호
                   TextFormField(
                     controller: _pwController,
                     obscureText: true,
@@ -162,7 +159,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 자동 로그인
                   Row(
                     children: [
                       Checkbox(
@@ -171,25 +167,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         checkColor: Colors.white,
                         onChanged: (v) => setState(() => _autoLogin = v ?? false),
                       ),
-                      GestureDetector( // ✅ 텍스트 터치로도 체크박스 변경
+                      GestureDetector(
                         onTap: () => setState(() => _autoLogin = !_autoLogin),
                         child: const Text('자동 로그인'),
                       ),
                       const Spacer(),
                       if (_loading)
                         const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          width: 18, height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue),
                         ),
                     ],
                   ),
                   const SizedBox(height: 40),
 
-                  // 로그인 버튼
                   SizedBox(
-                    width: double.infinity,
-                    height: 48,
+                    width: double.infinity, height: 48,
                     child: ElevatedButton(
                       onPressed: _loading ? null : (){
                         FocusScope.of(context).unfocus();
@@ -197,19 +190,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text(
-                        '로그인',
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
+                      child: const Text('로그인', style: TextStyle(fontSize: 16, color: Colors.white)),
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // 회원가입 링크
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -217,17 +204,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(width: 10),
                       GestureDetector(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => SignupScreen()),
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => SignupScreen()));
                         },
                         child: const Text(
                           '회원가입',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
                         ),
                       )
                     ],
@@ -242,15 +223,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// 홈 없을 때 임시 화면 (교체하세요)
-class _LoginSuccessPlaceholder extends StatelessWidget {
-  const _LoginSuccessPlaceholder();
-
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('로그인 성공')),
-      body: const Center(child: Text('여기를 홈 화면으로 교체하세요.')),
+      appBar: AppBar(title: const Text('홈')),
+      body: const Center(child: Text('여기에 실제 홈 구현')),
     );
   }
 }
