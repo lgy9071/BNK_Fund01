@@ -16,7 +16,7 @@ class FullMenuOverlay extends StatefulWidget {
   final VoidCallback onGoMbti;
   final VoidCallback onGoForum;
 
-  final VoidCallback onEditProfile;
+  final VoidCallback onLogout;
   final VoidCallback onAsk;
   final VoidCallback onMyQna;
 
@@ -31,7 +31,7 @@ class FullMenuOverlay extends StatefulWidget {
     required this.onGoGuide,
     required this.onGoMbti,
     required this.onGoForum,
-    required this.onEditProfile,
+    required this.onLogout,
     required this.onAsk,
     required this.onMyQna,
   });
@@ -69,7 +69,7 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                     _ProfileCard(
                       userName: widget.userName,
                       userId: widget.userId,
-                      onEditProfile: widget.onEditProfile,
+                      onLogout: widget.onLogout, // ← 변경
                       onAsk: widget.onAsk,
                       onMyQna: widget.onMyQna,
                     ),
@@ -87,10 +87,10 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                     _SectionTitle(title: '자료실'),
                     const SizedBox(height: 8),
                     _MenuList(items: [
-                      _MenuItemData(icon: Icons.help_outline,   title: 'FAQ',           onTap: widget.onGoFAQ),
-                      _MenuItemData(icon: Icons.menu_book,      title: '펀드 이용 가이드', onTap: widget.onGoGuide),
-                      _MenuItemData(icon: Icons.psychology_alt, title: '펀드 MBTI',      onTap: widget.onGoMbti),
-                      _MenuItemData(icon: Icons.forum_outlined, title: '펀토방',          onTap: widget.onGoForum),
+                      _MenuItemData(icon: Icons.help_outline,   title: 'FAQ',            onTap: widget.onGoFAQ),
+                      _MenuItemData(icon: Icons.menu_book,      title: '펀드 이용 가이드',  onTap: widget.onGoGuide),
+                      _MenuItemData(icon: Icons.psychology_alt, title: '펀드 MBTI',       onTap: widget.onGoMbti),
+                      _MenuItemData(icon: Icons.forum_outlined, title: '펀토방',           onTap: widget.onGoForum),
                     ]),
                   ],
                 ),
@@ -118,11 +118,11 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
 
 class _ProfileCard extends StatelessWidget {
   final String userName, userId;
-  final VoidCallback onEditProfile, onAsk, onMyQna;
+  final VoidCallback onLogout, onAsk, onMyQna;
   const _ProfileCard({
     required this.userName,
     required this.userId,
-    required this.onEditProfile,
+    required this.onLogout,
     required this.onAsk,
     required this.onMyQna,
   });
@@ -160,10 +160,25 @@ class _ProfileCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.settings_outlined, color: Colors.black87),
-                    onPressed: onEditProfile,
-                    tooltip: '내 정보 수정',
+                  TextButton(
+                    onPressed: () async {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('로그아웃'),
+                          content: const Text('정말 로그아웃 하시겠어요?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+                            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('로그아웃')),
+                          ],
+                        ),
+                      );
+                      if (ok == true) onLogout();
+                    },
+                    child: const Text(
+                      '로그아웃',
+                      style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ],
               ),

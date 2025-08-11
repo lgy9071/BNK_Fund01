@@ -55,16 +55,41 @@ class _MainScaffoldState extends State<MainScaffold> {
               child: FullMenuOverlay(
                 userName: '이유저',
                 userId: '@user01',
-                onGoFundMain: () { Navigator.of(context, rootNavigator: true).pop(); setState(() => _index = 0); },
-                onGoFundJoin: () { Navigator.of(context, rootNavigator: true).pop(); setState(() => _index = 2); },
-                onGoInvestAnalysis: () { Navigator.of(context, rootNavigator: true).pop(); },
+                onGoFundMain: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  setState(() => _index = 0);
+                },
+                onGoFundJoin: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  setState(() => _index = 2);
+                },
+                onGoInvestAnalysis: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  // TODO: 분석 화면 연결
+                },
                 onGoFAQ: () { Navigator.of(context, rootNavigator: true).pop(); },
                 onGoGuide: () { Navigator.of(context, rootNavigator: true).pop(); },
                 onGoMbti: () { Navigator.of(context, rootNavigator: true).pop(); },
                 onGoForum: () { Navigator.of(context, rootNavigator: true).pop(); },
-                onEditProfile: () { Navigator.of(context, rootNavigator: true).pop(); },
-                onAsk: () { Navigator.of(context, rootNavigator: true).pop(); },
-                onMyQna: () { Navigator.of(context, rootNavigator: true).pop(); },
+
+                // 🔐 로그아웃
+                onLogout: () {
+                  Navigator.of(context, rootNavigator: true).pop(); // 오버레이 닫기
+                  // TODO: 토큰 삭제/로그아웃 처리
+                  // Navigator.of(context).pushReplacementNamed('/login');
+                },
+
+                // 📨 1:1 문의 작성
+                onAsk: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  Navigator.of(context).pushNamed('/qna/compose');
+                },
+
+                // 📁 내 문의 목록
+                onMyQna: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  Navigator.of(context).pushNamed('/qna/list');
+                },
               ),
             ),
           ),

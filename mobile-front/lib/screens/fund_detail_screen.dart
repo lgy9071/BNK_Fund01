@@ -15,6 +15,7 @@ const tossBlue400 = Color(0xFF2D6BFF);
 const tossBlue300 = Color(0xFF5A8CFF);
 const tossBlue200 = Color(0xFF9CC1FF);
 const tossBlue100 = Color(0xFFD7E6FF);
+const blueSoft = Color(0xFFE9F1FF);
 
 final _won = NumberFormat('#,##0.##', 'ko_KR');
 String fmtWon(num v) => '${_won.format(v)} 원';
@@ -942,14 +943,14 @@ class _FeeCards extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: violetSoft,
+          color: blueSoft,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: violet.withOpacity(.25)),
+          border: Border.all(color: tossBlue.withOpacity(.25)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: violet)),
+            Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: tossBlue,)),
             const SizedBox(height: 8),
             ...rows.map((e) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1171,13 +1172,13 @@ class _ProcessCard extends StatelessWidget {
               Row(
                 children: [
                   _col('매입', [
-                    ('17시 이전', ['매입 신청일', '기준가 적용일', '매입일']),
-                    ('17시 경과후', ['매입 신청일', '기준가 적용일', '매입일']),
+                    ('16시 이전', ['매입 신청일', '기준가 적용일', '매입일']),
+                    ('16시 경과후', ['매입 신청일', '기준가 적용일', '매입일']),
                   ]),
                   const SizedBox(width: 8),
                   _col('환매', [
-                    ('17시 이전', ['환매 신청일', '기준가 적용일', '환매일']),
-                    ('17시 경과후', ['환매 신청일', '기준가 적용일', '환매일']),
+                    ('16시 이전', ['환매 신청일', '기준가 적용일', '환매일']),
+                    ('16시 경과후', ['환매 신청일', '기준가 적용일', '환매일']),
                   ]),
                 ],
               ),

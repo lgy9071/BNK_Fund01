@@ -48,6 +48,11 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
       home: const MainScaffold(),
+      // QnA 라우트 (문의하기/내 문의)
+      routes: {
+        '/qna/compose': (_) => const _QnaComposeScreen(),
+        '/qna/list': (_) => const _QnaListScreen(),
+      },
     );
   }
 }
@@ -112,7 +117,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                 onGoGuide: () { Navigator.of(context, rootNavigator: true).pop(); },
                 onGoMbti: () { Navigator.of(context, rootNavigator: true).pop(); },
                 onGoForum: () { Navigator.of(context, rootNavigator: true).pop(); },
-                onEditProfile: () { Navigator.of(context, rootNavigator: true).pop(); },
+                onLogout: () { Navigator.of(context, rootNavigator: true).pop(); },
                 onAsk: () { Navigator.of(context, rootNavigator: true).pop(); },
                 onMyQna: () { Navigator.of(context, rootNavigator: true).pop(); },
               ),
@@ -143,6 +148,98 @@ class _MainScaffoldState extends State<MainScaffold> {
           NavigationDestination(icon: Icon(Icons.playlist_add), label: '펀드 가입'),
           NavigationDestination(icon: Icon(Icons.apps), label: '전체'),
         ],
+      ),
+    );
+  }
+}
+
+/// ───────────── 간단 QnA 샘플 화면 (원하면 실제 화면으로 교체)
+class _QnaComposeScreen extends StatefulWidget {
+  const _QnaComposeScreen({super.key});
+  @override
+  State<_QnaComposeScreen> createState() => _QnaComposeScreenState();
+}
+
+class _QnaComposeScreenState extends State<_QnaComposeScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _title = TextEditingController();
+  final _body = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('문의하기')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _title,
+                decoration: const InputDecoration(labelText: '제목'),
+                validator: (v) => (v == null || v.isEmpty) ? '제목을 입력하세요' : null,
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: _body,
+                  decoration: const InputDecoration(labelText: '내용'),
+                  maxLines: null,
+                  expands: true,
+                  validator: (v) => (v == null || v.isEmpty) ? '내용을 입력하세요' : null,
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () {
+                  if (!_formKey.currentState!.validate()) return;
+                  // TODO: 서버 전송
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(const SnackBar(content: Text('문의가 접수되었습니다.')));
+                  Navigator.pop(context);
+                },
+                child: const Text('보내기'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QnaListScreen extends StatelessWidget {
+  const _QnaListScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO: 실제 데이터로 교체
+    final items = List.generate(
+      5,
+          (i) => (
+      '문의 제목 ${i + 1}',
+      '처리상태: 접수됨',
+      DateTime.now().subtract(Duration(days: i))
+      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('내 문의')),
+      body: ListView.separated(
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const Divider(height: 1),
+        itemBuilder: (_, i) {
+          final e = items[i];
+          return ListTile(
+            title: Text(e.$1),
+            subtitle: Text('${e.$2} · ${e.$3.toString().split(' ').first}'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              // TODO: 상세 페이지 이동
+            },
+          );
+        },
       ),
     );
   }

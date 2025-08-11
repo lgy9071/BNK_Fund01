@@ -132,10 +132,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(8),
                   child: Row(
                     children: [
+                      // 로고 이미지
                       Image.asset(
                         'assets/images/splash_logo.png',
                         height: 33,
+                        fit: BoxFit.contain,
+                        // 폴백: 로고 로드 실패하면 아이콘 표시
+                        errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.account_balance, color: Colors.black),
                       ),
+                      // 필요하면 로고 옆에 여백
+                      // const SizedBox(width: 6),
                     ],
                   ),
                 ),
@@ -178,19 +185,20 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 14),
 
-              /* 총 평가금액 — 테두리 추가 + 상/하 분리 */
+              /* 총 평가금액 — 테두리 + 상/하 분리 (최종) */
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: tossBlue.withOpacity(0.12), width: 1), // 🔵 테두리
+                  border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 윗부분(커스텀 영역)
-                      Container(
+                      // ─── 상단(커스텀 영역) : 숨김 모드면 카드 전체처럼 보이도록 아래 모서리까지 둥글게
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                         decoration: BoxDecoration(
                           image: _bg.isImage && _bgImageFile != null
@@ -202,6 +210,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               colors: [_bg.c1!, _bg.c2!],
                               begin: Alignment.topLeft, end: Alignment.bottomRight)
                               : null,
+                          borderRadius: _obscure
+                              ? BorderRadius.circular(16) // ← 숨김 시 카드 전체처럼
+                              : const BorderRadius.vertical(top: Radius.circular(16)),
                         ),
                         child: Stack(
                           children: [
@@ -210,43 +221,54 @@ class _HomeScreenState extends State<HomeScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Row(children: [
-                                  InkWell(
-                                    onTap: _toMyFinance,
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Text('총 평가금액',
+                                Row(
+                                  children: [
+                                    InkWell(
+                                      onTap: _toMyFinance,
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Text(
+                                        '총 평가금액',
                                         style: TextStyle(
                                           fontSize: 15, fontWeight: FontWeight.w700,
                                           color: _bg.isImage ? Colors.white : Colors.black,
-                                          shadows: titleShadow,
-                                        )),
-                                  ),
-                                  const Spacer(),
-                                  PopupMenuButton(
-                                    icon: Icon(Icons.more_horiz,
-                                        color: _bg.isImage ? Colors.white : Colors.black54),
-                                    onSelected: (_) => setState(() => _obscure = !_obscure),
-                                    itemBuilder: (_) => [
-                                      PopupMenuItem(
-                                        value: 'toggle',
-                                        child: Text(_obscure ? '잔액보기' : '잔액 숨기기'),
-                                      )
-                                    ],
-                                  ),
-                                ]),
+                                          shadows: _bg.isImage
+                                              ? [Shadow(color: Colors.black.withOpacity(.55), blurRadius: 8, offset: const Offset(0, 1.5))]
+                                              : null,
+                                        ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    PopupMenuButton(
+                                      icon: Icon(Icons.more_horiz, color: _bg.isImage ? Colors.white : Colors.black54),
+                                      onSelected: (_) => setState(() => _obscure = !_obscure),
+                                      itemBuilder: (_) => [
+                                        PopupMenuItem(
+                                          value: 'toggle',
+                                          child: Text(_obscure ? '잔액보기' : '잔액 숨기기'),
+                                        )
+                                      ],
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 8),
+
+                                // 금액 or '잔액 보기'
                                 AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 220),
                                   child: _obscure
                                       ? Align(
                                     key: const ValueKey('hidden'),
                                     alignment: Alignment.centerRight,
-                                    child: Text(
-                                      '잔액보기',
-                                      style: TextStyle(
-                                        fontSize: 26, fontWeight: FontWeight.bold,
-                                        color: _bg.isImage ? Colors.white : Colors.black,
-                                        shadows: titleShadow,
+                                    child: GestureDetector(
+                                      onTap: () => setState(() => _obscure = false),
+                                      child: Text(
+                                        '잔액 보기',
+                                        style: TextStyle(
+                                          fontSize: 26, fontWeight: FontWeight.bold,
+                                          color: _bg.isImage ? Colors.white : Colors.black,
+                                          decoration: TextDecoration.underline,
+                                          decorationColor: _bg.isImage ? Colors.white70 : Colors.black45,
+                                        ),
                                       ),
                                     ),
                                   )
@@ -258,7 +280,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                       style: TextStyle(
                                         fontSize: 26, fontWeight: FontWeight.bold,
                                         color: _bg.isImage ? Colors.white : Colors.black,
-                                        shadows: titleShadow,
+                                        shadows: _bg.isImage
+                                            ? [Shadow(color: Colors.black.withOpacity(.55), blurRadius: 8, offset: const Offset(0, 1.5))]
+                                            : null,
                                       ),
                                     ),
                                   ),
@@ -269,54 +293,51 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
-                      // 아랫부분(흰 바 고정: 평가손익/수익률) — 둘 다 오른쪽 가로배치
-                      Container(
-                        color: Colors.white,
-                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                        child: Builder(builder: (_) {
-                          final up = _pnl >= 0;
-                          final sign = up ? '+' : '−';
-                          final c = up ? Colors.red : Colors.blue;
+                      // ─── 하단(평가손익/수익률) : 숨김 모드면 완전히 접힘
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeInOut,
+                        child: _obscure
+                            ? const SizedBox.shrink()
+                            : Container(
+                          color: Colors.white,
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                          child: Builder(builder: (_) {
+                            final up = _pnl >= 0;
+                            final sign = up ? '+' : '−';
+                            final c = up ? Colors.red : Colors.blue;
 
-                          return Row(
-                            children: [
-                              const Spacer(), // 오른쪽으로 몰기
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Column(
+                            return Row(
+                              children: [
+                                const Spacer(),
+                                Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    // 평가손익 행
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Text('평가손익', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '$sign ${_won(_pnl.abs())}',
-                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c),
-                                        ),
+                                        const SizedBox(width: 10),
+                                        Text('$sign ${_won(_pnl.abs())}',
+                                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c)),
                                       ],
                                     ),
-                                    const SizedBox(height: 4),
-                                    // 수익률 행
+                                    const SizedBox(height: 2),
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Text('수익률', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '$sign ${_returnPct.abs().toStringAsFixed(2)}%',
-                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c),
-                                        ),
+                                        const SizedBox(width: 10),
+                                        Text('$sign ${_returnPct.abs().toStringAsFixed(2)}%',
+                                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c)),
                                       ],
                                     ),
                                   ],
                                 ),
-                              ),
-                            ],
-                          );
-                        }),
+                              ],
+                            );
+                          }),
+                        ),
                       ),
                     ],
                   ),
