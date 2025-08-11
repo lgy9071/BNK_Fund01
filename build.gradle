@@ -1,18 +1,17 @@
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.5.4' apply false
-    id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'org.springframework.boot' version '3.5.4' apply false 
+    id 'io.spring.dependency-management' version '1.1.7' apply false 
 }
 
 ext {
-    springBootVersion = '3.5.3'
+    springBootVersion = '3.5.4'
     springAiVersion   = '1.0.0'
 }
 
 subprojects {
     apply plugin: 'java'
-    apply plugin: 'org.springframework.boot'
     apply plugin: 'io.spring.dependency-management'
+    
 
     group = 'com.example'
     version = '0.0.1-SNAPSHOT'
@@ -35,10 +34,27 @@ subprojects {
     tasks.withType(Test).configureEach {
         useJUnitPlatform()
     }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+        }
+    }
 }
 
-dependencyManagement {
-    imports {
-        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
-    }
+/** 모듈별 플러그인 적용 분리 **/
+
+
+project(':AP-server') {
+    plugins.apply("org.springframework.boot")
+    // 필요하면 버전 명시:
+    // plugins { id 'org.springframework.boot' version "${springBootVersion}" }
+}
+
+project(':WAS-server') {
+    plugins.apply("org.springframework.boot")
+}
+
+project(':common') {
+    apply plugin: 'java-library'
 }

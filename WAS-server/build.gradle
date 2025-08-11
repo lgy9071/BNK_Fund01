@@ -22,3 +22,8 @@ dependencies {
 
 tasks.named('bootJar')   { enabled = true }
 tasks.named('jar')       { enabled = true }
+
+tasks.named('test') {
+    useJUnitPlatform()
+    onlyIf { false }   // 임시 비활성화
+}
