@@ -287,3 +287,10 @@ class _SlidingCardSectionState<T> extends State<_SlidingCardSection<T>> {
     ]);
   }
 }
+
+void main() {
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: MyFinanceScreen(),
+  ));
+}

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:mobile_front/core/constants/colors.dart'; // AppColors.primaryBlue 사용
+import 'package:mobile_front/screens/my_finance_screen.dart';
+import 'package:mobile_front/core/constants/colors.dart';
 
 void main() {
   runApp(const MaterialApp(
@@ -163,7 +164,14 @@ class _FundJoinSuccessState extends State<FundJoinSuccess>
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+
+                    Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyFinanceScreen()),
+                        (route) => false,
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: blue,
                     foregroundColor: Colors.white,

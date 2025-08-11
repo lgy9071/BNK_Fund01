@@ -39,6 +39,10 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   String? _selectedInvestPlan;      // 예: "매주 • 금요일", "한 번만 투자하기"
   String _selectedAccount = "성윤지의 통장1"; // 출금계좌
 
+  // 신규: 사후관리지점
+  String? _selectedBranch;          // 예: "부산중앙지점" / "없음"
+  String? _lastAmountText;          // 예: "100,000 원"
+
   // “버블 1개” 유지용 인덱스
   int? _planUserMsgIndex;   // 사용자 버블(투자 규칙) 위치
   int? _amountMsgIndex;     // 금액 입력 버블 위치
@@ -344,12 +348,14 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     setState(() {
       _investChoiceLocked = true; // 버튼 잠금
       _amountSubmitted = true;    // 입력창/확인 버튼 숨김
+      _lastAmountText = "$formatted 원";
 
-      messages.add({"type": "user", "text": "$formatted 원"}); // 사용자 버블
-      messages.add({                                            // 출금계좌 확인 말풍선
-        "type": "debitConfirm",
-        "amount": "$formatted 원",
-        "account": _selectedAccount,
+      messages.add({"type": "user", "text": _lastAmountText}); // 사용자 버블
+
+      // ✅ 금액 다음 질문: 사후관리지점 선택
+      messages.add({
+        "type": "branchChoice",
+        "question": "사후관리지점은 어떻게 할까요?",
         "handled": false,
       });
     });
@@ -358,6 +364,93 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     _amountController.clear();
     _amountValue = null;
     _scrollToBottom();
+  }
+
+  // ──────── 사후관리지점: '없음' 선택 ────────
+  void _chooseBranchNone() {
+    setState(() {
+      _selectedBranch = "없음";
+      _markLastBranchChoiceHandled();
+      messages.add({"type": "user", "text": "사후관리지점: 없음"});
+      _enqueueDebitConfirm();
+    });
+    _scrollToBottom();
+  }
+
+  // ──────── 사후관리지점: 지점 선택 (바텀시트) ────────
+  Future<void> _selectBranch() async {
+    final branches = <String>[
+      "부산중앙지점",
+      "부산서면지점",
+      "서울강남지점",
+      "서울광화문지점",
+      "대구동성로지점",
+    ];
+
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              const Text("지점 선택", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Divider(height: 1, color: AppColors.border),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: branches.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
+                  itemBuilder: (context, i) {
+                    return ListTile(
+                      title: Text(branches[i]),
+                      onTap: () => Navigator.pop(ctx, branches[i]),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null) return;
+
+    setState(() {
+      _selectedBranch = selected;
+      _markLastBranchChoiceHandled();
+      messages.add({"type": "user", "text": "사후관리지점: $selected"});
+      _enqueueDebitConfirm();
+    });
+    _scrollToBottom();
+  }
+
+  // 마지막 branchChoice 버블 handled=true 로 표시
+  void _markLastBranchChoiceHandled() {
+    for (int i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]["type"] == "branchChoice" && messages[i]["handled"] == false) {
+        messages[i]["handled"] = true;
+        break;
+      }
+    }
+  }
+
+  // 사후관리지점 선택 후 → 출금계좌 확인 말풍선 큐잉
+  void _enqueueDebitConfirm() {
+    messages.add({
+      "type": "debitConfirm",
+      "amount": _lastAmountText ?? "",
+      "account": _selectedAccount,
+      "handled": false,
+    });
   }
 
   // 출금계좌 변경 반영
@@ -382,6 +475,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
         "amount": msg["amount"] ?? "",
         "plan": _selectedInvestPlan ?? "선택 안 함",
         "account": _selectedAccount,
+        "branch": _selectedBranch ?? "없음",
       });
     });
     _scrollToBottom();
@@ -498,6 +592,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                   if (msg["type"] == "warning") return _botBubble(msg["text"]);
                   if (msg["type"] == "user") return _userBubble(msg["text"]);
                   if (msg["type"] == "investChoice") return _investChoiceBubble(msg);
+                  if (msg["type"] == "branchChoice") return _branchChoiceBubble(msg);
                   if (msg["type"] == "amount") {
                     return _amountSubmitted ? _amountQuestionOnly(msg) : _amountBubble(msg);
                   }
@@ -702,13 +797,47 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
               children: [
                 Text(msg["question"] ?? "", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 8),
-                Text(msg["desc"] ?? "", style: TextStyle(color: AppColors.textMute)),
+                Text(msg["desc"] ?? "", style: const TextStyle(color: AppColors.textMute)),
                 const SizedBox(height: 12),
                 _pillButton("매일/매주/매월 투자하기",
                     onTap: disabled ? null : _openScheduleSheet, disabled: disabled),
                 const SizedBox(height: 8),
                 _pillButton("한 번만 투자하기",
                     onTap: disabled ? null : _chooseOneTime, disabled: disabled),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ▶ 사후관리지점 선택 말풍선
+  Widget _branchChoiceBubble(Map<String, dynamic> msg) {
+    final bool handled = (msg["handled"] as bool?) ?? false;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Image.asset('assets/images/bear.png', width: kAvatar, height: kAvatar),
+        const SizedBox(width: kGap),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: AppColors.botBubble,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("사후관리지점은 어떻게 할까요?",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 10),
+                _pillButton("지점 선택", onTap: handled ? null : _selectBranch, disabled: handled),
+                const SizedBox(height: 8),
+                _pillButton("없음", onTap: handled ? null : _chooseBranchNone, disabled: handled),
               ],
             ),
           ),
@@ -926,6 +1055,9 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                 const SizedBox(height: 8),
                 const Text("· 출금계좌", style: TextStyle(color: AppColors.textMute)),
                 Text(msg["account"] ?? "", style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                const Text("· 사후관리지점", style: TextStyle(color: AppColors.textMute)),
+                Text(msg["branch"] ?? "없음", style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -941,7 +1073,6 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                     ),
                     onPressed: () {
                       // TODO: 실제 가입 처리
-
                     },
                     child: const Text("펀드 가입하기", style: TextStyle(fontWeight: FontWeight.w700)),
                   ),
