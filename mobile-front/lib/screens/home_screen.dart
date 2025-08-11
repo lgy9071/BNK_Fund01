@@ -240,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: _obscure
                                       ? Align(
                                     key: const ValueKey('hidden'),
-                                    alignment: Alignment.centerRight, // 👉 오른쪽 정렬
+                                    alignment: Alignment.centerRight,
                                     child: Text(
                                       '잔액보기',
                                       style: TextStyle(
@@ -252,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   )
                                       : Align(
                                     key: const ValueKey('shown'),
-                                    alignment: Alignment.centerRight, // 👉 오른쪽 정렬
+                                    alignment: Alignment.centerRight,
                                     child: Text(
                                       _won(_totalBal),
                                       style: TextStyle(
@@ -274,26 +274,46 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Colors.white,
                         padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
                         child: Builder(builder: (_) {
-                          final pnlUp = _pnl >= 0;
-                          final arrow = pnlUp ? '▲' : '▼';
-                          final c = pnlUp ? Colors.red : Colors.blue;
-
-                          Widget metric(String label, String value) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const SizedBox(height: 2),
-                              Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                              const SizedBox(height: 2),
-                              Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c)),
-                            ],
-                          );
+                          final up = _pnl >= 0;
+                          final sign = up ? '+' : '−';
+                          final c = up ? Colors.red : Colors.blue;
 
                           return Row(
-                            mainAxisAlignment: MainAxisAlignment.end, // 👉 오른쪽 정렬
                             children: [
-                              metric('평가손익', '$arrow ${_won(_pnl.abs())}'),
-                              const SizedBox(width: 18),
-                              metric('수익률', '$arrow ${_returnPct.abs().toStringAsFixed(2)}%'),
+                              const Spacer(), // 오른쪽으로 몰기
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    // 평가손익 행
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('평가손익', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '$sign ${_won(_pnl.abs())}',
+                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // 수익률 행
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text('수익률', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '$sign ${_returnPct.abs().toStringAsFixed(2)}%',
+                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                           );
                         }),

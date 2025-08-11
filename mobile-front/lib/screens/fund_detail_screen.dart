@@ -369,7 +369,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
 
             const SizedBox(height: 16),
 
-            // ✅ 요구2: 간편 적립식 참고 카드
+            // 간편 적립식 참고 카드
             _SimpleDcaCard(
               years: _years,
               monthly: _monthly,
@@ -575,44 +575,18 @@ class _KeyFactsRow extends StatelessWidget {
           child: Container(
             height: 92,
             margin: const EdgeInsets.only(left: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 6, offset: const Offset(0, 2))],
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 60, height: 60,
-                  child: PieChart(PieChartData(
-                    sectionsSpace: 0,
-                    centerSpaceRadius: 20,
-                    sections: [
-                      PieChartSectionData(
-                        value: level.toDouble(),
-                        color: Colors.red,
-                        radius: 9,
-                      ),
-                      PieChartSectionData(
-                        value: (5 - level).toDouble(),
-                        color: Colors.grey[300],
-                        radius: 9,
-                      ),
-                    ],
-                  )),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('위험수준', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                      const Spacer(),
-                      Text('레벨 $level', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-                    ],
-                  ),
-                ),
+                const Text('위험수준', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                const Spacer(),
+                Text('레벨 $level', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
               ],
             ),
           ),
@@ -965,30 +939,36 @@ class _FeeCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget block(String title, List<(String, String)> rows) {
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: violetSoft,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: violet.withOpacity(.25)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: violet)),
-              const SizedBox(height: 8),
-              ...rows.map((e) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(child: Text(e.$1)),
-                    Text(e.$2, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  ],
-                ),
-              )),
-            ],
-          ),
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: violetSoft,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: violet.withOpacity(.25)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: violet)),
+            const SizedBox(height: 8),
+            ...rows.map((e) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: Text(e.$1, style: const TextStyle(height: 1.2))), // 라벨
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      e.$2,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontWeight: FontWeight.w700, height: 1.2),
+                    ),
+                  ), // 값
+                ],
+              ),
+            )),
+          ],
         ),
       );
     }
@@ -999,30 +979,60 @@ class _FeeCards extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  block('매입할 때', [
-                    ('선취판매수수료', _feeText(fee.frontLoadFee)),
-                  ]),
-                  const SizedBox(width: 8),
-                  block('투자기간동안', [
-                    ('총 보수(연)', fmtPercent(fee.totalFee, digits: 3)),
-                    ('TER', fmtPercent(fee.ter, digits: 4)),
-                    ('운용/판매/사무/수탁', '${fmtPercent(fee.managementFee, digits: 3)} / ${fmtPercent(fee.salesFee, digits: 3)} / ${fmtPercent(fee.adminFee, digits: 3)} / ${fmtPercent(fee.trustFee, digits: 3)}'),
-                  ]),
-                  const SizedBox(width: 8),
-                  block('환매할 때', [
-                    ('후취판매수수료', _feeText(fee.rearLoadFee)),
-                    ('환매수수료', '수수료없음'),
-                  ]),
-                ],
-              ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final isNarrow = c.maxWidth < 360; // 폭 좁으면 세로로
+              final children = [
+                block('매입할 때', [
+                  ('선취판매수수료', _feeText(fee.frontLoadFee)),
+                ]),
+                block('투자기간동안', [
+                  ('총 보수(연)', fmtPercent(fee.totalFee, digits: 3)),
+                  ('총비용비율(TER)', fmtPercent(fee.ter, digits: 4)),
+                  // 긴 항목들을 4줄로 분리해 깨짐 방지
+                  ('운용보수', fmtPercent(fee.managementFee, digits: 3)),
+                  ('판매보수', fmtPercent(fee.salesFee, digits: 3)),
+                  ('일반사무관리보수', fmtPercent(fee.adminFee, digits: 3)),
+                  ('수탁보수', fmtPercent(fee.trustFee, digits: 3)),
+                ]),
+                block('환매할 때', [
+                  ('후취판매수수료', _feeText(fee.rearLoadFee)),
+                  ('환매수수료', '수수료없음'),
+                ]),
+              ];
+
+              if (isNarrow) {
+                // 세로 스택
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    ...children.expand((w) => [w, const SizedBox(height: 8)]).toList()..removeLast(),
+                  ],
+                );
+              } else {
+                // 가로 + 간격
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: children[0]),
+                        const SizedBox(width: 8),
+                        Expanded(child: children[1]),
+                        const SizedBox(width: 8),
+                        Expanded(child: children[2]),
+                      ],
+                    ),
+                  ],
+                );
+              }
+            },
           ),
         ),
       ),
