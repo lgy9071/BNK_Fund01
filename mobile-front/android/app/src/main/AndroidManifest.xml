@@ -1,9 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 📌 권한 선언은 manifest 바로 아래 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <!-- 구버전 호환 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+
     <application
         android:label="mobile_front"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:windowSwipeToDismiss="true">
+
         <activity
             android:windowSwipeToDismiss="true"
             android:name=".MainActivity"
@@ -21,6 +28,7 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

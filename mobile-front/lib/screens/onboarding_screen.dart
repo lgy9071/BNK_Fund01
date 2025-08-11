@@ -2,11 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/screens/login_screen.dart';
 import 'package:mobile_front/screens/signup/signup_screen.dart';
+import 'package:mobile_front/utils/exit_popup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (!didPop) {
+            await showExitPopup(context);
+          }
+        },
+      child: Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
@@ -31,12 +40,15 @@ class OnboardingScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () {
+                    // 로그인 버튼
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('isFirstLaunch', false); // ✅ 최초 실행 플래그 제거
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => LoginScreen()),
                       );
-                      // TODO: 로그인 화면 이동
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryBlue, // 🔥 상수 사용
@@ -57,8 +69,11 @@ class OnboardingScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 48,
                   child: OutlinedButton(
-                    onPressed: () {
-                      // TODO: 회원가입 화면 이동
+                    // 회원가입 버튼
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('isFirstLaunch', false); // ✅ 최초 실행 플래그 제거
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => SignupScreen()),
@@ -84,6 +99,6 @@ class OnboardingScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }

@@ -7,7 +7,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,7 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.fund.api.common.SignupRequest;
 import com.example.fund.api.service.UserApiService;
 
-@CrossOrigin(origins = "http://192.168.100.245:8090")
+//@CrossOrigin(origins = "http://10.71.200.224:8090")
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api")
 public class UserController {
