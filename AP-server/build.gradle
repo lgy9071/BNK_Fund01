@@ -31,7 +31,7 @@ dependencies {
     implementation 'org.apache.pdfbox:pdfbox:2.0.30'
 
     // Spring AI 
-    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    // implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 }
 
 tasks.named('bootJar')   { enabled = true }
