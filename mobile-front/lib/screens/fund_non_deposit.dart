@@ -21,12 +21,11 @@ class NonDepositGuidePage extends StatefulWidget {
 
 class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   // 공통 여백
-  static const double kAvatar = 40;
-  static const double kGap = 8;
-  static const double kGutter = kAvatar + kGap; // 48
-
+  static const double kAvatar = 40; // 프로필 이미지 크기
+  static const double kGap = 8; // 이미지와 텍스트 사이의 간격
+  static const double kGutter = kAvatar + kGap; // 48 -> 이미지 없는 줄의 좌측 들여쓰기
   // 금액 입력
-  static const int _minAmount = 1000;
+  static const int _minAmount = 10000; // 추후 기준가로 변동 예정
   final TextEditingController _amountController = TextEditingController();
   final FocusNode _amountFocus = FocusNode();
   bool _shouldFocusAmount = false;
