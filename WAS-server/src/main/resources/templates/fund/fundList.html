@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- 페이지 스타일 -->
+        <link rel="stylesheet" href="/css/fund/fund_list.css" />
+        <!-- 프레그먼트 스타일 -->
+        <link rel="stylesheet" href="/css/userHeader.css" />
+        <link rel="stylesheet" href="/css/footer.css" />
+        <link rel="stylesheet" href="/css/fundMainHeader.css" />
+        <!-- 제목 -->
+        <title>펀드 맞춤 목록</title>
+    </head>
+    <body>
+        <!-- 헤더 영역 -->
+        <th:block th:replace="fragments/userHeader :: userHeader"></th:block>
+        <th:block
+            th:replace="fragments/fundMainHeader :: fundMainHeader"
+        ></th:block>
+        <!-- 메인 영역 -->
+        <div class="container">
+            <!-- 제목 영역 -->
+            <div class="title-container">
+                <h1 class="title">맞춤 펀드 목록</h1>
+                <span class="title-user-info">
+                    현재 회원님의 투자성향은
+                    <span id="invest-type">Unknown</span>입니다
+                </span>
+            </div>
+
+            <!-- 필터 영역 -->
+            <form id="fundForm" class="filter-container">
+                <!-- 위험등급 -->
+                <fieldset class="row">
+                    <legend class="row-label">위험등급</legend>
+                    <div class="options">
+                        <label for="risk1">
+                            <input
+                                type="checkbox"
+                                id="risk1"
+                                name="risk"
+                                value="1"
+                            />
+                            매우높은위험(1등급)
+                        </label>
+
+                        <label for="risk2">
+                            <input
+                                type="checkbox"
+                                id="risk2"
+                                name="risk"
+                                value="2"
+                            />
+                            높은위험(2등급)
+                        </label>
+
+                        <label for="risk3">
+                            <input
+                                type="checkbox"
+                                id="risk3"
+                                name="risk"
+                                value="3"
+                            />
+                            다소높은위험(3등급)
+                        </label>
+
+                        <label for="risk4">
+                            <input
+                                type="checkbox"
+                                id="risk4"
+                                name="risk"
+                                value="4"
+                            />
+                            보통위험(4등급)
+                        </label>
+
+                        <label for="risk5">
+                            <input
+                                type="checkbox"
+                                id="risk5"
+                                name="risk"
+                                value="5"
+                            />
+                            낮은위험(5등급)
+                        </label>
+
+                        <label for="risk6">
+                            <input
+                                type="checkbox"
+                                id="risk6"
+                                name="risk"
+                                value="6"
+                            />
+                            매우낮은위험(6등급)
+                        </label>
+                    </div>
+                </fieldset>
+
+                <!-- 펀드유형 -->
+                <fieldset class="row">
+                    <legend class="row-label">펀드유형</legend>
+                    <div class="options">
+                        <label for="type_bond">
+                            <input
+                                type="checkbox"
+                                id="type_bond"
+                                name="type"
+                                value="채권형"
+                            />
+                            채권형
+                        </label>
+
+                        <label for="type_bmix">
+                            <input
+                                type="checkbox"
+                                id="type_bmix"
+                                name="type"
+                                value="채권혼합형"
+                            />
+                            채권혼합형
+                        </label>
+
+                        <label for="type_smix">
+                            <input
+                                type="checkbox"
+                                id="type_smix"
+                                name="type"
+                                value="주식혼합형"
+                            />
+                            주식혼합형
+                        </label>
+
+                        <label for="type_stock">
+                            <input
+                                type="checkbox"
+                                id="type_stock"
+                                name="type"
+                                value="주식형"
+                            />
+                            주식형
+                        </label>
+
+                        <label for="type_deriv">
+                            <input
+                                type="checkbox"
+                                id="type_deriv"
+                                name="type"
+                                value="파생상품형"
+                            />
+                            파생상품형
+                        </label>
+
+                        <label for="type_fof">
+                            <input
+                                type="checkbox"
+                                id="type_fof"
+                                name="type"
+                                value="재간접투자형"
+                            />
+                            재간접
+                        </label>
+
+                        <label for="type_etc">
+                            <input
+                                type="checkbox"
+                                id="type_etc"
+                                name="type"
+                                value="수익증권_기타"
+                            />
+                            수익증권_기타
+                        </label>
+                    </div>
+                </fieldset>
+
+                <!-- 투자 지역 -->
+                <fieldset class="row">
+                    <legend class="row-label">투자 지역</legend>
+                    <div class="options">
+                        <label for="reg_korea">
+                            <input
+                                type="checkbox"
+                                id="reg_korea"
+                                name="region"
+                                value="한국"
+                            />
+                            한국
+                        </label>
+
+                        <label for="reg_global">
+                            <input
+                                type="checkbox"
+                                id="reg_global"
+                                name="region"
+                                value="글로벌"
+                            />
+                            글로벌
+                        </label>
+
+                        <label for="reg_usa">
+                            <input
+                                type="checkbox"
+                                id="reg_usa"
+                                name="region"
+                                value="미국"
+                            />
+                            미국
+                        </label>
+
+                        <label for="reg_vietnam">
+                            <input
+                                type="checkbox"
+                                id="reg_vietnam"
+                                name="region"
+                                value="베트남"
+                            />
+                            베트남
+                        </label>
+
+                        <label for="reg_euro">
+                            <input
+                                type="checkbox"
+                                id="reg_euro"
+                                name="region"
+                                value="유로권"
+                            />
+                            유로권
+                        </label>
+
+                        <label for="reg_brazil">
+                            <input
+                                type="checkbox"
+                                id="reg_brazil"
+                                name="region"
+                                value="브라질"
+                            />
+                            브라질
+                        </label>
+
+                        <label for="reg_german">
+                            <input
+                                type="checkbox"
+                                id="reg_german"
+                                name="region"
+                                value="독일"
+                            />
+                            독일
+                        </label>
+
+                        <label for="reg_china">
+                            <input
+                                type="checkbox"
+                                id="reg_china"
+                                name="region"
+                                value="중국"
+                            />
+                            중국
+                        </label>
+
+                        <label for="reg_western_europe">
+                            <input
+                                type="checkbox"
+                                id="reg_western_europe"
+                                name="region"
+                                value="서유럽"
+                            />
+                            서유럽
+                        </label>
+
+                        <label for="reg_india">
+                            <input
+                                type="checkbox"
+                                id="reg_india"
+                                name="region"
+                                value="인도"
+                            />
+                            인도
+                        </label>
+
+                        <label for="reg_brics">
+                            <input
+                                type="checkbox"
+                                id="reg_brics"
+                                name="region"
+                                value="브릭스"
+                            />
+                            브릭스
+                        </label>
+
+                        <label for="reg_north_america">
+                            <input
+                                type="checkbox"
+                                id="reg_north_america"
+                                name="region"
+                                value="북미"
+                            />
+                            북미
+                        </label>
+
+                        <label for="reg_japan">
+                            <input
+                                type="checkbox"
+                                id="reg_japan"
+                                name="region"
+                                value="일본"
+                            />
+                            일본
+                        </label>
+
+                        <label for="reg_south_east_asia">
+                            <input
+                                type="checkbox"
+                                id="reg_south_east_asia"
+                                name="region"
+                                value="동남아"
+                            />
+                            동남아
+                        </label>
+                    </div>
+                </fieldset>
+
+                <!-- 검색 버튼 -->
+                <div class="row filter-btn-container">
+                    <button type="submit" class="filter-btn">필터 검색</button>
+                </div>
+            </form>
+
+            <!-- 펀드 메인 콘텐츠 영역 -->
+            <div id="fund-content" class="fund-content">
+                <!-- 검색 결과 메세지 영역 -->
+                <div class="message"></div>
+
+                <!-- 펀드 리스트 영역 -->
+                <div id="fund-list" class="fund-list">
+                    <!-- 펀드 아이템 영역 -->
+                </div>
+
+                <!-- 더보기 버튼 영역 -->
+                <div class="load-more-container">
+                    <button
+                        id="load-more-btn"
+                        class="load-more-btn"
+                        onclick="loadMoreFunds()"
+                    >
+                        더보기
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── 로딩 오버레이 ── -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>펀드 정보를 불러오는 중...</p>
+            </div>
+        </div>
+
+        <!-- 하단 고정 비교바 -->
+        <div class="compare-bar" id="compareBar">
+            <div class="compare-bar-content">
+                <div class="compare-info">
+                    <div class="compare-count" id="compareCount">0개 선택</div>
+                    <div class="selected-funds-preview" id="fundsPreview">
+                        <!-- 선택된 펀드들이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+
+                <div class="compare-actions">
+                    <button class="clear-all-btn" id="clearAllBtn">
+                        전체 해제
+                    </button>
+                    <button class="compare-btn" id="compareBtn" disabled>
+                        펀드 비교하기
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 비교 모달 -->
+        <div class="modal-overlay" id="compareModal">
+            <div class="modal-container">
+                <!-- 모달 헤더 -->
+                <div class="modal-header">
+                    <h2 class="modal-title">
+                        <!-- <span class="modal-icon">📊</span> -->
+                        펀드 비교 분석
+                    </h2>
+                    <div
+                        class="modal-close-btn"
+                        id="modalCloseBtn"
+                        aria-label="모달 닫기"
+                        role="button"
+                        tabindex="0"
+                    >
+                        <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                        >
+                            <path
+                                d="M18 6L6 18M6 6L18 18"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- 모달 바디 -->
+                <div class="modal-body">
+                    <!-- 비교 테이블 컨테이너 -->
+                    <div class="compare-table-container">
+                        <table class="compare-table" id="compareTable">
+                            <thead>
+                                <tr>
+                                    <th class="table-header-label">구분</th>
+                                    <!-- 펀드 컬럼들이 동적으로 추가됩니다 -->
+                                </tr>
+                            </thead>
+                            <tbody id="compareTableBody">
+                                <!-- 비교 데이터가 동적으로 추가됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 분석 콘텐츠 영역 -->
+                    <div
+                        class="aiAnaylseContainer"
+                        id="aiAnaylseContainer"
+                    ></div>
+
+                    <!-- 모달 버튼 영역 -->
+                    <div class="modal-actions">
+                        <button
+                            class="modal-btn modal-btn-secondary"
+                            id="aiAnalyseBtn"
+                        >
+                            AI 분석
+                        </button>
+                        <button
+                            class="modal-btn modal-btn-primary"
+                            id="modalCloseBtn2"
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 푸터 영역 -->
+        <th:block th:replace="fragments/footer :: siteFooter"></th:block>
+    </body>
+
+    <script>
+        // 전역 변수
+        let currentPage = 1; // 현재 로딩할 페이지 번호를 저장
+        let pageSize = 10; // 페이지의 최대 요청 갯수
+        let isLoading = false; // 현재 API 호출 중인지 상태를 나타내는 플래그
+        let hasMoreData = true; // 더 가져올 데이터가 있는지 여부를 나타내는 플래그
+        let investType = null; // 사용자의 투자 성향 타입 번호를 저장
+        let investTypeName = ""; // 투자 성향 타입의 한글 이름을 저장
+        let currentFilters = ""; // 현재 필터
+
+        const selectedFunds = [];
+        const MAX_COMPARE_COUNT = 3;
+
+        // 객체
+        const loading = document.getElementById("loading");
+
+        // 페이지 로드 시 초기화
+        // HTML 문서가 완전히 로드된 후 초기화 작업 수행
+        document.addEventListener("DOMContentLoaded", function () {
+            // Thymeleaf에서 전달된 데이터 가져오기
+            // 메타 태그 검색: document.querySelector()로 HTML의 메타 태그에서 투자 성향 정보 찾기
+            const investTypeElement = document.querySelector(
+                'meta[name="invest-type"]'
+            );
+            const userIdElement = document.querySelector(
+                'meta[name="user-id"]'
+            );
+
+            // 데이터 파싱: parseInt()로 문자열을 숫자로 변환하여 investType 변수에 저장
+            if (investTypeElement) {
+                investType = parseInt(
+                    investTypeElement.getAttribute("content")
+                );
+            }
+
+            // 필터 초기화
+            currentFilters = "";
+
+            // 투자 성향 정보 설정
+            // setInvestTypeInfo() 호출로 화면에 표시할 투자 성향 이름 설정
+            setInvestTypeInfo();
+
+            // 초기 데이터 로드
+            // loadMoreFunds() 호출로 첫 번째 페이지 데이터 가져오기
+            loadMoreFunds();
+        });
+
+        // 더 많은 펀드 로드
+        // 서버에서 펀드 데이터를 가져와 화면에 추가하는 핵심 함수
+        async function loadMoreFunds() {
+            // 중복 호출 방지
+            if (isLoading || !hasMoreData) return;
+
+            // 로딩 상태 설정
+            isLoading = true;
+            showLoading(isLoading);
+            updateLoadMoreButton();
+
+            // 첫 페이지 로드인지 확인
+            const isFirstLoad = currentPage === 1;
+
+            try {
+                // 파라미터
+                let apiUrl = `/api/funds/list?page=${currentPage}&limit=${pageSize}&investType=${investType}`;
+
+                // 필터 파라미터가 있으면 추가
+                if (currentFilters) {
+                    apiUrl += `&${currentFilters}`;
+                }
+
+                console.log("API 요청 URL:", apiUrl); // 디버깅용
+
+                // API 호출
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.success) {
+                    // 성공 시 데이터 처리
+                    const funds = data.data.funds;
+                    const pagination = data.pagination;
+
+                    console.log("======= ㅋㅋ =======");
+                    console.log(funds);
+                    console.log(pagination);
+                    console.log("======= ㅋㅋ =======");
+
+                    // 펀드 목록 렌더링
+                    renderFunds(funds);
+
+                    // 결과 메시지 업데이트 (첫 로드일 때만)
+                    if (isFirstLoad) {
+                        updateResultMessage(pagination.total, true);
+                    }
+
+                    // 페이지 정보 업데이트
+                    currentPage++;
+                    hasMoreData = pagination.hasNext;
+
+                    // 더보기 버튼 상태 업데이트
+                    const loadMoreBtn =
+                        document.getElementById("load-more-btn");
+
+                    if (!hasMoreData) {
+                        loadMoreBtn.style.display = "none";
+                    } else {
+                        loadMoreBtn.style.display = "block";
+                    }
+
+                    // 에러 메시지 제거
+                    // clearErrorMessage();
+                    console.log("펀드 데이터 갖고 옴");
+                } else {
+                    console.log("펀드 정보를 불러오는데 실패했습니다");
+                    if (isFirstLoad) {
+                        updateResultMessage(0, true);
+                    }
+                    // 실패 시 에러 처리
+                    // showErrorMessage(
+                    //     data.message ||
+                    //         "펀드 정보를 불러오는데 실패했습니다."
+                    // );
+                }
+            } catch (error) {
+                // 네트워크 오류 처리
+                console.error("펀드 로드 오류:", error);
+                if (isFirstLoad) {
+                    updateResultMessage(0, true);
+                }
+                // showErrorMessage(
+                //     "서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요."
+                // );
+            } finally {
+                // 로딩 상태 해제
+                isLoading = false;
+                showLoading(isLoading);
+                updateLoadMoreButton();
+            }
+        }
+
+        // 펀드 목록 렌더링
+        // 펀드 배열을 받아서 화면에 렌더링
+        function renderFunds(funds) {
+            // 펀드 목록을 담을 컨테이너 요소 찾기
+            const fundList = document.getElementById("fund-list");
+
+            funds.forEach((fund) => {
+                // 각 펀드의 HTML 요소 생성
+                const fundElement = createFundElement(fund);
+
+                // 이미 선택된 펀드인지 확인하고 상태 복원
+                restoreSelectionState(fundElement, fund.fundId);
+
+                // 생성된 요소를 컨테이너에 추가
+                fundList.appendChild(fundElement);
+            });
+        }
+
+        // 선택 상태 복원 함수
+        function restoreSelectionState(fundElement, fundId) {
+            const isSelected = selectedFunds.some(
+                (selectedFund) => selectedFund.id == fundId
+            );
+
+            if (isSelected) {
+                fundElement.classList.add("selected");
+                const compareBtn =
+                    fundElement.querySelector(".compare-add-btn");
+                if (compareBtn) {
+                    compareBtn.classList.add("selected");
+                    compareBtn.textContent = "선택됨";
+                }
+            }
+        }
+
+        // 펀드 요소 생성
+        // 개별 펀드 데이터를 HTML 요소로 변환
+        function createFundElement(fund) {
+            const fundDiv = document.createElement("div");
+            fundDiv.className = "fund-item";
+            fundDiv.setAttribute("data-id", fund.fundId);
+
+            // 수익률 클래스 결정 함수
+            const getReturnClass = (value) => {
+                if (value === null || value === undefined) return "";
+                // return value >= 0 ? "pos" : "neg";
+                if (value > 0) {
+                    return "pos";
+                } else if (value < 0) {
+                    return "neg";
+                } else {
+                    return "zero";
+                }
+            };
+
+            // 수익률 포맷팅 함수
+            const formatReturn = (value) => {
+                if (value === null || value === undefined) return "0.00%";
+                return `${value.toFixed(2)}%`;
+            };
+
+            // 숫자 포맷팅 함수
+            const formatNumber = (value) => {
+                if (value === null || value === undefined) return "0";
+                return value.toLocaleString();
+            };
+
+            // 날짜 포맷팅 함수
+            const formatDate = (dateStr) => {
+                if (!dateStr) return "";
+                // LocalDate는 "YYYY-MM-DD" 형태로 오므로 "-"를 "."로 변경
+                return dateStr.replace(/-/g, ".");
+            };
+
+            // 위험등급 클래스 결정
+            const getRiskClass = (riskLevel) => {
+                return `risk-${riskLevel}`;
+            };
+
+            // 투자지역 배지 생성 함수
+            const createRegionBadge = (region) => {
+                return region && region.trim() !== ""
+                    ? `<span class="badge region">${region}</span>`
+                    : "";
+            };
+
+            // 위험등급 텍스트 결정
+            const getRiskText = (riskLevel) => {
+                const riskTexts = {
+                    1: "매우높은위험(1등급)",
+                    2: "높은위험(2등급)",
+                    3: "다소높은위험(3등급)",
+                    4: "보통위험(4등급)",
+                    5: "낮은위험(5등급)",
+                    6: "매우낮은위험(6등급)",
+                };
+                return riskTexts[riskLevel] || `위험등급(${riskLevel}등급)`;
+            };
+
+            fundDiv.innerHTML = `
+                    <!-- 메타 데이터 -->
+                    <section class="fund-item-section fund-meta">
+                        <div class="fund-name-container">
+                            <h3 class="fund-name">
+                                <a href="/fund/${
+                                    fund.fundId
+                                }" class="fund-name-link">
+                                    ${fund.fundName || ""}
+                                </a>
+                            </h3>
+                        </div>
+                        <ul class="fund-detail">
+                            <li>설정일&nbsp;${formatDate(
+                                fund.establishDate
+                            )}</li>
+                            <li>기준가&nbsp;${formatNumber(fund.nav)}</li>
+                            <li>순자산&nbsp;${fund.aum || 0}억</li>
+                        </ul>
+                        <div class="badge-list">
+                            <span class="badge company">${
+                                fund.managementCompany || ""
+                            }</span>
+                            <span class="badge type">${
+                                fund.fundType || ""
+                            }</span>
+                            ${createRegionBadge(fund.investmentRegion)}
+                            <span class="badge risk ${getRiskClass(
+                                fund.riskLevel
+                            )}">
+                                ${getRiskText(fund.riskLevel)}
+                            </span>
+                        </div>
+                        <div class="fund-item-section fund-compare-check">
+                            <button class="compare-add-btn"
+                                    data-fund-id="${fund.fundId}"
+                                    data-fund-name="${fund.fundName || ""}">
+                                비교담기
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- 수익률 -->
+                    <section class="fund-item-section fund-return">
+                        <div class="stat">
+                            <span>1개월</span>
+                            <strong class="${getReturnClass(
+                                fund.return1m
+                            )}">${formatReturn(fund.return1m)}</strong>
+                        </div>
+                        <div class="stat">
+                            <span>3개월</span>
+                            <strong class="${getReturnClass(
+                                fund.return3m
+                            )}">${formatReturn(fund.return3m)}</strong>
+                        </div>
+                        <div class="stat">
+                            <span>6개월</span>
+                            <strong class="${getReturnClass(
+                                fund.return6m
+                            )}">${formatReturn(fund.return6m)}</strong>
+                        </div>
+                        <div class="stat">
+                            <span>12개월</span>
+                            <strong class="${getReturnClass(
+                                fund.return12m
+                            )}">${formatReturn(fund.return12m)}</strong>
+                        </div>
+                        <div class="stat">
+                            <span>누적</span>
+                            <strong class="${getReturnClass(
+                                fund.returnSince
+                            )}">${formatReturn(fund.returnSince)}</strong>
+                        </div>
+                    </section>
+                `;
+            return fundDiv;
+        }
+
+        // 숫자 포맷팅
+        function formatNumber(number) {
+            return new Intl.NumberFormat("ko-KR").format(number);
+        }
+
+        function formatDate(date) {
+            if (!(date instanceof Date) || isNaN(date)) return "";
+
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, "0");
+            const d = String(date.getDate()).padStart(2, "0");
+
+            return `${y}-${m}-${d}`;
+        }
+
+        // 로딩 상태 표시
+        function showLoading(show) {
+            const loading = document.getElementById("loading");
+            if (loading) {
+                loading.classList.toggle("show", show);
+            }
+        }
+
+        // 더보기 버튼 상태 업데이트
+        function updateLoadMoreButton() {
+            const loadMoreBtn = document.getElementById("load-more-btn");
+            loadMoreBtn.disabled = isLoading;
+            loadMoreBtn.textContent = isLoading ? "로딩 중..." : "더보기";
+        }
+
+        // 검색 메세지 업데이트 함수
+        function updateResultMessage(totalCount, isFirstLoad = false) {
+            const messageElement = document.querySelector(".message");
+
+            if (!messageElement) return;
+
+            console.log("!! : " + isFirstLoad);
+            console.log("!! : " + totalCount);
+
+            if (isFirstLoad) {
+                messageElement.innerHTML = `
+                                <div class="result-summary">
+                                    <span class="result-count">총 <strong>${totalCount.toLocaleString()}</strong>개의 펀드를 조회했습니다.</span>
+                                </div>
+                            `;
+                messageElement.classList.add("show");
+            } else {
+                messageElement.classList.remove("show");
+            }
+        }
+
+        function setInvestTypeInfo() {
+            const investTypeNames = {
+                1: "안정형",
+                2: "안정 추구형",
+                3: "위험 중립형",
+                4: "적극 투자형",
+                5: "공격 투자형",
+            };
+
+            investTypeName = investTypeNames[investType] || "알 수 없음";
+
+            // 투자성향 요소 가져옴
+            const investTypeElement = document.getElementById("invest-type");
+            if (investTypeElement) {
+                // 텍스트 설정
+                investTypeElement.textContent = investTypeName;
+
+                // 기존 클래스 제거
+                investTypeElement.className = "";
+
+                // 투자성향에 맞는 클래스 추가
+                if (investType >= 1 && investType <= 5) {
+                    investTypeElement.classList.add(
+                        `invest-type-${investType}`
+                    );
+                }
+            }
+        }
+
+        // 메시지 영역을 보존하면서 펀드 아이템만 삭제하는 함수
+        function clearFundItems() {
+            const fundList = document.getElementById("fund-list");
+            const messageElement = fundList.querySelector(".message");
+
+            // 메시지 영역 임시 저장
+            let messageHTML = "";
+            if (messageElement) {
+                messageHTML = messageElement.outerHTML;
+            }
+
+            // 전체 클리어
+            fundList.innerHTML = "";
+
+            // 메시지 영역만 다시 추가
+            if (messageHTML) {
+                fundList.insertAdjacentHTML("afterbegin", messageHTML);
+            }
+        }
+
+        // 검색 버튼 클릭 시 - 수정필요
+        document
+            .getElementById("fundForm")
+            .addEventListener("submit", function (e) {
+                e.preventDefault();
+
+                // FormData로 체크된 값들 수집
+                const formData = new FormData(
+                    document.getElementById("fundForm")
+                );
+                const params = new URLSearchParams();
+
+                // 체크된 값들을 URLSearchParams에 추가
+                for (let [key, value] of formData.entries()) {
+                    params.append(key, value);
+                }
+
+                // 전역 변수에 필터 파라미터 저장
+                currentFilters = params.toString();
+
+                console.log("적용된 필터:", currentFilters); // 디버깅용
+
+                // 페이지 초기화
+                currentPage = 1;
+                hasMoreData = true;
+
+                // 기존 결과 클리어
+                // document.getElementById("fund-list").innerHTML = "";
+                clearFundListKeepSelection();
+
+                // 메시지 영역만 보존하고 펀드 아이템들만 삭제
+                // clearFundItems();
+
+                // 새로운 검색 실행
+                loadMoreFunds(); // 이때 isFirstLoad = true가 됨
+            });
+
+        // 필터 검색 시 호출할 함수 (기존 submit 이벤트에 추가)
+        function clearFundListKeepSelection() {
+            // 기존 결과는 클리어하되, 선택된 펀드 상태는 유지
+            document.getElementById("fund-list").innerHTML = "";
+
+            // 비교바는 그대로 유지 (selectedFunds 배열은 건드리지 않음)
+            // updateCompareBar(); // 이미 선택된 상태이므로 호출 필요 없음
+        }
+
+        // 비교담기 버튼 클릭 이벤트
+        document.addEventListener("click", function (e) {
+            if (e.target.classList.contains("compare-add-btn")) {
+                const fundId = e.target.dataset.fundId;
+                const fundName = e.target.dataset.fundName;
+                const fundItem = e.target.closest(".fund-item");
+
+                toggleFundSelection(fundId, fundName, fundItem, e.target);
+            }
+        });
+
+        // 펀드 선택/해제 토글
+        function toggleFundSelection(fundId, fundName, fundItem, button) {
+            const existingIndex = selectedFunds.findIndex(
+                (f) => f.id === fundId
+            );
+
+            if (existingIndex > -1) {
+                // 선택 해제
+                selectedFunds.splice(existingIndex, 1);
+                fundItem.classList.remove("selected");
+                button.classList.remove("selected");
+                button.textContent = "비교담기";
+            } else {
+                // 새로 선택
+                if (selectedFunds.length >= MAX_COMPARE_COUNT) {
+                    alert(`최대 ${MAX_COMPARE_COUNT}개까지 선택 가능합니다.`);
+                    return;
+                }
+
+                selectedFunds.push({
+                    id: fundId,
+                    name: fundName,
+                    // 나중에 필요한 추가 데이터들...
+                });
+                fundItem.classList.add("selected");
+                button.classList.add("selected");
+                button.textContent = "선택됨";
+            }
+
+            updateCompareBar();
+        }
+
+        // 비교바 업데이트
+        function updateCompareBar() {
+            const compareBar = document.getElementById("compareBar");
+            const compareCount = document.getElementById("compareCount");
+            const fundsPreview = document.getElementById("fundsPreview");
+            const compareBtn = document.getElementById("compareBtn");
+
+            if (selectedFunds.length > 0) {
+                compareBar.classList.add("show");
+                compareCount.textContent = `${selectedFunds.length}개 선택`;
+
+                fundsPreview.innerHTML = selectedFunds
+                    .map(
+                        (fund, index) => `
+                                <div class="fund-preview">
+                                    <div class="fund-preview-name">${fund.name}</div>
+                                    <button class="fund-remove-btn" onclick="removeFund(${index})" title="제거">×</button>
+                                </div>
+                            `
+                    )
+                    .join("");
+
+                compareBtn.disabled = selectedFunds.length < 2;
+            } else {
+                compareBar.classList.remove("show");
+            }
+        }
+
+        // 개별 펀드 제거
+        function removeFund(index) {
+            const fund = selectedFunds[index];
+            selectedFunds.splice(index, 1);
+
+            // 해당 펀드 아이템의 선택 상태 해제
+            const fundItem = document.querySelector(`[data-id="${fund.id}"]`);
+            if (fundItem) {
+                fundItem.classList.remove("selected");
+                const btn = fundItem.querySelector(".compare-add-btn");
+                btn.classList.remove("selected");
+                btn.textContent = "비교담기";
+            }
+
+            updateCompareBar();
+        }
+
+        // 전체 해제
+        document
+            .getElementById("clearAllBtn")
+            .addEventListener("click", function () {
+                selectedFunds.forEach((fund) => {
+                    const fundItem = document.querySelector(
+                        `[data-id="${fund.id}"]`
+                    );
+                    if (fundItem) {
+                        fundItem.classList.remove("selected");
+                        const btn = fundItem.querySelector(".compare-add-btn");
+                        btn.classList.remove("selected");
+                        btn.textContent = "비교담기";
+                    }
+                });
+
+                selectedFunds.length = 0;
+                updateCompareBar();
+            });
+
+        // 비교하기 버튼 클릭
+        document
+            .getElementById("compareBtn")
+            .addEventListener("click", function () {
+                if (selectedFunds.length >= 2) {
+                    // console.log("비교할 펀드들:", selectedFunds);
+                    // alert("비교 모달을 여는 기능 (다음 단계에서 구현)");
+                    // 여기서 비교 모달을 열거나 비교 페이지로 이동
+
+                    openCompareModal();
+                }
+            });
+
+        // 전체 초기화 함수 (페이지 로드 시나 완전 초기화가 필요할 때)
+        function resetAllSelections() {
+            selectedFunds.length = 0;
+            updateCompareBar();
+
+            // 모든 펀드 아이템의 선택 상태 해제
+            document.querySelectorAll(".fund-item.selected").forEach((item) => {
+                item.classList.remove("selected");
+                const btn = item.querySelector(".compare-add-btn");
+                if (btn) {
+                    btn.classList.remove("selected");
+                    btn.textContent = "비교담기";
+                }
+            });
+        }
+
+        // 선택된 펀드 개수가 최대치에 도달했는지 확인하는 유틸리티 함수
+        function isMaxSelectionReached() {
+            return selectedFunds.length >= MAX_COMPARE_COUNT;
+        }
+
+        // 현재 선택된 펀드 ID 목록 반환
+        function getSelectedFundIds() {
+            return selectedFunds.map((fund) => fund.id);
+        }
+
+        // 비교 모달 열기
+        function openCompareModal() {
+            if (selectedFunds.length < 2) {
+                alert("최소 2개 이상의 펀드를 선택해주세요.");
+                return;
+            }
+
+            const modal = document.getElementById("compareModal");
+            modal.classList.add("show");
+
+            // 모달 내용 생성
+            renderCompareModal();
+
+            // 스크롤 방지
+            document.body.style.overflow = "hidden";
+        }
+
+        // 비교 모달 닫기
+        function closeCompareModal() {
+            const modal = document.getElementById("compareModal");
+            modal.classList.remove("show");
+
+            // AI 분석 컨테이너 초기화
+            const aiAnaylseContainer =
+                document.getElementById("aiAnaylseContainer");
+            if (aiAnaylseContainer) {
+                aiAnaylseContainer.innerHTML = "";
+            }
+
+            // 스크롤 복원
+            document.body.style.overflow = "auto";
+        }
+
+        // 비교 모달 내용 렌더링
+        function renderCompareModal() {
+            //updateCompareSummary();
+            renderCompareTable();
+
+            // 차트가 필요한 경우
+            // renderReturnsChart();
+        }
+
+        // 비교 요약 업데이트
+        /*
+                    function updateCompareSummary() {
+                        const summaryText =
+                            document.getElementById("compareSummaryText");
+                        summaryText.textContent = `${selectedFunds.length}개 펀드 비교`;
+                    }
+                    */
+
+        // 비교 테이블 렌더링
+        function renderCompareTable() {
+            const table = document.getElementById("compareTable");
+            const tbody = document.getElementById("compareTableBody");
+
+            // 테이블 헤더 생성
+            renderTableHeader(table, selectedFunds);
+
+            // 테이블 바디 생성
+            renderTableBody(tbody, selectedFunds);
+        }
+
+        // 테이블 헤더 렌더링
+        function renderTableHeader(table, funds) {
+            const thead = table.querySelector("thead tr");
+
+            // 기존 펀드 컬럼 제거 (첫 번째 th는 유지)
+            const existingHeaders = thead.querySelectorAll(
+                "th:not(.table-header-label)"
+            );
+            existingHeaders.forEach((th) => th.remove());
+
+            // 펀드별 헤더 추가
+            funds.forEach((fund, index) => {
+                const th = document.createElement("th");
+                th.className = "fund-header-cell";
+                th.innerHTML = `
+                        <span class="fund-header-name">${truncateText(
+                            fund.name,
+                            50
+                        )}</span>
+                `;
+                thead.appendChild(th);
+            });
+        }
+
+        // 테이블 바디 렌더링
+        function renderTableBody(tbody, funds) {
+            tbody.innerHTML = "";
+            // 비교할 항목들 정의
+            const compareItems = [
+                {
+                    label: "펀드유형",
+                    key: "fundType",
+                    formatter: (value) =>
+                        `<div class="data-main">${value}</div>`,
+                },
+                {
+                    label: "투자지역",
+                    key: "region",
+                    formatter: (value) =>
+                        `<div class="data-main">${value || "-"}</div>`,
+                },
+                {
+                    label: "위험등급",
+                    key: "riskLevel",
+                    formatter: (value) =>
+                        `<span class="data-main">${getRiskText(
+                            value || 4
+                        )}</span>`,
+                },
+                {
+                    label: "운용사",
+                    key: "managementCompany",
+                    formatter: (value) =>
+                        `<div class="data-main">${value || "-"}</div>`,
+                },
+                {
+                    label: "기준가",
+                    key: "nav",
+                    formatter: (value) => `
+                                <div class="data-main">${formatNumber(
+                                    value
+                                )}원</div>
+                            `,
+                },
+                {
+                    label: "순자산",
+                    key: "aum",
+                    formatter: (value) =>
+                        `<div class="data-main">${value || "-"}억원</div>`,
+                },
+                {
+                    label: "3개월 수익률",
+                    key: "return3m",
+                    formatter: (value) => formatReturnCell(value),
+                },
+                {
+                    label: "12개월 수익률",
+                    key: "return12m",
+                    formatter: (value) => formatReturnCell(value),
+                },
+            ];
+
+            // 각 비교 항목별로 행 생성
+            compareItems.forEach((item) => {
+                const tr = document.createElement("tr");
+
+                // 라벨 셀
+                const labelTd = document.createElement("td");
+                labelTd.className = "row-label";
+                labelTd.textContent = item.label;
+                tr.appendChild(labelTd);
+
+                // 각 펀드별 데이터 셀
+                funds.forEach((fund) => {
+                    const dataTd = document.createElement("td");
+                    dataTd.className = "fund-data-cell";
+
+                    // 실제 펀드 데이터 가져오기 (현재는 selectedFunds에 제한된 정보만 있음)
+                    const fundData = getFundDataById(fund.id);
+                    const value = fundData
+                        ? fundData[item.key]
+                        : fund[item.key] || null;
+
+                    dataTd.innerHTML = item.formatter(value, fundData || fund);
+                    tr.appendChild(dataTd);
+                });
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 수익률 셀 포맷팅
+        function formatReturnCell(value) {
+            if (value === null || value === undefined) {
+                return '<div class="data-main return-neutral">-</div>';
+            }
+
+            const returnClass =
+                value >= 0 ? "return-positive" : "return-negative";
+            const sign = value >= 0 ? "+" : "";
+
+            return `<div class="data-main ${returnClass}">${sign}${value.toFixed(
+                2
+            )}%</div>`;
+        }
+
+        // 펀드 ID로 상세 데이터 가져오기 (실제 데이터와 연동 필요)
+        function getFundDataById(fundId) {
+            // 현재 페이지에 로드된 펀드들에서 찾기
+            const fundElements = document.querySelectorAll(".fund-item");
+            for (let element of fundElements) {
+                if (element.dataset.id == fundId) {
+                    return extractFundDataFromElement(element);
+                }
+            }
+            return null;
+        }
+
+        // DOM 요소에서 펀드 데이터 추출
+        function extractFundDataFromElement(element) {
+            const fundName =
+                element.querySelector(".fund-name")?.textContent || "";
+            const badges = element.querySelectorAll(".badge");
+            const stats = element.querySelectorAll(".stat strong");
+            const details = element.querySelectorAll(".fund-detail li");
+
+            // 기본 정보 추출
+            let managementCompany = "",
+                fundType = "",
+                region = "",
+                riskLevel = 4;
+            badges.forEach((badge) => {
+                if (badge.classList.contains("company"))
+                    managementCompany = badge.textContent;
+                if (badge.classList.contains("type"))
+                    fundType = badge.textContent;
+                if (badge.classList.contains("region"))
+                    region = badge.textContent;
+                if (badge.classList.contains("risk")) {
+                    const riskMatch = badge.className.match(/risk-(\d+)/);
+                    if (riskMatch) riskLevel = parseInt(riskMatch[1]);
+                }
+            });
+
+            // 수익률 정보 추출
+            const returns = Array.from(stats).map((stat) => {
+                const text = stat.textContent.replace("%", "");
+                return parseFloat(text) || 0;
+            });
+
+            // 상세 정보 추출
+            let establishDate = "",
+                nav = "",
+                aum = "";
+            details.forEach((detail) => {
+                const text = detail.textContent;
+                if (text.includes("설정일"))
+                    establishDate = text.replace("설정일\u00A0", "");
+                if (text.includes("기준가"))
+                    nav = text.replace("기준가\u00A0", "").replace(",", "");
+                if (text.includes("순자산"))
+                    aum = text.replace("순자산\u00A0", "").replace("억", "");
+            });
+
+            return {
+                name: fundName,
+                managementCompany,
+                fundType,
+                region,
+                riskLevel,
+                establishDate,
+                nav: parseFloat(nav) || 0,
+                aum: parseInt(aum) || 0,
+                return1m: returns[0] || 0,
+                return3m: returns[1] || 0,
+                return6m: returns[2] || 0,
+                return12m: returns[3] || 0,
+                returnSince: returns[4] || 0,
+            };
+        }
+
+        // 유틸리티 함수들
+        function truncateText(text, maxLength) {
+            if (!text) return "-";
+            return text.length > maxLength
+                ? text.substring(0, maxLength) + "..."
+                : text;
+        }
+
+        function getFundTypeFromName(name) {
+            if (!name) return "-";
+            return name;
+        }
+
+        function getRiskText(riskLevel) {
+            const riskTexts = {
+                1: "매우높은위험(1등급)",
+                2: "높은위험(2등급)",
+                3: "다소높은위험(3등급)",
+                4: "보통위험(4등급)",
+                5: "낮은위험(5등급)",
+                6: "매우낮은위험(6등급)",
+            };
+            return riskTexts[riskLevel] || `위험등급(${riskLevel}등급)`;
+        }
+
+        // 모달 닫기 이벤트들
+        document
+            .getElementById("modalCloseBtn")
+            .addEventListener("click", closeCompareModal);
+        document
+            .getElementById("modalCloseBtn2")
+            .addEventListener("click", closeCompareModal);
+
+        // 모달 오버레이 클릭 시 닫기
+        document
+            .getElementById("compareModal")
+            .addEventListener("click", function (e) {
+                if (e.target === this) {
+                    closeCompareModal();
+                }
+            });
+
+        // ESC 키로 모달 닫기
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape") {
+                const modal = document.getElementById("compareModal");
+                if (modal.classList.contains("show")) {
+                    closeCompareModal();
+                }
+            }
+        });
+
+        // AI 분석 버튼
+        document
+            .getElementById("aiAnalyseBtn")
+            .addEventListener("click", function (e) {
+                // 선택된 펀드가 있는지 확인
+                if (!selectedFunds || selectedFunds.length === 0) {
+                    alert("분석할 펀드를 선택해주세요.");
+                    return;
+                }
+
+                // selectedFunds에서 ID 추출
+                const fundIds = selectedFunds.map((fund) => fund.id);
+
+                // URL 파라미터 생성
+                const params = new URLSearchParams();
+
+                // fundId 파라미터를 여러 개 추가 (List<Long> 처리)
+                fundIds.forEach((id) => {
+                    params.append("fundId", id);
+                });
+
+                // invert 파라미터 추가
+                params.append("invert", investType);
+
+                // 최종 URL 생성
+                const url = `/ai/compare?${params.toString()}`;
+                // console.log("AI 분석 요청 URL:", url);
+
+                // AI 분석 컨텐츠 요소 찾기
+                const aiAnaylseContainer =
+                    document.getElementById("aiAnaylseContainer");
+
+                if (!aiAnaylseContainer) {
+                    console.error(
+                        "aiAnaylseContainer 요소를 찾을 수 없습니다."
+                    );
+                    return;
+                }
+
+                // 로딩 표시
+                aiAnaylseContainer.innerHTML = `
+                            <div class="loading-analyse-container">
+                                <div class="loading-analyse-spinner"></div>
+                                <p>AI가 펀드를 분석하고 있습니다...</p>
+                            </div>
+                        `;
+
+                // AJAX 요청
+                fetch(url, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                })
+                    .then((response) => {
+                        console.log("응답 상태:", response.status);
+
+                        if (!response.ok) {
+                            throw new Error(
+                                `HTTP error! status: ${response.status}`
+                            );
+                        }
+                        return response.text(); // String 응답이므로 text()로 받기
+                    })
+                    .then((data) => {
+                        // console.log("AI 분석 결과:", data);
+                        // 성공 시 받은 데이터를 innerHTML에 설정
+                        aiAnaylseContainer.innerHTML = data;
+                    })
+                    .catch((error) => {
+                        console.error("AI 분석 요청 실패:", error);
+
+                        // 에러 시 에러 메시지 표시
+                        aiAnaylseContainer.innerHTML = `
+                                <div class="error-container">
+                                    <p>❌ AI 분석 중 오류가 발생했습니다.</p>
+                                    <p>오류: ${error.message}</p>
+                                    <button onclick="aiAnalyseBtn()" class="retry-btn">다시 시도</button>
+                                </div>
+                            `;
+                    });
+            });
+
+        // 펀드 추가 버튼 (모달 내에서)
+        /*
+                    document
+                        .getElementById("addMoreBtn")
+                        .addEventListener("click", function () {
+                            closeCompareModal();
+                            // 필요시 펀드 목록으로 스크롤하거나 안내 메시지 표시
+                            alert("펀드 목록에서 추가할 펀드를 선택해주세요.");
+                        });
+                    */
+
+        // 비교표 저장 기능
+        /*
+                    document
+                        .getElementById("exportBtn")
+                        .addEventListener("click", function () {
+                            // CSV 또는 이미지로 저장하는 기능 구현 가능
+                            alert("비교표 저장 기능은 추후 구현 예정입니다.");
+                        });
+                    */
+
+        // 인쇄 기능
+        /*
+                    document
+                        .getElementById("printBtn")
+                        .addEventListener("click", function () {
+                            window.print();
+                        });
+                    */
+
+        // function showLoading() {
+        //     loading.hidden = false;
+        // }
+        // function hideLoading() {
+        //     loading.hidden = true;
+        // }
+
+        // 에러 메시지 표시
+        // function showErrorMessage(message) {
+        //     const errorContainer =
+        //         document.getElementById("errorContainer");
+        //     errorContainer.innerHTML = `
+        //     <div class="error-message">
+        //         ${message}
+        //     </div>
+        // `;
+        // }
+
+        // 에러 메시지 제거
+        // function clearErrorMessage() {
+        //     const errorContainer =
+        //         document.getElementById("errorContainer");
+        //     errorContainer.innerHTML = "";
+        // }
+
+        // 무한 스크롤 옵션 (선택사항)
+        // window.addEventListener('scroll', function() {
+        //     if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000) {
+        //         loadMoreFunds();
+        //     }
+        // });
+    </script>
+
+    <!-- Thymeleaf 데이터 전달을 위한 메타 태그 -->
+    <meta name="invest-type" th:content="${investType}" />
+    <meta name="user-id" th:content="${userId}" />
+</html>

@@ -1,0 +1,287 @@
+/* reset.css 다음에 로드되는 userHeader.css */
+.no-reset,
+.no-reset * {
+  all: revert;     /* CSS 속성값을 user-agent 기본값으로 되돌림 */
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto; 
+}
+
+ul{
+  list-style: none !important;
+}
+.no-reset a{
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+
+.header {
+  display: flex;
+  width: 96vw;
+  height: 8vh;
+  z-index: 1000;
+  justify-content: space-between; 
+  align-items: center;
+  padding: 0 30px;
+  font-size: 1.25rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-family: sans-serif;
+}
+
+.logo {
+  float: left; 
+}
+
+.logo img {
+  height: 32px;
+}
+
+.right-section {
+
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-left: auto; 
+  margin-right: 10px;
+}
+
+.main-nav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-right: 20px;
+}
+.nav-btn {
+  background: #D7191F;
+  color: white;
+  border: none;
+  width: 90px; 
+  height: 30px;
+  line-height: 15px;
+  font-size: 1rem;
+  padding: 8px 14px;
+  border-radius: 8px;
+  z-index: 999;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.nav-btn.active {
+  background: #8B0304;
+}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+  padding: 0;
+  margin: 0;
+}
+
+.dropdown-content {
+  position: absolute;
+  top: 100%; /* 버튼 바로 아래 */
+  left: 0;
+  display: none;
+  background: white;
+  border: 3px solid #D7191F;
+  box-sizing: border-box;
+  border-top: none;
+  padding: 0;
+  border-bottom-right-radius: 8px;
+  border-bottom-left-radius: 8px;
+  width: 100%; /* 버튼과 동일 너비로 하고 싶다면 */
+  z-index: 998;
+}
+
+.dropdown-content a {
+  display: block;
+  font-size: 0.8rem;
+  padding: 8px 16px;
+  color: #333;
+  text-decoration: none;
+}
+
+.dropdown-content a:hover {
+  background: #D7191F !important;
+  font-weight: 900;
+  color: #fff !important;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+}
+.user-info a:hover{
+  color: #D7191F !important;
+  font-weight: bold;
+}
+.user-info img{
+  margin-left: 5px;
+  height: 1.2rem;
+  text-align: center;
+}
+
+.menu-icon {
+  height: 20px;
+  margin-left: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.menu-icon img{
+  height: 100%;
+}
+
+.hidden-menu {
+  position: absolute;
+  top: 8vh;
+  right: 0;
+  width: 400px;
+  height: 92vh;
+  background: white;
+  border-left: 3px solid #D7191F;
+  padding: 20px 40px;
+  z-index: 997;
+  transform: translateX(100%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.3s linear;
+}
+
+.hidden-menu .hidden-menu-title{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hidden-menu div h3 {
+  font-size: 1.5rem;
+  color: #333;
+  font-weight: 800;
+}
+
+.hidden-menu button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  top: 20px;
+  right: 20px;
+}
+.hidden-menu.show {
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.hidden-menu-wrap{
+  width: 95%;
+}
+
+.hidden-menu-tabBar {
+  display: flex;
+  margin: auto;
+  height: 45px;
+}
+
+.hidden-menu-tab {
+  width: 33.3%;
+  height: 100%;
+  text-align: center;
+  margin: 0 auto;
+  background: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 45px;
+  box-sizing: border-box ;
+  text-align : center;
+  border: 1px solid #D7191F;
+  border-right: none;
+  white-space: nowrap; 
+}
+
+.hidden-menu-tab:last-child {
+  border-right: 1px solid #D7191F;
+}
+
+.hidden-menu-tabBar > .active, .hidden-menu-tab:hover {
+  background: #D7191F !important;
+  color: white !important;
+  font-weight: 900;
+}
+
+.hidden-menu-subTab{
+    margin-top: 40px;
+    margin-bottom: 20px;
+    line-height: 1.7;
+    font-size: 1rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.hidden-menu-subTab span{
+    white-space: nowrap; 
+    padding-left: 3px;
+    padding-right: 3px;
+    cursor: pointer;
+
+}
+
+.hidden-menu-subTab > .active{
+    color: #D7191F;
+    font-weight: 700;
+}
+
+.hidden-menu-subTab-title{
+    font-size: 24px;
+    color: #D7191F;
+    font-weight: 900;
+    margin-bottom: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.hidden-menu-subTab-list li{
+    padding: 10px 10px 0 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;  
+}
+
+.hidden-menu-subTab-list li a{
+    font-size: 16px;
+    font-weight: 700;
+  
+}
+
+.subTab-menu-list{
+  display: none;
+  font-size: 1rem;
+}
+.subTab-menu-list ul li{
+  margin: 10px 0;
+}
+.subTab-menu-list a:hover{
+  color: #D7191F !important ;
+  font-weight: 800;
+}

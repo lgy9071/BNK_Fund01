@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <title>회원가입</title>
+    <link rel="stylesheet" href="/css/join.css" />
+    <link rel="stylesheet" href="/css/reset.css" />
+    <link rel="stylesheet" href="/css/userHeader.css" />
+    <link rel="stylesheet" href="/css/footer.css" />
+  </head>
+  <body>
+    <!-- 공통 헤더 -->
+    <th:block th:replace="fragments/userHeader :: userHeader"></th:block>
+
+    <section class="container">
+      <div class="card">
+        <div class="card-body">
+          <h3>회원가입</h3>
+
+          <form
+            th:action="@{/auth/join}"
+            th:object="${joinRequest}"
+            method="post"
+            novalidate
+          >
+            <!-- 아이디 -->
+            <div class="form-group">
+              <input
+                th:field="*{username}"
+                class="form-control"
+                placeholder="아이디"
+              />
+              <div class="form-error" th:errors="*{username}"></div>
+            </div>
+
+            <!-- 비밀번호 -->
+            <div class="form-group">
+              <input
+                th:field="*{password}"
+                type="password"
+                class="form-control"
+                placeholder="비밀번호"
+              />
+              <div class="form-error" th:errors="*{password}"></div>
+            </div>
+
+            <!-- 비밀번호 확인 -->
+            <div class="form-group">
+              <input
+                th:field="*{confirmPassword}"
+                type="password"
+                class="form-control"
+                placeholder="비밀번호 확인"
+              />
+              <div class="form-error" th:errors="*{confirmPassword}"></div>
+            </div>
+
+            <!-- 이름 -->
+            <div class="form-group">
+              <input
+                th:field="*{name}"
+                class="form-control"
+                placeholder="이름"
+              />
+              <div class="form-error" th:errors="*{name}"></div>
+            </div>
+
+            <!-- 전화번호 -->
+            <div class="form-group">
+              <input
+                th:field="*{phone}"
+                class="form-control"
+                placeholder="010-1234-5678"
+              />
+              <div class="form-error" th:errors="*{phone}"></div>
+            </div>
+
+            <!-- 서버 측 오류 -->
+            <div
+              class="form-error"
+              th:if="${joinError}"
+              th:text="${joinError}"
+            ></div>
+
+            <!-- 가입 버튼 -->
+            <div class="form-actions">
+              <button type="submit" class="btn-gold">가입하기</button>
+            </div>
+          </form>
+
+          <div class="form-footer">
+            <a th:href="@{/auth/login}" class="link-bank"
+              >이미 계정이 있나요? 로그인</a
+            >
+          </div>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

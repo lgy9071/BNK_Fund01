@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>펀드 등록</title>
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/admin/admin_layout.css"/>
+  <link rel="stylesheet" href="/css/admin/fund_register.css"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="admin/admin_header :: adminHeader"></div>
+  <div class="main-wrapper">
+    <div th:replace="admin/admin_aside :: adminAside"></div>
+    <main class="content">
+      <div class="container edit-container">
+        <h2 class="fund-list-title">펀드 등록</h2>
+        <!-- 펀드 검색 -->
+        <form id="fundForm" method="post" enctype="multipart/form-data" th:action="@{/fund/register}">
+          <label>펀드 이름 :
+            <input type="text" id="fundName" onclick="openModal()" readonly>
+            <button type="button" onclick="openModal()">펀드 검색</button>
+          </label>
+          <input type="hidden" name="fundId" id="fundId"><br>
+          <div id="fundDetailBox" class="fund-detail-box" style="display:none;">
+            <h3>펀드 기본 정보</h3>
+            <table class="fund-detail-table">
+              <tr><th>펀드유형</th><td id="fundType"></td></tr>
+              <tr><th>운용지역</th><td id="investmentRegion"></td></tr>
+              <tr><th>설정일</th><td id="establishDate"></td></tr>
+              <tr><th>총보수율</th><td id="totalExpenseRatio"></td></tr>
+              <tr><th>위험등급</th><td id="riskLevel"></td></tr>
+              <tr><th>운용사</th><td id="managementCompany"></td></tr>
+            </table>
+          </div>
+          <label class="themeSelect">테마 : 
+            <select id="themeSelect" name="fundTheme" required>
+              <option value="">테마 선택</option>
+              <option value="주식형">주식형</option>
+              <option value="채권형">채권형</option>
+              <option value="혼합형">혼합형</option>
+              <option value="대체투자형">대체투자형</option>
+              <option value="기타">기타</option>
+            </select>
+          </label><br><br>
+
+
+          <!-- 탭 버튼 -->
+          <div class="tab-buttons">
+            <button type="button" id="tab-terms" onclick="showTab('terms')">약관</button>
+            <button type="button" id="tab-manual" onclick="showTab('manual')">상품설명서</button>
+            <button type="button" id="tab-prospectus" onclick="showTab('prospectus')">투자설명서</button>
+          </div>
+
+          <!-- 탭 영역 -->
+          <div id="terms" class="tab active">
+            <input type="hidden" name="docType" value="약관">
+            <br>
+            <input type="hidden" name="fileFormat" value="PDF">
+            <label>파일 업로드: <input type="file" name="fileTerms" accept="application/pdf" required></label><br>
+          </div>
+
+          <div id="manual" class="tab"> 
+            <input type="hidden" name="docType" value="상품설명서">
+            <br>
+            <input type="hidden" name="fileFormat" value="PDF">
+            <label>파일 업로드: <input type="file" name="fileManual" accept="application/pdf" required></label><br>
+          </div>
+
+          <div id="prospectus" class="tab">
+            <input type="hidden" name="docType" value="투자설명서">
+            <br>
+            <input type="hidden" name="fileFormat" value="PDF">
+            <label>파일 업로드: <input type="file" name="fileProspectus" accept="application/pdf" required></label><br>
+          </div>
+          <br>
+          <div class="register-btn-div">
+            <button type="submit">펀드 등록</button>
+          </div>
+        </form>
+
+        <!-- 모달창 -->
+        <div id="fundModal" class="modal">
+          <h3 class="modal-title">펀드 검색</h3>
+          <div class="modal-search-div">
+            <input type="text" id="searchKeyword" placeholder="입력값 없이 검색 시 전체목록 출력">
+            <button class="modal-search-btn" onclick="searchFund()">검색</button>
+          </div>
+          <ul id="fundResult"></ul>
+          <button class="modal-close-btn" onclick="closeModal()">닫기</button>
+        </div>
+
+      </div>
+    </main>
+  </div><!--main-wrapper end-->
+</div><!--layout end-->
+
+<!-- 로딩 이미지 -->
+<div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(255,255,255,0.7); z-index: 9999; justify-content: center; align-items: center;">
+  <img src="/images/loading.gif" alt="loading...">
+</div>
+
+<!-- 등록 완료 모달 -->
+<div id="confirmModal" class="finish-modal" style="display: none;">
+  <div class="finish-modal-content">
+    <h3 id="finish-modal-success">펀드 등록 완료</h3>
+    <p>펀드 등록이 성공적으로 완료되었습니다.<br>이어서 등록판 펀드 결재를 진행하시겠습니까?</p>
+    <div class="finish-modal-buttons">
+      <button id="goToList" onclick="closeConfirmModal()">펀드 목록</button>
+      <button id="goToPayment">결재 진행</button>
+    </div>
+  </div>
+</div>
+<script src="/script/admin/fund_register.js"></script>
+</body>
+</html>

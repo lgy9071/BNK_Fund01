@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${approval != null} ? '결재 요청 수정' : '결재 요청 등록'"></title>
+    <link rel="stylesheet" href="/css/admin/admin_layout.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+          --primary: #337D89;
+          --bg: #eef3f5;
+          --card: #fff;
+          --border: #ddd;
+        }
+        *, *::before, *::after {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          background: var(--bg);
+          font-family: "Segoe UI", sans-serif;
+        }
+        .form-container {
+          max-width: 700px;
+          margin: 40px auto;
+          background: var(--card);
+          padding: 30px;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0,0,0,.1);
+          max-height: 75vh;
+          overflow-y: auto;
+        }
+        .form-container h1 {
+          font-size: 28px;
+          color: var(--primary);
+          margin-bottom: 24px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        label {
+          display: block;
+          font-weight: 700;
+          margin: 18px 0 8px;
+        }
+        input[type="text"],
+        textarea {
+          width: 100%;
+          padding: 12px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          font-size: 15px;
+          transition: border-color .3s;
+        }
+        input:focus,
+        textarea:focus {
+          border-color: var(--primary);
+          outline: none;
+        }
+        textarea {
+          height: 180px;
+          resize: none;
+        }
+        .btn-submit {
+          background: var(--primary);
+          color: #fff;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: filter .2s;
+          margin: 0; /* form-actions에서 간격 처리 */
+        }
+        .btn-submit:hover {
+          filter: brightness(.9);
+        }
+        /* 액션 버튼 우측 정렬을 위한 컨테이너 */
+        .form-actions {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 30px;
+        }
+        .admin-header .logo {
+          position: relative;
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div th:replace="admin/admin_header :: adminHeader"></div>
+    <div class="main-wrapper">
+        <div th:replace="admin/admin_aside :: adminAside"></div>
+        <main class="content">
+            <div class="form-container">
+                <h1>
+                    <i class="fas fa-edit"></i>
+                    <span th:text="${approval != null} ? '결재 요청 수정' : '결재 요청 등록'"></span>
+                </h1>
+                <p>펀드: <strong th:text="${approval?.fund?.fundName} ?: ${fundName}"></strong></p>
+                <form th:action="${approval != null}
+                            ? @{'/admin/approval/update/' + ${approval.approvalId}}
+                            : @{/admin/approval/register}"
+                      method="post">
+                    <label for="title">제목</label>
+                    <input id="title" type="text" name="title"
+                           th:value="${approval?.title}"
+                           placeholder="제목을 입력하세요" required />
+
+                    <label for="content">내용</label>
+                    <textarea id="content" name="content"
+                              placeholder="내용을 입력하세요"
+                              required
+                              th:text="${approval?.content}"></textarea>
+
+                    <input type="hidden" name="fundId" th:value="${approval?.fund?.fundId} ?: ${fundId}" />
+
+                    <!-- 액션 버튼 우측 정렬 -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn-submit"
+                                th:text="${approval != null} ? '재기안' : '등록'"></button>
+                    </div>
+                </form>
+                <a th:href="@{/admin/approval/list}"
+                   style="display:inline-block; margin-top:20px;
+                    color:var(--primary); font-weight:600; text-decoration:none;">
+                    ← 목록으로
+                </a>
+            </div>
+        </main>
+    </div>
+</div>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.querySelector('form');
+      const submit = form.querySelector('.btn-submit');
+      submit.addEventListener('click', e => {
+        e.preventDefault();
+        Swal.fire({
+          title: /*[[${approval != null} ? '재기안 하시겠습니까?' : '등록하시겠습니까?']]*/,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: '예',
+          cancelButtonText: '아니오'
+        }).then(result => {
+          if (result.isConfirmed) form.submit();
+        });
+      });
+    });
+    /*]]>*/
+</script>
+</body>
+</html>

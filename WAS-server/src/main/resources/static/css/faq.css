@@ -1,0 +1,276 @@
+@charset "UTF-8";
+
+/* === 전체 설정 === */
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background-color: #fafafa;
+  color: #222;
+  margin: 0;
+  padding: 0; /* ✅ padding 제거해서 전체 폭 사용 */
+  text-align: center;
+}
+
+
+/* === 제목 === */
+h1 {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 80px; /* ✅ 오리 이미지와 충분히 간격 주기 */
+  color: #333;
+  z-index: 3;
+  position: relative;
+}
+
+/* ✅ 오리 이미지와 검색창을 감싸는 래퍼 */
+.search-wrapper {
+  position: relative;
+  width: 400px;
+  margin: 0 auto 30px;
+}
+
+/* ✅ 오리 이미지 - 검색창 위에 겹치게 */
+.duck-image {
+  position: absolute;
+  bottom: 100%; /* 검색창의 바로 위에 붙이기 */
+  left: 50%;
+  transform: translateX(-50%) translateY(8px); /* 다리 내려와서 겹치도록 */
+  width: 130px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* 물음표 이미지 */
+.question-icon {
+  position: absolute;
+  bottom: 100%;
+  left: calc(50% + 80px); /* 흰 오리 오른쪽 방향 조정 */
+  transform: translateY(-25px);
+  width: 50px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* ✅ 검색창 패딩 줄이기 (겹침 방지 제거) */
+.search-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f1f3f5;
+  border-radius: 30px;
+  width: 100%;
+  padding: 10px 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 1;
+}
+
+
+.search-box input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  padding: 8px;
+  outline: none;
+}
+
+.search-box button {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.search-box button img {
+  width: 20px;
+  height: 20px;
+}
+
+/* === FAQ 리스트 === */
+#faq-list {
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: left;
+  list-style: none;
+  padding: 0;
+}
+
+/* === FAQ 항목 === */
+#faq-list li {
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 15px 20px;
+  cursor: pointer;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 8px;
+}
+
+#faq-list li:hover {
+  background: #f8f9fa;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+/* === 질문 영역 === */
+.question {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  position: relative;
+}
+
+.question img {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+/* 질문 텍스트 */
+.q-text {
+  flex: 1;
+  word-break: keep-all;
+}
+
+/* 펼침 아이콘 */
+.arrow {
+  width: 16px;
+  height: 16px;
+  background-image: url('/images/toggle_icon.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.question.open .arrow {
+  transform: rotate(180deg);
+}
+
+/* === 답변 === */
+.answer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #444;
+  line-height: 1.5;
+  animation: fadeIn 0.3s ease-in-out;
+  padding-top: 12px;
+  padding-left: 2px;
+}
+
+/* A 아이콘 이미지 */
+.answer img {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* 답변 텍스트 */
+.a-text {
+  flex: 1;
+  word-break: keep-all;
+  margin-left: 8px;
+}
+
+/* === 페이징 === */
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 6px;
+}
+
+.pagination button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background-color: #dee2e6;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.pagination button:hover:not(:disabled) {
+  background-color: #ced4da;
+}
+
+.pagination button:disabled {
+  background-color: #495057;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* === 애니메이션 === */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* === 모바일 대응 === */
+@media (max-width: 480px) {
+  .search-wrapper {
+    width: 90%;
+  }
+
+  .duck-image {
+    width: 100px;
+    top: -55px;
+  }
+
+  .search-box {
+    padding: 8px 12px;
+  }
+
+  h1 {
+    font-size: 22px;
+    margin-bottom: 70px;
+  }
+
+  .question {
+    font-size: 14px;
+  }
+
+  .answer {
+    font-size: 13px;
+    flex-direction: column;
+  }
+
+  .answer img {
+    margin-bottom: 4px;
+  }
+}
+
+.site-footer {
+  margin-top: 100px;
+}
+
+/* ▼ FAQ 영역 가로폭 넓히기 */
+#faq-list{
+  max-width: 960px !important;   /* 원하는 폭(예: 960px, 1100px, 80vw 등) */
+  width: 90%;                     /* 반응형 여유 */
+}
+
+/* 질문/답변 줄바꿈 안깨지게 */
+.q-text, .a-text{
+  word-break: keep-all;
+}
+
+/* 리스트 아이템도 넓이 꽉 채우도록 */
+#faq-list li{
+  width: 100%;
+}
+
+/* 검색 영역도 맞춰 넓히고 싶다면 */
+.search-wrapper{
+  width: 600px;          /* 필요 시 조절 */
+  max-width: 90%;
+}

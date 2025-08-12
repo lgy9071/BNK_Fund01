@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>결재 요청 승인 관리</title>
+
+  <!-- 공통 리소스 -->
+  <link rel="stylesheet" href="/css/admin/admin_layout.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    :root {
+      --primary: #337D89;
+      --bg: #eef3f5;
+      --card: #fff;
+      --border: #e0e0e0;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: #333;
+    }
+
+    /* 컨테이너 */
+    .manage-container {
+      max-width: 1280px;
+      margin: 12px auto;
+      padding: 20px 30px;
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.06);
+    }
+
+    .title1 {
+      font-size: 26px;
+      color: var(--primary);
+      margin-bottom: 28px;
+    }
+
+    /* 요약 버튼 */
+    .summary-bar {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .sum-item {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 160px;
+      padding: 14px 34px;
+      border-radius: 9999px;
+      border: 2px solid var(--primary);
+      background: #fff;
+      color: var(--primary);
+      font: 700 17px/1 "Segoe UI", sans-serif;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s, color .15s, box-shadow .15s;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .sum-item:hover,
+    .sum-item.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    /* 섹션 헤더 */
+    .sec-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 16px 0;
+    }
+    .sec-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .sec-count {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--primary);
+    }
+
+    /* 표 */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      table-layout: fixed;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    th {
+      background: var(--primary);
+      color: #fff;
+    }
+    tbody tr:hover {
+      background: #f7fafd;
+    }
+    .click-row {
+      cursor: pointer;
+    }
+    .click-row:hover {
+      background: #f0f8fb;
+    }
+    /* 2열 제목 좌측정렬 + ellipsis */
+    td:nth-child(2) {
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 액션 버튼 */
+    .btn-publish {
+      background: linear-gradient(135deg,#2980b9,#2471a3);
+      color: #fff;
+      padding: 6px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter .2s;
+    }
+    .btn-resubmit {
+      background: #8e44ad;
+      color: #fff;
+      padding: 6px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-block;
+      transition: filter .18s;
+    }
+    .btn-publish:hover,
+    .btn-resubmit:hover {
+      filter: brightness(.9);
+    }
+
+    /* 페이지네이션 */
+    .pagination {
+      text-align: center;
+      margin: 8px 0;
+    }
+    .pagination a {
+      display: inline-block;
+      margin: 0 4px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      font: 700 13px/1 "Segoe UI", sans-serif;
+      text-decoration: none;
+    }
+    .pagination a.active,
+    .pagination a:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+<div class="layout">
+  <div th:replace="admin/admin_header :: adminHeader"></div>
+  <div class="main-wrapper">
+    <div th:replace="admin/admin_aside :: adminAside"></div>
+    <main class="content">
+      <div class="manage-container">
+        <h1 class="title1">결재 요청 승인 관리</h1>
+
+        <!-- 요약 버튼 -->
+        <div class="summary-bar">
+          <button type="button" class="sum-item active" data-target="sec-pending">결재대기</button>
+          <button type="button" class="sum-item" data-target="sec-ready">배포대기</button>
+          <button type="button" class="sum-item" data-target="sec-rejected">반려</button>
+        </div>
+
+        <!-- 결재대기 -->
+        <section id="sec-pending">
+          <div class="sec-head">
+            <span class="sec-title">결재대기</span>
+            <span class="sec-count" th:text="'총 '+${pendingTotal}+'건'">총 0건</span>
+          </div>
+          <table>
+            <thead>
+            <tr>
+              <th>번호</th><th>제목</th><th>작성자</th><th>등록일</th><th>경과</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="ap,stat : ${pendingPage.content}"
+                class="click-row"
+                th:data-href="@{'/admin/approval/detail/' + ${ap.approvalId}}">
+              <td th:text="${stat.index + 1}">1</td>
+              <td th:text="${ap.title}">제목</td>
+              <td th:text="${ap.writer?.adminname ?: '-'}">홍길동</td>
+              <td th:text="${#temporals.format(ap.regDate,'yyyy-MM-dd HH:mm')}"></td>
+              <td th:text="${'D+' + T(java.time.Duration).between(ap.regDate, T(java.time.LocalDateTime).now()).toDays()}">D+0</td>
+            </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- 배포대기 -->
+        <section id="sec-ready" hidden>
+          <div class="sec-head">
+            <span class="sec-title">배포대기</span>
+            <span class="sec-count" th:text="'총 '+${waitingTotal}+'건'">총 0건</span>
+          </div>
+          <table>
+            <thead>
+            <tr>
+              <th>번호</th><th>제목</th><th>작성자</th><th>등록일</th><th>경과</th><th>액션</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="ap,stat : ${waitingPage.content}">
+              <td th:text="${stat.index + 1}">1</td>
+              <td><a th:href="@{'/admin/approval/detail/' + ${ap.approvalId}}" th:text="${ap.title}"></a></td>
+              <td th:text="${ap.writer?.adminname ?: '-'}"></td>
+              <td th:text="${#temporals.format(ap.regDate,'yyyy-MM-dd HH:mm')}"></td>
+              <td th:text="${'D+' + T(java.time.Duration).between(ap.regDate, T(java.time.LocalDateTime).now()).toDays()}"></td>
+              <td>
+                <form th:action="@{'/admin/approval/publish/' + ${ap.approvalId}}" method="post" onsubmit="return openPublishModal(event,this);">
+                  <button type="submit" class="btn-publish">배포</button>
+                </form>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- 반려 -->
+        <section id="sec-rejected" hidden>
+          <div class="sec-head">
+            <span class="sec-title">반려</span>
+            <span class="sec-count" th:text="'총 '+${rejectedTotal}+'건'">총 0건</span>
+          </div>
+          <table>
+            <thead>
+            <tr>
+              <th>번호</th><th>제목</th><th>작성자</th><th>등록일</th><th>경과</th><th>액션</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="ap,stat : ${rejectedPage.content}"
+                class="click-row"
+                th:data-href="@{'/admin/approval/detail/' + ${ap.approvalId}}">
+              <td th:text="${stat.index + 1}">1</td>
+              <td th:text="${ap.title}">제목</td>
+              <td th:text="${ap.writer?.adminname ?: '-'}"></td>
+              <td th:text="${#temporals.format(ap.regDate,'yyyy-MM-dd HH:mm')}"></td>
+              <td th:text="${'D+' + T(java.time.Duration).between(ap.regDate, T(java.time.LocalDateTime).now()).toDays()}"></td>
+              <td>
+                <th:block th:if="${adminRole == 'planner'}">
+                  <a th:href="@{'/admin/approval/edit/' + ${ap.approvalId}}"
+                     class="btn-resubmit"
+                     onclick="event.stopPropagation();">재기안</a>
+                </th:block>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </section>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    /* 행 클릭 → 상세 */
+    document.querySelectorAll('.click-row').forEach(tr =>
+      tr.addEventListener('click', () => location.href = tr.dataset.href)
+    );
+
+    /* 섹션 전환 */
+    const btns = [...document.querySelectorAll('.sum-item')];
+    const secs = {
+      'sec-pending': document.getElementById('sec-pending'),
+      'sec-ready':   document.getElementById('sec-ready'),
+      'sec-rejected': document.getElementById('sec-rejected')
+    };
+    function show(id) {
+      Object.entries(secs).forEach(([key, sec]) => sec.hidden = (key !== id));
+      btns.forEach(b => b.classList.toggle('active', b.dataset.target === id));
+    }
+    show('sec-pending');
+    btns.forEach(b => b.onclick = () => show(b.dataset.target));
+  });
+</script>
+
+<script>
+  function openPublishModal(e, form) {
+    e.preventDefault();
+    Swal.fire({
+      title: '정말 배포하시겠습니까?',
+      text: '펀드가 등록됩니다',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: '예',
+      cancelButtonText: '아니오',
+      reverseButtons: false
+    }).then(res => {
+      if (res.isConfirmed) form.submit();
+    });
+    return false;
+  }
+</script>
+</body>
+</html>

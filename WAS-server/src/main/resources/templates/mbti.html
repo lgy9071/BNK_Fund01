@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Result</title>
+  <link rel="stylesheet" href="/css/mbti.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri/dist/galmuri.css">
+
+</head>
+<body>
+  <div id="intro-overlay">
+    <!-- 구름 -->
+  <div class="cloud c1">
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
+  <div class="cloud c2">
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
+  
+  
+    <!-- 풍선 래퍼 -->
+  <div class="balloon-row">
+    <img src="/images/balloon_M.png" class="balloon" style="--idx:0" id="letter-M">
+    <img src="/images/balloon_B2.png" class="balloon" style="--idx:1" id="letter-B">
+    <img src="/images/balloon_T.png" class="balloon" style="--idx:2">
+    <img src="/images/balloon_I.png" class="balloon" style="--idx:3" id="letter-I">
+  </div>
+  </div>
+
+  <div class="slot-machine">
+    <div class="top-label">펀드 MBTI</div>
+    <div class="screen">
+      <p class="headline">나의 투자 유형 테스트</p>
+      <div class="mbti-boxes">
+        <div class="mbti-letter">M</div>
+        <div class="mbti-letter">B</div>
+        <div class="mbti-letter">T</div>
+        <div class="mbti-letter">I</div>
+      </div>
+      <button class="start-btn" onclick="startTest()">테스트 시작 ▶</button>
+    </div>
+    <div class="lever"></div>
+    <div class="controls">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot big"></div>
+    </div>
+    <div class="coin-slot"></div>
+    <div class="printer"></div>
+  </div>
+
+  <!-- [2] 카드형 질문 화면 -->
+  <div class="question-container" id="question-box" style="display: none;">
+    <div class="question-style" id="question-card">
+      <div class="question-header">
+        <span id="question-number"></span>
+        <span id="question-title"></span>
+      </div>
+      <div class="question-options">
+        <div class="option-card option-a" onclick="selectOption(0)">
+          <img id="optionAImg" src="" alt="선택지 A 이미지">
+          <p id="optionAText" class="option-desc"></p>
+        </div>
+        <div class="option-card option-b" onclick="selectOption(1)">
+          <img id="optionBImg" src="" alt="선택지 B 이미지">
+          <p id="optionBText" class="option-desc"></p>
+        </div>
+      </div>
+      <button onclick="prevQuestion()" id="prev-btn">이전으로</button>
+    </div>
+  </div>
+
+  <!-- [3] 결과 화면 -->
+<div class="result-container" id="result-box" style="display:none;">
+
+  <!-- ✅ 박스와 버튼을 묶는 래퍼 (폭 = 브라우저 박스) -->
+  <div class="frame-wrap">
+
+    <!-- ① 결과 박스 -->
+    <div class="browser-frame">
+      <!-- 헤더 바 -->
+      <div class="browser-header">
+        <span class="window-title">Result</span>
+        <span class="nav-btn"></span><span class="nav-btn"></span><span class="nav-btn"></span>
+        <div class="url-bar"></div>
+        <span class="header-icon"></span><span class="header-icon"></span>
+      </div>
+
+      <!-- 본문 -->
+      <div class="browser-body">
+        <div class="mbti-card" style="font-family:'Galmuri11',sans-serif;">
+          <h2>나의 <span class="highlight">투자 MBTI</span>는 ?</h2>
+          <div id="mbti-type" style="font-size:35px;font-weight:bold;margin-top:20px;"></div>
+          <p id="mbti-desc" class="subtext" style="margin:20px 0;"></p>
+          <p id="mbti-tag"  style="color:gray;font-weight:bold;"></p>
+          <img id="mbti-image" src="" alt="MBTI 캐릭터" class="icon" style="margin-top:30px;width:400px;">
+        </div>
+      </div>
+    </div><!-- /.browser-frame -->
+
+    <!-- ② 버튼 세트 → 옆으로 붙음 -->
+    <div class="btn-column">
+      <button onclick="location.href='/fund'">펀드 메인</button>
+      <button onclick="location.href='/profile'">투자성향 분석하러 가기</button>
+      <button onclick="location.href='/mbti'">테스트 다시하기</button>
+    </div>
+
+  </div><!-- /.frame-wrap -->
+</div><!-- /.result-container -->
+
+
+  <!-- 반짝이 효과 요소 -->
+  <div class="sparkle one"></div>
+  <div class="sparkle two"></div>
+  <div class="sparkle three"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const overlay  = document.getElementById('intro-overlay');
+  const slot     = document.querySelector('.slot-machine');
+  const balloons = overlay.querySelectorAll('.balloon');
+  const clouds   = overlay.querySelectorAll('.cloud');
+
+  /* 0) 메인은 미리 투명 상태로 준비 (CSS에 opacity:0;transition:.45s 넣어둬) */
+  slot.style.display = 'block';          // display:none 대신 block + 투명
+  slot.classList.remove('show');         // 혹시나
+  // 구형 CSS라면 일단 opacity 0 넣어도 됨: slot.style.opacity = 0;
+
+  /* 1) 구름 등장 */
+  clouds.forEach(c => c.classList.add('enter'));
+
+  /* 2) 구름 등장 끝 → 풍선 drop */
+  waitAnimEnd(clouds[clouds.length - 1], 'cloudEnter', 1500)
+    .then(() => {
+      balloons.forEach(b => b.classList.add('drop'));
+      return waitAnimEnd(balloons[balloons.length - 1], 'balloonDrop', 1500);
+    })
+    .then(() => {
+      /* 3) 동시에 시작!
+         - 풍선 페이드
+         - 구름 좌우 이동
+         - 메인 화면 페이드인
+         - 오버레이 페이드아웃(조금 딜레이 주고 시작하면 더 자연스러움)
+      */
+      balloons.forEach(b => b.classList.add('fade'));
+      clouds[0]?.classList.add('exit-left');
+      clouds[1]?.classList.add('exit-right');
+
+      // 메인 바로 페이드인
+      slot.classList.add('show');    // CSS: .slot-machine.show{opacity:1;}
+
+      // 오버레이 페이드 약간 늦게
+      setTimeout(() => overlay.classList.add('fade-overlay'), 150);
+
+      return waitAnimEnd(overlay, 'overlayFade', 1200);
+    })
+    .then(() => {
+      overlay.remove();
+      document.body.classList.add('gradient-ready');
+    });
+
+  /* 특정 animationName 기다리기 + 타임아웃 보호 */
+  function waitAnimEnd(el, name, timeout = 2000){
+    return new Promise(res => {
+      let done = false;
+      function handler(e){
+        if (!name || e.animationName === name){
+          done = true;
+          el.removeEventListener('animationend', handler);
+          res();
+        }
+      }
+      el.addEventListener('animationend', handler);
+      // 타임아웃 대비
+      setTimeout(() => {
+        if(!done){
+          el.removeEventListener('animationend', handler);
+          res();
+        }
+      }, timeout);
+    });
+  }
+});
+</script>
+
+
+
+
+
+<script>
+  const startBtn = document.querySelector('.start-btn');
+  const slotMachine = document.querySelector('.slot-machine');
+  const questionBox = document.getElementById('question-box');
+  const resultBox = document.getElementById('result-box');
+
+  function startTest() {
+    slotMachine.style.display = 'none';
+    questionBox.style.display = 'block';
+    showQuestion(currentQuestion);
+  }
+
+  let currentQuestion = 0;
+  const answers = [];
+
+  const questions = [
+    {
+      title: "투자 시 더 중요한 것은?",
+      optionA: { text: "무조건!!\n높은 수익률", img: "/images/1-1.png" },
+      optionB: { text: "조금 천천히 오르더라도\n안전하게!!", img: "/images/1-3.png" }
+    },
+    {
+      title: "투자를 시작할 때",
+      optionA: { text: "계획을 철저히 세운 뒤\n신중히 시작", img: "/images/2-3.png" },
+      optionB: { text: "일단 시작하고\n경험하면서 배우는 편", img: "/images/icons6.png" }
+    },
+    {
+      title: "펀드 가입 직전에 당신은?",
+      optionA: { text: "마지막까지 혼자 비교 분석하고\n신중히 고민함 ", img: "/images/2-4.png" },
+      optionB: { text: "경험 있는 지인의 의견을 들어보며 결정함", img: "/images/3-1.png" }
+    },
+    {
+      title: "펀드 수익률이 5% 하락했다면?",
+      optionA: { text: "더 떨어지기 전에\n빨리 팔자!!", img: "/images/4-2.png" },
+      optionB: { text: "다시 오를테니까\n기다려보자~", img: "/images/4-5.png" }
+    },
+    {
+      title: "투자 중 수익이 크게 오르면?",
+      optionA: { text: "지금이 기회야! 수익 실현!", img: "/images/5-1.png" },
+      optionB: { text: "아직 목표 안 됐어. 더 기다려~", img: "/images/5-2.png" }
+    }
+  ];
+
+  function showQuestion(index) {
+    const q = questions[index];
+    document.getElementById('question-number').textContent = `0${index + 1}`;
+    document.getElementById('question-title').textContent = q.title;
+    document.getElementById('optionAText').textContent = q.optionA.text;
+    document.getElementById('optionAImg').src = q.optionA.img;
+    document.getElementById('optionBText').textContent = q.optionB.text;
+    document.getElementById('optionBImg').src = q.optionB.img;
+
+    // ✅ A/B 카드 클래스 색상 적용
+    const optionA = document.querySelector('.option-a');
+    const optionB = document.querySelector('.option-b');
+
+    optionA.classList.remove('A', 'B'); // 혹시 이전에 잘못 붙어 있을 경우 제거
+    optionB.classList.remove('A', 'B');
+
+    optionA.classList.add('A');  // 배경색 지정용 클래스
+    optionB.classList.add('B');
+
+    // 이전 버튼 표시 여부
+    document.getElementById('prev-btn').style.display = index === 0 ? 'none' : 'inline-block';
+  }
+
+  function selectOption(optionIndex) {
+    answers[currentQuestion] = optionIndex;
+
+    const card = document.getElementById("question-card");
+    card.classList.remove('slide-in-back', 'slide-in-reverse');
+    void card.offsetWidth;
+    card.classList.add('slide-out-left');
+
+    setTimeout(() => {
+      if (currentQuestion < questions.length - 1) {
+        currentQuestion++;
+        showQuestion(currentQuestion);
+        card.classList.remove('slide-out-left');
+        card.classList.add('slide-in-back');
+      } else {
+        questionBox.classList.add('slide-out-left');
+        setTimeout(() => {
+          showResult();
+        }, 300);
+      }
+    }, 300);
+  }
+
+  function prevQuestion() {
+    if (currentQuestion > 0) {
+      currentQuestion--;
+      const card = document.getElementById("question-card");
+      card.classList.remove('slide-out-left', 'slide-in-back');
+      void card.offsetWidth;
+      showQuestion(currentQuestion);
+      card.classList.add('slide-in-reverse');
+    }
+  }
+
+  function showResult() {
+    questionBox.style.display = "none";
+    resultBox.style.display = "flex";
+
+    let profile = {
+      aggressiveness: answers[0] === 0 ? 1 : 0,
+      planning: answers[1] === 0 ? 1 : 0,
+      info: answers[2] === 0 ? 1 : 0,
+      response: answers[3] === 1 ? 1 : 0,
+      goal: answers[4] === 1 ? 1 : 0
+    };
+
+    const code =
+      (profile.aggressiveness ? "AGG" : "SAFE") + "-" +
+      (profile.planning ? "PLAN" : "FREE") + "-" +
+      (profile.info ? "ANA" : "TREND") + "-" +
+      (profile.response ? "PATI" : "REACT") + "-" +
+      (profile.goal ? "STEAD" : "HIGH");
+
+    const result = resultMap[code];
+    document.getElementById("mbti-type").innerText = result.title;
+    document.getElementById("mbti-desc").innerText = result.description;
+    document.getElementById("mbti-tag").innerText = result.tag;
+    document.getElementById("mbti-image").src = result.image;
+  }
+</script>
+
+  <script src="/js/test_result_map.js"></script>
+</body>
+</html>

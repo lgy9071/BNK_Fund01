@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- 라이브러리 -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+        <!-- 페이지 스타일 -->
+        <link rel="stylesheet" href="/css/fund/fund_detail.css" />
+        <!-- 프레그먼트 스타일 -->
+        <link rel="stylesheet" href="/css/userHeader.css" />
+        <link rel="stylesheet" href="/css/footer.css" />
+        <link rel="stylesheet" href="/css/fundMainHeader.css" />
+        <!-- 제목 -->
+        <title>펀드 상세 정보</title>
+    </head>
+    <body>
+        <!-- 헤더 영역 -->
+        <th:block th:replace="fragments/userHeader :: userHeader"></th:block>
+        <th:block
+            th:replace="fragments/fundMainHeader :: fundMainHeader"
+        ></th:block>
+        <!-- 메인 영역 -->
+        <div class="container">
+            <!-- 페이지 제목 영역 -->
+            <div class="page-title-container">
+                <h1 class="page-title">펀드 상세</h1>
+            </div>
+
+            <!-- 에러 표시 -->
+            <div id="error" class="error hidden">
+                <p id="error-message">오류가 발생했습니다.</p>
+            </div>
+
+            <!-- ── 로딩 오버레이 ── -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>펀드 정보를 불러오는 중...</p>
+            </div>
+
+            <!-- 펀드 상세 컨테이너 -->
+            <div id="fund-detail-container" class="fund-detail-container">
+                <!-- 펀드명 -->
+                <div class="fund-item-container">
+                    <h2 class="item-title">펀드명</h2>
+                    <span id="fund-name" class="fund-name">
+                        <!-- 동적으로 로드 -->
+                    </span>
+                </div>
+
+                <!-- 펀드 상세 정보 -->
+                <div class="fund-item-container">
+                    <h2 class="item-title">펀드 상세 정보</h2>
+                    <table class="fund-info-table">
+                        <tr>
+                            <th>펀드 유형</th>
+                            <td id="fund-type">-</td>
+                            <th>운용회사</th>
+                            <td id="management-company">-</td>
+                        </tr>
+                        <tr>
+                            <th>투자 지역</th>
+                            <td id="investment-region">-</td>
+                            <th>위험 등급</th>
+                            <td>
+                                <span id="risk-level" class="risk-level">
+                                    -
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>설정일</th>
+                            <td id="establish-date">-</td>
+                            <th>출범일</th>
+                            <td id="launch-date">-</td>
+                        </tr>
+                        <tr>
+                            <th>기준가</th>
+                            <td id="nav">-</td>
+                            <th>순자산</th>
+                            <td id="aum">-</td>
+                        </tr>
+                        <tr>
+                            <th>총 보수율</th>
+                            <td id="total-expense-ratio">-</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- 펀드 수익률 -->
+                <div class="fund-item-container">
+                    <h2 class="item-title">펀드 수익률 정보</h2>
+                    <!-- 수익률 막대 그래프 -->
+                    <canvas id="fundChart"></canvas>
+                    <!-- 수익률 상세 테이블 -->
+                    <table class="return-table" id="returnTable">
+                        <thead>
+                            <tr>
+                                <th>구분</th>
+                                <th>1개월</th>
+                                <th>3개월</th>
+                                <th>6개월</th>
+                                <th>12개월</th>
+                            </tr>
+                        </thead>
+                        <tbody id="returnTableBody">
+                            <!-- 동적으로 로드됩니다 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 펀드 포트폴리오 -->
+                <div class="fund-item-container">
+                    <h2 class="item-title">펀드 포트폴리오</h2>
+                    <!-- 포트폴리오 콘텐츠 -->
+                    <div class="portfolio-content">
+                        <!-- 좌측 테이블 -->
+                        <div class="portfolio-table-section">
+                            <table class="portfolio-table" id="portfolioTable">
+                                <thead>
+                                    <tr>
+                                        <th>구분</th>
+                                        <th>자산 비중</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="portfolioTableBody">
+                                    <!-- 동적으로 로드됩니다 -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 우측 도넛 차트 -->
+                        <div class="portfolio-chart-section">
+                            <canvas id="portfolioChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 펀드 공시자료 -->
+                <!-- 
+                    <div class="fund-item-container">
+                        <h2 class="item-title">펀드 공시자료</h2>
+                    </div>
+                -->
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="button-container">
+                <button class="page-btn btn-secondary" onclick="goBack()">
+                    뒤로가기
+                </button>
+                <button class="page-btn btn-primary" onclick="joinFund()">
+                    가입하기
+                </button>
+            </div>
+        </div>
+
+        <!-- 푸터 영역 -->
+        <th:block th:replace="fragments/footer :: siteFooter"></th:block>
+    </body>
+
+    <script>
+        let chart;
+        let portfolioChart;
+        let fundData = null;
+        let currentUserId = null;
+        let currentInvestType = null;
+
+        // URL에서 fundId 추출
+        /* function getFundIdFromUrl() {
+            const pathParts = window.location.pathname.split("/");
+            const fundIdIndex = pathParts.indexOf("fund") + 1;
+            return pathParts[fundIdIndex]
+                ? parseInt(pathParts[fundIdIndex])
+                : null;
+        } */
+
+        // 메타 태그에서 데이터 추출
+        function getDataFromMeta() {
+            const fundIdElement = document.querySelector(
+                'meta[name="fund-id"]'
+            );
+            const investTypeElement = document.querySelector(
+                'meta[name="invest-type"]'
+            );
+            const userIdElement = document.querySelector(
+                'meta[name="user-id"]'
+            );
+
+            const fundId = fundIdElement
+                ? parseInt(fundIdElement.getAttribute("content"))
+                : null;
+            const investType = investTypeElement
+                ? parseInt(investTypeElement.getAttribute("content"))
+                : null;
+            const userId = userIdElement
+                ? parseInt(userIdElement.getAttribute("content"))
+                : null;
+
+            console.log("메타 태그에서 추출된 데이터:", {
+                fundId,
+                investType,
+                userId,
+            });
+
+            return { fundId, investType, userId };
+        }
+
+        // 로딩 상태 관리
+        function showLoading() {
+            document.getElementById("loading").classList.remove("hidden");
+            document
+                .getElementById("fund-detail-container")
+                .classList.add("hidden");
+            document.getElementById("error").classList.add("hidden");
+        }
+
+        function hideLoading() {
+            document.getElementById("loading").classList.add("hidden");
+        }
+
+        function showError(message) {
+            document.getElementById("error-message").textContent = message;
+            document.getElementById("error").classList.remove("hidden");
+            document
+                .getElementById("fund-detail-container")
+                .classList.add("hidden");
+        }
+
+        function showContent() {
+            document
+                .getElementById("fund-detail-container")
+                .classList.remove("hidden");
+        }
+
+        // 펀드 상세 정보 API 호출
+        async function loadFundDetail(fundId) {
+            try {
+                showLoading();
+
+                const response = await fetch(`/api/funds/detail/${fundId}`, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    credentials: "include",
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const apiResponse = await response.json();
+
+                if (!apiResponse.success) {
+                    throw new Error(apiResponse.message || "데이터 로드 실패");
+                }
+
+                fundData = apiResponse.data;
+                renderFundDetail(fundData);
+            } catch (error) {
+                console.error("펀드 데이터 로드 실패:", error);
+                showError(
+                    "펀드 정보를 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요."
+                );
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 펀드 상세 정보 렌더링
+        function renderFundDetail(data) {
+            try {
+                // 펀드명
+                document.getElementById("fund-name").textContent =
+                    data.fundName || "-";
+
+                // 펀드 상세 정보
+                document.getElementById("fund-type").textContent =
+                    data.fundType || "-";
+                document.getElementById("management-company").textContent =
+                    data.managementCompany || "-";
+                document.getElementById("investment-region").textContent =
+                    data.investmentRegion || "-";
+
+                // 위험 등급
+                const riskElement = document.getElementById("risk-level");
+                riskElement.textContent = getRiskText(data.riskLevel);
+                riskElement.className = `risk-level risk-${data.riskLevel}`;
+
+                // 날짜 포맷팅
+                document.getElementById("establish-date").textContent =
+                    formatDate(data.establishDate);
+                document.getElementById("launch-date").textContent = formatDate(
+                    data.launchDate
+                );
+
+                // 숫자 포맷팅
+                document.getElementById("nav").textContent =
+                    formatNumber(data.nav) + "원";
+                document.getElementById("aum").textContent =
+                    (data.aum || 0) + "억원";
+                document.getElementById("total-expense-ratio").textContent =
+                    (data.totalExpenseRatio || 0).toFixed(2) + "%";
+
+                // 수익률 렌더링
+                renderChart(data);
+                renderReturnTable(data);
+
+                // 포트폴리오 렌더링
+                renderPortfolio(data);
+
+                showContent();
+            } catch (error) {
+                console.error("데이터 렌더링 실패:", error);
+                showError("데이터를 표시하는데 문제가 발생했습니다.");
+            }
+        }
+
+        // 날짜 포맷팅
+        function formatDate(dateStr) {
+            if (!dateStr) return "-";
+            return dateStr.replace(/-/g, ". ").replace(/\.$/, "");
+        }
+        // 숫자 포맷팅
+        function formatNumber(value) {
+            if (value === null || value === undefined) return "0";
+            return value.toLocaleString();
+        }
+        // 위험등급 텍스트
+        function getRiskText(riskLevel) {
+            const riskTexts = {
+                1: "1등급 (매우높은위험)",
+                2: "2등급 (높은위험)",
+                3: "3등급 (다소높은위험)",
+                4: "4등급 (보통위험)",
+                5: "5등급 (낮은위험)",
+                6: "6등급 (매우낮은위험)",
+            };
+            return riskTexts[riskLevel] || `${riskLevel}등급`;
+        }
+
+        // 수익률 렌더링
+        function renderChart(data) {
+            const ctx = document.getElementById("fundChart").getContext("2d");
+
+            const returns = [
+                parseFloat(data.return1m || 0),
+                parseFloat(data.return3m || 0),
+                parseFloat(data.return6m || 0),
+                parseFloat(data.return12m || 0),
+            ];
+
+            // 기존 차트 파괴
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: ["1개월", "3개월", "6개월", "12개월"],
+                    datasets: [
+                        {
+                            label: "수익률 (%)",
+                            data: returns,
+                            backgroundColor: returns.map(getColor),
+                            borderColor: returns.map(getBorderColor),
+                            barPercentage: 0.4,
+                            borderSkipped: "bottom",
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: "기간별 수익률 (%)",
+                            font: { size: 16, weight: "bold" },
+                            padding: { top: 10, bottom: 20 },
+                        },
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const value = context.parsed.y;
+                                    return `수익률: ${
+                                        value >= 0 ? "+" : ""
+                                    }${value.toFixed(2)}%`;
+                                },
+                                afterLabel: function (context) {
+                                    const value = context.parsed.y;
+                                    if (value > 0) return "🔴 수익";
+                                    if (value < 0) return "🔵 손실";
+                                    return "➖ 변동 없음";
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: "수익률 (%)",
+                                font: { size: 14, weight: "bold" },
+                            },
+                            grid: {
+                                color: "rgba(0,0,0,0.1)",
+                                drawBorder: false,
+                            },
+                            ticks: {
+                                callback: function (value) {
+                                    return value + "%";
+                                },
+                            },
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: "투자 기간",
+                                font: { size: 14, weight: "bold" },
+                            },
+                            grid: { display: false },
+                        },
+                    },
+                    animation: { duration: 1500, easing: "easeInOutQuart" },
+                    interaction: { intersect: false, mode: "index" },
+                },
+            });
+        }
+        function renderReturnTable(data) {
+            const tbody = document.getElementById("returnTableBody");
+            tbody.innerHTML = "";
+
+            const returns = [
+                parseFloat(data.return1m || 0),
+                parseFloat(data.return3m || 0),
+                parseFloat(data.return6m || 0),
+                parseFloat(data.return12m || 0),
+            ];
+
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                    <td style="text-align: left; font-weight: 500;">수익률</td>
+                    <td class="${getReturnClass(
+                        returns[0]
+                    )}">${formatReturnPercentage(returns[0])}%</td>
+                    <td class="${getReturnClass(
+                        returns[1]
+                    )}">${formatReturnPercentage(returns[1])}%</td>
+                    <td class="${getReturnClass(
+                        returns[2]
+                    )}">${formatReturnPercentage(returns[2])}%</td>
+                    <td class="${getReturnClass(
+                        returns[3]
+                    )}">${formatReturnPercentage(returns[3])}%</td>
+                `;
+            tbody.appendChild(row);
+        }
+
+        // 포트폴리오 렌더링
+        function renderPortfolio(data) {
+            // 테이블 렌더링
+            renderPortfolioTable(data);
+
+            // 도넛 차트 렌더링
+            renderPortfolioChart(data);
+        }
+        // 포트폴리오 테이블 렌더링
+        function renderPortfolioTable(data) {
+            const tbody = document.getElementById("portfolioTableBody");
+            tbody.innerHTML = "";
+
+            // 포트폴리오 데이터 배열
+            const portfolioItems = [
+                {
+                    name: "국내주식",
+                    value: parseFloat(data.domesticStock || 0),
+                },
+                {
+                    name: "해외주식",
+                    value: parseFloat(data.overseasStock || 0),
+                },
+                { name: "국내채권", value: parseFloat(data.domesticBond || 0) },
+                { name: "해외채권", value: parseFloat(data.overseasBond || 0) },
+                {
+                    name: "펀드투자",
+                    value: parseFloat(data.fundInvestment || 0),
+                },
+                { name: "유동성", value: parseFloat(data.liquidity || 0) },
+            ];
+
+            // 모든 항목을 표시 (0% 포함)
+            portfolioItems.forEach((item) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                        <td style="text-align: left; font-weight: 500;">
+                            <span class="portfolio-legend" data-asset="${
+                                item.name
+                            }"></span>
+                            ${item.name}
+                        </td>
+                        <td class="${getPercentageClass(
+                            item.value
+                        )}">${formatPercentage(item.value)}%</td>
+                    `;
+                tbody.appendChild(row);
+            });
+        }
+        // 포트폴리오 도넛 차트 렌더링
+        function renderPortfolioChart(data) {
+            const ctx = document
+                .getElementById("portfolioChart")
+                .getContext("2d");
+
+            // 포트폴리오 데이터 준비
+            const portfolioData = [
+                {
+                    name: "국내주식",
+                    value: parseFloat(data.domesticStock || 0),
+                    color: "#FF6384",
+                },
+                {
+                    name: "해외주식",
+                    value: parseFloat(data.overseasStock || 0),
+                    color: "#36A2EB",
+                },
+                {
+                    name: "국내채권",
+                    value: parseFloat(data.domesticBond || 0),
+                    color: "#FFCE56",
+                },
+                {
+                    name: "해외채권",
+                    value: parseFloat(data.overseasBond || 0),
+                    color: "#4BC0C0",
+                },
+                {
+                    name: "펀드투자",
+                    value: parseFloat(data.fundInvestment || 0),
+                    color: "#9966FF",
+                },
+                {
+                    name: "유동성",
+                    value: parseFloat(data.liquidity || 0),
+                    color: "#FF9F40",
+                },
+            ];
+
+            // 0이 아닌 데이터만 필터링
+            const nonZeroData = portfolioData.filter((item) => item.value > 0);
+
+            if (nonZeroData.length === 0) {
+                // 데이터가 없을 경우 차트 숨기기
+                document.getElementById("portfolioChart").style.display =
+                    "none";
+                return;
+            }
+
+            // 기존 차트 파괴
+            if (portfolioChart) {
+                portfolioChart.destroy();
+            }
+
+            portfolioChart = new Chart(ctx, {
+                type: "doughnut",
+                data: {
+                    labels: nonZeroData.map((item) => item.name),
+                    datasets: [
+                        {
+                            data: nonZeroData.map((item) => item.value),
+                            backgroundColor: nonZeroData.map(
+                                (item) => item.color
+                            ),
+                            borderColor: nonZeroData.map((item) => item.color),
+                            borderWidth: 2,
+                            hoverOffset: 10,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: "자산 구성 비율",
+                            font: { size: 16, weight: "bold" },
+                            padding: { top: 10, bottom: 20 },
+                        },
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                font: { size: 12 },
+                            },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const label = context.label;
+                                    const value = context.parsed;
+                                    return `${label}: ${value.toFixed(2)}%`;
+                                },
+                            },
+                        },
+                    },
+                    cutout: "60%", // 도넛 중앙 구멍 크기
+                    animation: {
+                        duration: 1500,
+                        easing: "easeInOutQuart",
+                    },
+                },
+            });
+
+            // 테이블의 범례 색상 업데이트
+            updateTableLegend(nonZeroData);
+        }
+        // 테이블 범례 색상 업데이트
+        function updateTableLegend(portfolioData) {
+            // 모든 자산 타입에 대해 색상 설정
+            const allAssets = [
+                { name: "국내주식", color: "#FF6384" },
+                { name: "해외주식", color: "#36A2EB" },
+                { name: "국내채권", color: "#FFCE56" },
+                { name: "해외채권", color: "#4BC0C0" },
+                { name: "펀드투자", color: "#9966FF" },
+                { name: "유동성", color: "#FF9F40" },
+            ];
+
+            allAssets.forEach((asset) => {
+                const legendElement = document.querySelector(
+                    `[data-asset="${asset.name}"]`
+                );
+                if (legendElement) {
+                    // 해당 자산이 차트에 표시되는지 확인
+                    const isInChart = portfolioData.some(
+                        (item) => item.name === asset.name
+                    );
+
+                    if (isInChart) {
+                        // 차트에 표시되는 자산은 해당 색상 사용
+                        legendElement.style.backgroundColor = asset.color;
+                        legendElement.style.opacity = "1";
+                    } else {
+                        // 차트에 표시되지 않는 자산은 회색으로 표시
+                        legendElement.style.backgroundColor = "#ddd";
+                        legendElement.style.opacity = "0.5";
+                    }
+                }
+            });
+        }
+
+        // 유틸리티 함수들
+        function getColor(value) {
+            return value >= 0
+                ? "rgba(255, 99, 132, 0.8)"
+                : "rgba(54, 162, 235, 0.8)"; // 양수=빨간색, 음수=파란색
+        }
+        function getBorderColor(value) {
+            return value >= 0
+                ? "rgba(255, 99, 132, 1)"
+                : "rgba(54, 162, 235, 1)"; // 양수=빨간색, 음수=파란색
+        }
+        function getPercentageClass(value) {
+            const numValue = parseFloat(value || 0);
+            if (numValue === 0) return "zero-value";
+            if (numValue >= 50) return "percentage high";
+            if (numValue >= 20) return "percentage medium";
+            return "percentage low";
+        }
+        function formatPercentage(value) {
+            return parseFloat(value || 0).toFixed(2);
+        }
+        // 수익률 색상 클래스 결정
+        function getReturnClass(value) {
+            if (value > 0) return "return-positive"; // 빨간색
+            if (value < 0) return "return-negative"; // 파란색
+            return "return-zero"; // 회색
+        }
+        // 수익률 포맷팅 (양수에 + 기호 추가)
+        function formatReturnPercentage(value) {
+            const formattedValue = value.toFixed(2);
+            return value > 0 ? `+${formattedValue}` : formattedValue;
+        }
+
+        // 버튼 이벤트 핸들러
+        function goBack() {
+            // 목록 페이지로 이동
+            // window.location.href = "/fund/list";
+
+            // 한 페이지 뒤로
+            // window.history.go(-1); // -1은 한 페이지 뒤로
+
+            // 브라우저의 이전 페이지로 이동
+            window.history.back();
+        }
+        function joinFund() {
+            if (!fundData) {
+                alert("펀드 정보를 먼저 로드해주세요.");
+                return;
+            }
+
+            if (!fundData.accessAllowed) {
+                alert(
+                    fundData.accessMessage || "가입 조건을 만족하지 않습니다."
+                );
+                return;
+            }
+
+            // 가입하기 페이지로 이동 또는 가입 로직 실행
+            /*
+            if (confirm(`${fundData.fundName}에 가입하시겠습니까?`)) {
+                window.location.href = `/funds/${fundData.fundId}/join`;
+            }
+            */
+        }
+
+        // 페이지 로드 시 실행
+        document.addEventListener("DOMContentLoaded", function () {
+            // const fundId = getFundIdFromUrl();
+            const { fundId, investType, userId } = getDataFromMeta();
+
+            if (!fundId) {
+                showError("펀드 정보를 찾을 수 없습니다.");
+                return;
+            }
+
+            console.log(
+                "페이지 로드 - 펀드 ID:",
+                fundId,
+                "투자 타입:",
+                investType,
+                "사용자 ID:",
+                userId
+            );
+            loadFundDetail(fundId, investType, userId);
+        });
+    </script>
+
+    <!-- Thymeleaf 데이터 전달을 위한 메타 태그 -->
+    <meta name="invest-type" th:content="${investType}" />
+    <meta name="user-id" th:content="${userId}" />
+    <meta name="fund-id" th:content="${fundId}" />
+</html>

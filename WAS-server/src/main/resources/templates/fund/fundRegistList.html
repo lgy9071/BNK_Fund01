@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>펀드 조회</title>
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/admin/admin_layout.css"/>
+  <link rel="stylesheet" href="/css/admin/fund_register.css"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="admin/admin_header :: adminHeader"></div>
+  <div class="main-wrapper">
+    <div th:replace="admin/admin_aside :: adminAside"></div>
+    <main class="content">
+      <div>
+        <h2 class="fund-list-title">펀드 조회</h2>
+      </div>
+      <div class="container edit-container">
+        <div class="regist-title">
+          <button class="new-fund-btn" th:if="${session.admin.role != 'super'}" onclick="location.href='/admin/fund/new'">+ 펀드 등록</button>
+        </div>
+
+        <table class="fund-table" >
+          <thead>
+            <tr>
+              <th>펀드ID</th>
+              <th>펀드명</th>
+              <th>테마</th>
+              <th>운용중</th>
+              <th>상세</th>
+            </tr>
+          </thead>
+            <tbody>
+              <tr th:each="policy : ${policyPage.content}"
+                  th:onclick="${policy.fund != null} ? 'goToFundDetail(' + ${policy.fund.fundId} + ')' : null"
+                  style="cursor: pointer;">
+                <td th:text="${policy.fund != null ? policy.fund.fundId : '미등록'}"></td>
+                <td th:text="${policy.fund != null ? policy.fund.fundName : '미등록'}"></td>
+                <td th:text="${policy.fundTheme}"></td>
+                <td th:text="${policy.fundActive ? 'Y' : 'N'}"></td>
+                <td>
+                  <a th:if="${policy.fund != null}"
+                    th:href="@{'/admin/fund/view/' + ${policy.fund.fundId}}">상세</a>
+                </td>
+              </tr>
+
+              <!-- 빈 줄 채우기 (10줄 유지) -->
+              <tr th:each="i : ${#numbers.sequence(policyPage.numberOfElements + 1, 10)}">
+                <td colspan="5" style="height:45px;"></td>
+              </tr>
+            </tbody>
+        </table>
+
+        <!-- 페이징 -->
+        <div class="pagination" th:if="${policyPage.totalPages > 1}">
+          <span th:each="i : ${#numbers.sequence(0, policyPage.totalPages - 1)}">
+            <a th:href="@{/admin/fund/list(page=${i})}"
+              th:text="${i + 1}"
+              th:classappend="${i == policyPage.number} ? 'active' : ''">1</a>
+          </span>
+        </div>
+
+        <!-- 수정용 모달창 템플릿 -->
+        <div id="editModal" style="display:none;">
+          <!-- 여기에 선택된 펀드 정보 입력 폼 생성 -->
+        </div>
+
+        <script>
+          function editFund(fundId) {
+            // 수정용 모달 로딩 및 표시 (AJAX로 데이터 불러오기 또는 모달로 페이지 이동)
+            alert("펀드 수정 페이지 연결 예정. ID: " + fundId);
+          }
+        </script>
+      </div>
+    </main>
+  </div><!--main-wrapper end-->
+</div><!--layout end-->
+
+
+<script>
+  function goToFundDetail(fundId) {
+    if (fundId && fundId !== 0) {
+      window.location.href = `/admin/fund/view/${fundId}`;
+    } else {
+      alert('미등록 펀드는 상세보기 할 수 없습니다.');
+    }
+  }
+</script>
+</body>
+</html>

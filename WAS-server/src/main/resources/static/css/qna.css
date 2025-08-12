@@ -1,0 +1,107 @@
+@charset "UTF-8";
+
+body {
+  background-color: #f9f9f9;
+  font-family: 'Noto Sans KR', sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 컨테이너 스타일 */
+.container {
+  width: 100%;
+  max-width: 880px;
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  margin: 0 auto 80px auto; /* 가운데 정렬 + 아래 footer 공간 확보 */
+}
+
+h1 {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin-bottom: 1.2rem;
+  color: #2d838b;
+  border-bottom: 2px solid #2d838b;
+  padding-bottom: 8px;
+}
+
+/* 테이블 */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 1rem;
+  border: 1px solid #e0e0e0;
+  vertical-align: top;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+th {
+  width: 140px;
+  background-color: #f7fafa;
+  color: #333;
+  font-weight: 600;
+}
+
+/* 입력 폼 */
+input[type="text"], textarea {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+textarea {
+  height: 160px;
+  resize: vertical;
+}
+
+/* 버튼 */
+.btn-wrap {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.qna-btn {
+  background-color: #2d838b !important;
+  color: white !important;
+  padding: 0.65rem 2.2rem !important;
+  font-size: 1rem;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+button:hover {
+  background-color: #21656b;
+}
+
+.site-footer {
+  margin-top: 100px;
+}
+
+/* header 및 menu 아이템과 겹침 방지 */
+.header, .fund-main-header {  
+  z-index: 999;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}

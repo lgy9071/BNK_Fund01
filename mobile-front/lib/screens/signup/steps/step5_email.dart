@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/widgets/dismiss_keyboard.dart';
 
 class Step5EmailScreen extends StatefulWidget {
   final String email;
@@ -91,100 +92,102 @@ class _Step5EmailScreenState extends State<Step5EmailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return DismissKeyboard(
+      child: Scaffold(
         backgroundColor: Colors.white,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppColors.primaryBlue),
-          onPressed: widget.onBack,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: AppColors.primaryBlue),
+            onPressed: widget.onBack,
+          ),
+          centerTitle: true,
+          title: Text("회원가입", style: TextStyle(fontSize: 18, color: AppColors.primaryBlue)),
+          elevation: 0,
         ),
-        centerTitle: true,
-        title: Text("회원가입", style: TextStyle(fontSize: 18, color: AppColors.primaryBlue)),
-        elevation: 0,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 32),
-            const Text("이메일", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: TextField(
-                    controller: _localPartController,
-                    keyboardType: TextInputType.emailAddress,
-                    cursorColor: AppColors.primaryBlue,
-                    decoration: const InputDecoration(
-                      hintText: "이메일 입력",
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: AppColors.primaryBlue,
-                          width: 2,
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 32),
+              const Text("이메일", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: TextField(
+                      controller: _localPartController,
+                      keyboardType: TextInputType.emailAddress,
+                      cursorColor: AppColors.primaryBlue,
+                      decoration: const InputDecoration(
+                        hintText: "이메일 입력",
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                            color: AppColors.primaryBlue,
+                            width: 2,
+                          ),
+                        ),
+      
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text("@", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,),),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 5,
+                    child: InkWell(
+                      onTap: _showDomainSelector,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(_selectedDomain ?? "이메일 리스트", style: TextStyle(fontSize: 18),),
+                            Icon(Icons.arrow_drop_down, color: AppColors.primaryBlue),
+                          ],
                         ),
                       ),
-
                     ),
+      
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Text("@", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,),),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 5,
-                  child: InkWell(
-                    onTap: _showDomainSelector,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(_selectedDomain ?? "이메일 리스트", style: TextStyle(fontSize: 18),),
-                          Icon(Icons.arrow_drop_down, color: AppColors.primaryBlue),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                ),
-              ],
-            ),
-            const Spacer(),
-            Row(
-              children: [
-                Expanded(
-                  child: LinearProgressIndicator(
-                    value: 5 / 5,
-                    backgroundColor: Colors.grey[300],
-                    color: AppColors.primaryBlue,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text("5 / 5"),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isValid ? _handleComplete : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isValid ? AppColors.primaryBlue : Colors.grey[300],
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text("완료"),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const Spacer(),
+              Row(
+                children: [
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: 5 / 5,
+                      backgroundColor: Colors.grey[300],
+                      color: AppColors.primaryBlue,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text("5 / 5"),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isValid ? _handleComplete : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isValid ? AppColors.primaryBlue : Colors.grey[300],
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("완료"),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );

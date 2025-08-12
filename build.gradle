@@ -1,0 +1,60 @@
+plugins {
+    id 'org.springframework.boot' version '3.5.4' apply false 
+    id 'io.spring.dependency-management' version '1.1.7' apply false 
+}
+
+ext {
+    springBootVersion = '3.5.4'
+    springAiVersion   = '1.0.0'
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+    
+
+    group = 'com.example'
+    version = '0.0.1-SNAPSHOT'
+
+    java {
+        toolchain { languageVersion = JavaLanguageVersion.of(21) }
+    }
+
+    repositories { mavenCentral() }
+
+    dependencies {
+        // lombok 공통
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+        }
+    }
+}
+
+/** 모듈별 플러그인 적용 분리 **/
+
+
+project(':AP-server') {
+    plugins.apply("org.springframework.boot")
+    // 필요하면 버전 명시:
+    // plugins { id 'org.springframework.boot' version "${springBootVersion}" }
+}
+
+project(':WAS-server') {
+    plugins.apply("org.springframework.boot")
+}
+
+project(':common') {
+    apply plugin: 'java-library'
+}

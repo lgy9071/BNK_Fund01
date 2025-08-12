@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>관심 펀드 목록</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="container">
+<h2>♥ 관심 등록한 펀드 목록</h2>
+
+<div th:if="${#lists.isEmpty(funds)}">
+  <p>관심 등록한 펀드가 없습니다.</p>
+</div>
+
+<table th:if="${!#lists.isEmpty(funds)}" class="table">
+  <thead>
+  <tr><th>#</th><th>펀드명</th><th>운용사</th><th>해제</th></tr>
+  </thead>
+  <tbody>
+  <tr th:each="f, stat : ${funds}">
+    <td th:text="${stat.count}"></td>
+    <td><a th:href="@{|/fund/${f.fundId}|}" th:text="${f.name}"></a></td>
+    <td th:text="${f.company}"></td>
+    <td>
+      <button class="btn btn-sm btn-outline-danger toggle"
+              th:data-id="${f.fundId}">♥ 해제</button>
+    </td>
+  </tr>
+  </tbody>
+</table>
+
+<script>
+  $(document).on('click', '.toggle', function () {
+    const id = $(this).data('id');
+    $.post(`/mypage/favorites/${id}/toggle`, () => location.reload());
+  });
+</script>
+</body>
+</html>

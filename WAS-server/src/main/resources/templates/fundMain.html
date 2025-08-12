@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>펀드 메인 페이지</title>
+
+  <!-- 폰트 & 아이콘 -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- 전용 CSS -->
+  <link rel="stylesheet" href="/css/fundMain.css">
+	<link rel="stylesheet" href="/css/reset.css" />
+	<link rel="stylesheet" href="/css/userHeader.css" />
+	<link rel="stylesheet" href="/css/footer.css" />
+	<link rel="stylesheet" href="/css/fundMainHeader.css" />
+</head>
+<body>
+<th:block th:replace="fragments/userHeader :: userHeader" th:unless="${disableReset}"/>
+<th:block th:replace="fragments/fundMainHeader :: fundMainHeader"></th:block>
+
+  <!-- 📌 중앙 정렬 래퍼 -->
+  <div class="wrapper">
+
+
+    <!-- 안내 문구 -->
+    <div class="headline">
+      <p class="slogan">나의 투자 성향에 맞는 <b>다양한 펀드</b>를 확인해보세요</p>
+    </div>
+
+    <!-- 카드 영역 -->
+    <section class="cards">
+      <button onclick="location.href='/fund/list'" class="card big" id="big1">
+      	<img src="/images/rec5.png" id="rec-img">
+      	<span class="card-desc">
+		   나의 투자 성향에<br>
+		   꼭 맞는 펀드 추천
+		</span>
+      	<span class="card-title2" id="rec-title">추천 펀드</span>
+      </button>
+      
+      <button class="card big" id="big2" onclick="location.href='/fund/best-return'">
+      	<img src="/images/best.png">
+      	<span class="card-desc">
+		   수익률이 가장 높은<br>
+		   펀드 상품 TOP 10
+		</span>
+      	<span class="card-title2" id="best-title">수익률 BEST</span>
+      </button>
+
+     <button onclick="location.href='/guide'" class="card small icon guide-card">
+		<img src="/images/main1.png" alt="">
+		<span class="card-title">
+		   펀드가 처음이신가요?<br><b class="card-title2">펀드 가이드</b>
+		 </span>
+	 </button>
+	<!-- 아이콘형 카드 (펀드 MBTI) -->
+	<button type="button" onclick="location.href='/mbti'" class="card small icon mbti-card">
+	  <img src="/images/main2.png" alt="MBTI" class="mbti-img">
+	  <span class="card-title">
+	    나의 투자 성격은?<br><b class="card-title2">펀드 MBTI</b>
+	  </span>
+	</button>
+    </section>
+    
+  <section class="cards2">
+  <button onclick="location.href='/faq'"  class="c2 faq" data-desc="자주 묻는 질문 모음">
+  <img src="/images/faq-1.png" alt="">
+  <span class="card-title2 br">FAQ</span>
+</button>
+
+
+ <button onclick="location.href='/fund_status'"  class="c2 market" data-desc="- 이번 주 펀드 시장 한눈에
+- 국내·해외 시황 리포트">
+  <img src="/images/status.png">
+  <span class="card-title2 br">펀드시황</span>
+  </button>
+
+  <button onclick="location.href='/profile'"  class="c2 profile tall">
+	  <span class="profile-title">투자성향분석</span>
+	  <span class="profile-desc">
+	    - 내 투자 성향 알아보기<br>
+	    - 성향 진단하고 맞춤 상품 보기
+	  </span>
+	  <img src="/images/invest.png">
+  </button>
+
+  <button onclick="location.href='/qna'" class="c2 qna"  data-desc="나만의 맞춤 상담">
+    <img src="/images/btn1.png" alt="">
+    <span class="card-title2 br">1:1 문의</span>
+  </button>
+</section>
+  </div>
+<th:block th:replace="fragments/footer :: siteFooter" class="site-footer"></th:block>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const path = location.pathname;
+  document.querySelectorAll('.fund-tabs .tab').forEach(a => {
+    if (path.startsWith(a.getAttribute('href'))) {
+      a.classList.add('active');
+    }
+  });
+});
+</script>
+
+
+
+
+</body>
+</html>

@@ -2,31 +2,22 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Spring Boot-BnkProject01Application<server>",
+            "name": "Spring Boot-ApApplication<AP-server>",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "mainClass": "com.example.fund.BnkProject01Application",
-            "projectName": "server",
+            "mainClass": "com.example.ap.ApApplication",
+            "projectName": "AP-server",
             "args": "",
-            "envFile": "${workspaceFolder}/.env"
+            "envFile": "${workspaceFolder}/.env",
+            "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=63760 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=AP-server"
         },
         {
             "type": "java",
-            "name": "Spring Boot-BnkProject01Application<BNK_project01-server>",
+            "name": "Spring Boot-WasServerApplication<WAS-server>",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "mainClass": "com.example.fund.BnkProject01Application",
-            "projectName": "BNK_project01-server",
-            "args": "",
-            "envFile": "${workspaceFolder}/.env"
-        },
-        {
-            "type": "java",
-            "name": "Spring Boot-WebsocketApplication<demo-websocket>",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "mainClass": "com.example.demo.WebsocketApplication",
-            "projectName": "demo-websocket",
+            "mainClass": "com.example.was.WasServerApplication",
+            "projectName": "WAS-server",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
         }

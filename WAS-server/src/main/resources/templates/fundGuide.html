@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>펀드 안내</title>
+<link rel="stylesheet" href="/css/fundGuide.css">
+<link rel="stylesheet" href="/css/reset.css" />
+<link rel="stylesheet" href="/css/userHeader.css" />
+<link rel="stylesheet" href="/css/footer.css" />
+<link rel="stylesheet" href="/css/fundMainHeader.css" />
+</head>
+<body>
+<th:block th:replace="fragments/userHeader :: userHeader"></th:block>
+<th:block th:replace="fragments/fundMainHeader :: fundMainHeader"></th:block>
+<div class="container">
+  <h1>펀드 가이드</h1>
+
+  <div class="section-title">펀드 투자 유형 가이드</div>
+  <div class="guide-box">
+    <div th:each="guide : ${list1}" class="guide-item">
+      <strong th:text="${guide.term}">채권형</strong>
+      <span th:text="${guide.definition}">정의</span>
+    </div>
+  </div>
+
+  <div class="section-title">수익증권 용어해설</div>
+  <div class="definition-list">
+    <div th:each="guide, stat : ${list2}" class="definition-item">
+      <div class="circle-num" th:text="${stat.index + 1}">1</div>
+      <div class="definition-content">
+        <div class="term-title" th:text="${guide.term}">용어명</div>
+        <ul>
+          <li th:each="sentence : ${splitList[stat.index]}" th:text="|${sentence}.|"></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<th:block th:replace="fragments/footer :: siteFooter"></th:block>
+</body>
+</html>

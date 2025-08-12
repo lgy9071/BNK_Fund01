@@ -1,0 +1,121 @@
+/*
+*admin_login css
+*/
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #f5f7f8;
+    font-family: 'Noto Sans KR', sans-serif;
+}
+@font-face {
+  font-family: 'BNK';
+  src: url('/font/BNKGothic-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'BNK';
+  src: url('/font/BNKGothic-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('/font/Pretendard-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('/font/Pretendard-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('/font/Pretendard-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+.login-container {
+    background: #ffffff;
+    padding: 2.8rem 3.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    width: 320px;
+    text-align: center;
+}
+
+/* 페이지 타이틀 */
+.page-title {
+    font-size: 1.6rem;
+    margin-bottom: 1.6rem;
+    font-weight: 700;
+    font-family: 'Pretendard';
+    font-weight: 600;
+    width: 100%;
+}
+
+.logo-container {
+    margin-bottom: 0.5rem;
+}
+.logo-container img {
+    max-width: 35%;
+    height: auto;
+}
+
+.login-container input[type="text"],
+.login-container input[type="password"] {
+    width: 100%;
+    padding: 0.8rem;
+    margin-bottom: 1.3rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.login-container input::placeholder{
+    font-family: 'BNK';
+    font-weight: 400;
+    font-size: 0.85rem;
+}
+
+.login-container input[type="text"]:focus,
+.login-container input[type="password"]:focus {
+    outline: none;
+    border-color: #117C88;
+    box-shadow: 0 0 0 2px rgba(17,124,136,0.2);
+}
+
+.login-container input[type="submit"] {
+    width: 100%;
+    padding: 0.85rem;
+    background-color: #117C88;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s ease-in-out;
+    font-family: 'Pretendard';
+    font-weight: 400;
+}
+.login-container input[type="submit"]:hover {
+    background-color: #0e666f;
+    font-weight: 700;
+}
+
+.login-container p {
+    margin: 0.75rem 0 0;
+    font-size: 0.9rem;
+    color: #e74c3c;
+}

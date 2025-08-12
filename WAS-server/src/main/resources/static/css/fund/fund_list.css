@@ -1,0 +1,1291 @@
+/* ─────────── 폰트 설정 ─────────── */
+@font-face {
+    font-family: "BNK";
+    /* src: url("../../font/BNKGothic-Regular.ttf") format("truetype"); */
+    src: url("/font/BNKGothic-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+}
+@font-face {
+    font-family: "BNK";
+    /* src: url("../../font/BNKGothic-Bold.ttf") format("truetype"); */
+    src: url("/font/BNKGothic-Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+}
+
+:root {
+    --gap: 8px;
+    --text: #222;
+    --sub: #666;
+    --primary: #a00000;
+    --border: #dcdfe4;
+    --fund-item-bg: #fff;
+    --fund-item-border: #e4e6ef;
+    --pos: #d73a49;
+    --neg: #1a6ed8;
+    --risk1: #e53935;
+    --risk2: #ff7043;
+    --risk3: #ffa726;
+    --risk4: #d4d916;
+    --risk5: #68b62e;
+    --risk6: #2f9dff;
+    /* --primary-border: #e4e6ef; */
+    /* --bg: #f5f6fa; */
+}
+
+/* ─────────── 기본 리셋 및 레이아웃 ─────────── */
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: "BNK" ;
+    font-weight: 400;
+    color: #262626;
+}
+.container {
+    max-width: 1080px;
+    padding: 0px 20px 0px;
+    margin: 0 auto; /* 가로 중앙 정렬 */
+}
+
+/* ─────────── 제목 영역 ─────────── */
+.title-container {
+    /* text-align: center; */
+    margin: 54px 0 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.title {
+    /* font-size: 42px; */
+    font-size: 40px;
+    margin: 0;
+}
+.title-user-info {
+    font-size: 14px;
+}
+.invest-type {
+    padding: 2px 6px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    background-color: #dbdbdb;
+}
+.invest-type-1 {
+    color: #2f9dff;
+    padding: 2px 6px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    background-color: rgba(47, 157, 255, 0.1);
+}
+.invest-type-2 {
+    color: #68b62e;
+    padding: 2px 6px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    background-color: rgba(104, 182, 46, 0.1);
+}
+.invest-type-3 {
+    color: #d4d916;
+    padding: 2px 6px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    background-color: rgba(212, 217, 22, 0.1);
+}
+.invest-type-4 {
+    color: #ff7043;
+    padding: 2px 6px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    background-color: rgba(255, 112, 67, 0.1);
+}
+.invest-type-5 {
+    color: #e53935;
+    padding: 2px 6px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    background-color: rgba(229, 57, 53, 0.1);
+}
+/* .title-sub {
+    font-size: 16px;
+    margin: 8px 0 0;
+} */
+
+/* ─────────── 필터 영역 ─────────── */
+.filter-container {
+    /* border-top: 6px solid var(#a00000); */
+    /* background: var(#ffffff); */
+    /* border: 1px solid #ddd; */
+    /* border-radius: 8px; */
+
+    /* box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06); */
+    /* padding: 32px 40px 40px; */
+    display: flex;
+    flex-direction: column;
+    max-width: 800px;
+    margin: 56px auto 56px auto;
+    gap: 16px;
+}
+/* 개별 행 */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    align-items: center;
+}
+.row-label {
+    /* width: 110px; */
+    font-weight: 700;
+}
+/* 옵션 그룹 */
+.options label {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    gap: 6px;
+    line-height: 1;
+    margin-right: 8px;
+    cursor: pointer;
+}
+/* 체크박스 자체 */
+.options input[type="checkbox"] {
+    margin: 0; /* 기본 여백 초기화 */
+}
+/* 입력·셀렉트 공통 */
+input[type="text"] {
+    min-width: 240px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 15px;
+}
+/* 버튼 */
+.filter-btn-container {
+    display: flex;
+    justify-content: center;
+}
+.filter-btn {
+    padding: 6px 24px;
+    font-family: "BNK";
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    /* border: none; */
+    /* border-radius: 2px; */
+    /* background-color: white; */
+    /* background-color: #d4d4d4; */
+    /* transition: background 0.3s ease; */
+}
+.search-btn:hover {
+    /* background: #9d9d9d; */
+}
+
+/* ─────────── 펀드 콘텐츠 ─────────── */
+.fund-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 800px;
+    margin: 40px auto 40px auto;
+}
+/* ─────────── 메시지 ─────────── */
+.message {
+    /* margin: 20px 0; */
+    /* font-size: 12px; */
+    padding-left: 4px;
+    /* padding: 16px 20px; */
+    /* color: var(--primary); */
+    display: none;
+    /* margin: 8px auto 8px auto; */
+}
+.message.show {
+    display: block;
+}
+.result-count {
+    font-size: 12px;
+    color: #495057;
+}
+.result-count strong {
+    color: #007bff;
+    /* font-weight: 600; */
+}
+/* ─────────── 펀드 리스트 ─────────── */
+.fund-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    /* max-width: 800px; */
+    margin: 8px auto 8px auto;
+    width: 100%; /* 추가 */
+    max-width: none;
+    /* max-width: 1000px; */
+}
+/* 펀드 아이템 */
+.fund-item {
+    /* box-shadow: var(--card-shadow); */
+    /* padding: 20px 24px; */
+    display: flex; /* 가로 정렬 */
+    /* justify-content: center; */
+    justify-content: space-between; /* 또는 이렇게 변경 */
+    align-items: center; /* 수직 가운데 */
+    gap: 8px;
+    border: 1px solid var(--fund-item-border);
+    border-radius: 8px;
+    background: var(--fund-item-bg);
+    padding: 16px;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+.fund-item.selected {
+    border-color: #007bff;
+    /* box-shadow: 0 2px 12px rgba(0, 123, 255, 0.15); */
+    background-color: #f8f9ff;
+    /* transform: translateY(-2px); */
+    transition: all 0.3s ease;
+}
+/* 메타 영역 */
+.fund-meta {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--gap);
+}
+.fund-name {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+}
+.fund-name-link {
+    color: inherit;
+    text-decoration: none;
+    /* transition: all 0.2s ease; */
+}
+.fund-name-link:hover {
+    /* color: #007bff; */
+    text-decoration: underline;
+}
+/* .fund-name-link:visited {
+    color: inherit;
+} 
+*/
+.fund-detail {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+    color: #666;
+}
+.fund-detail li::before {
+    content: "• ";
+    color: #999; /* 구분자 색상 */
+}
+.badge-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+}
+.type {
+    background: #f3f6ff;
+    color: #1a5fcc;
+}
+.region {
+    background: #f5f5f5;
+    color: #555;
+}
+.company {
+    background: #fff4cc;
+    color: #a46d00;
+}
+.risk {
+    color: #fff;
+}
+.risk-1 {
+    background: var(--risk1);
+}
+.risk-2 {
+    background: var(--risk2);
+}
+.risk-3 {
+    background: var(--risk3);
+}
+.risk-4 {
+    background: var(--risk4);
+}
+.risk-5 {
+    background: var(--risk5);
+}
+.risk-6 {
+    background: var(--risk6);
+}
+/* 수익률 */
+.fund-return {
+    display: flex;
+    flex: 1;
+    /* flex: 0 0 30%; */
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    /* gap: var(--gap); */
+}
+.stat {
+    /* text-align: center; */
+    /* justify-content: space-evenly; */
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    text-align: center;
+    justify-content: space-evenly;
+    gap: 16px;
+}
+.stat span {
+    font-size: 14px;
+    color: #777;
+}
+.stat strong {
+    font-size: 18px;
+    font-weight: 700;
+}
+.pos {
+    color: var(--pos);
+}
+.neg {
+    color: var(--neg);
+}
+.zero {
+    color: #6c757d;
+}
+
+/* ─────────── Loading Overlay ─────────── */
+/* .loading {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    color: #7f8c8d;
+} */
+.loading {
+    position: fixed; /* 화면 전체 덮기 */
+    inset: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(2px);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    font-size: 16px;
+    color: #555;
+    z-index: 9999; /* 카드·푸터 위에 */
+}
+.loading.show {
+    display: flex;
+}
+.spinner {
+    width: 36px;
+    height: 36px;
+    border: 4px solid #ccc;
+    border-top-color: #3b7bfd;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ─────────── 더보기 버튼 ─────────── */
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    /* margin: 16px 0px; */
+    /* text-align: center;  */
+}
+.load-more-btn {
+    padding: 6px 24px;
+    font-family: "BNK";
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+}
+.load-more-btn:hover {
+    /* background: #eee; */
+}
+
+/* ─────────── 비교 버튼 영역 ─────────── */
+.fund-compare-check {
+}
+.compare-add-btn {
+    background: #fff;
+    border: 1px solid #007bff;
+    color: #007bff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    font-family: "BNK";
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+.compare-add-btn:hover {
+    background: #007bff;
+    color: white;
+    /* transform: translateY(-1px); */
+    /* box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3); */
+}
+.compare-add-btn.selected {
+    background: #007bff;
+    color: white;
+    transition: all 0.3s ease;
+    /* box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3); */
+}
+.compare-add-btn.selected::before {
+    /* content: "✓ "; */
+}
+
+/* ─────────── 하단 고정 비교바 ─────────── */
+.compare-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0 8px 8px 8px;
+    border-radius: 4px;
+    background: #007bff;
+    /* background: linear-gradient(135deg, #007bff, #0056b3); */
+    color: white;
+    padding: 8px 16px;
+    /* box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15); */
+    display: none;
+    z-index: 1000;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+.compare-bar.show {
+    display: flex;
+    transform: translateY(0);
+}
+.compare-bar-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    /* max-width: 1200px; */
+    margin: 0 auto;
+    gap: 16px;
+}
+.compare-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+.compare-count {
+    font-weight: bold;
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 8px;
+    border-radius: 4px;
+    min-width: 80px;
+    text-align: center;
+}
+.selected-funds-preview {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    overflow-x: auto;
+    /* padding: 2px 0; */
+}
+.fund-preview {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+    max-width: 200px;
+}
+.fund-preview-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+.fund-remove-btn {
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    /* border-radius: 50%; */
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+.fund-remove-btn:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+.compare-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.clear-all-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: "BNK";
+    transition: all 0.3s ease;
+}
+.clear-all-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+.compare-btn {
+    background: white;
+    color: #007bff;
+    border: none;
+    /* padding: 12px 24px; */
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+    font-family: "BNK";
+    transition: all 0.3s ease;
+    /* transition: all 0.3s ease; */
+    /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); */
+}
+.compare-btn:hover:not(:disabled) {
+    background: #0056b3;
+    color: white;
+    /* transform: translateY(-1px); */
+    /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); */
+}
+.compare-btn:disabled {
+    background: rgba(255, 255, 255, 0.5);
+    color: rgba(0, 123, 255, 0.5);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ─────────── Footer ─────────── */
+.page-footer {
+    margin-top: 60px;
+    padding: 40px 0;
+    background: #1f1f1f;
+    color: #cfcfcf;
+    font-size: 14px;
+}
+.footer-inner {
+    padding: 0px 20px;
+    max-width: 1080px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: space-between;
+}
+
+.footer-info {
+    flex: 1 1 260px;
+    line-height: 1.5;
+}
+.footer-logo {
+    margin: 0 0 12px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+}
+.footer-logo span {
+    color: var(--risk2);
+} /* 포인트 컬러 사용 */
+
+.footer-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.footer-nav a {
+    color: #cfcfcf;
+    text-decoration: none;
+}
+.footer-nav a:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.footer-contact {
+    flex: 1 1 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.sns a {
+    font-size: 20px;
+    margin-right: 10px;
+    text-decoration: none;
+    transition: opacity 0.15s;
+}
+.sns a:hover {
+    opacity: 0.7;
+}
+
+/* ─────────── 펀드 비교 모달 스타일 ─────────── */
+/* 모달 오버레이 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* background: rgba(0, 0, 0, 0.6); */
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 40px;
+}
+.modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+/* 모달 컨테이너 */
+.modal-container {
+    background: white;
+    /* border-radius: 12px; */
+    /* box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2); */
+    border-radius: 4px;
+    border: 1px solid #ccc; /* #ddd */
+    width: 100%;
+    /* max-width: 1200px; */
+    /* max-height: 90vh; */
+    max-width: 880px;
+    /* min-width: 720px; */
+    max-height: 80vh;
+    overflow: hidden;
+    /* transform: scale(0.9) translateY(30px); */
+    /* transition: transform 0.3s ease; */
+    display: flex;
+    flex-direction: column;
+}
+.modal-overlay.show .modal-container {
+    /* transform: scale(1) translateY(0); */
+}
+/* 모달 헤더 */
+.modal-header {
+    /* padding: 8px 16px; */
+    border-bottom: 1px solid #e9ecef; /* 헤더 바디 분리선 */
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* background: linear-gradient(135deg, #f8f9fa, #ffffff); */
+}
+.modal-title {
+    margin: 0;
+    /* font-size: 24px; */
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    /* gap: 12px; */
+}
+.modal-icon {
+    /* font-size: 28px; */
+}
+.modal-close-btn {
+    /* background: #f8f9fa; */
+    /* border: none; */
+    /* border-radius: 50%; */
+    /* width: 40px; */
+    /* height: 40px; */
+    width: 24px;
+    height: 24px;
+    border: 1px solid #ccc;
+    /* border-radius: 4px; */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    /* transition: all 0.2s ease; */
+}
+.modal-close-btn:hover {
+    /* background: #e9ecef; */
+    /* color: #495057; */
+    /* transform: scale(1.1); */
+}
+
+/* 모달 바디 */
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+/* 비교 요약 */
+/*.compare-summary {
+    padding: 24px 32px;
+    background: #f8f9ff;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+} 
+*/
+/*.summary-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #007bff;
+}
+*/
+/*.summary-actions {
+    display: flex;
+    gap: 12px;
+}
+*/
+/*.summary-btn {
+    background: white;
+    border: 2px solid #007bff;
+    color: #007bff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+*/
+/*.summary-btn:hover {
+    background: #007bff;
+    color: white;
+    transform: translateY(-1px);
+}
+*/
+
+/* 모달 비교 테이블 컨테이너 */
+.compare-table-container {
+    /* overflow-x: auto; */
+    max-height: 500px;
+    /* overflow-y: auto; */
+    /* padding: 8px 16px; */
+}
+/* 비교 테이블 */
+.compare-table {
+    table-layout: fixed; /* -- */
+    width: 100%;
+    border-collapse: collapse;
+    /* font-size: 14px; */
+    font-size: 12px;
+    border-top: 1px solid #d9d9d9;
+    border-bottom: 1px solid #d9d9d9;
+}
+.compare-table th,
+td {
+    /* background: #f8f8fa; */
+    padding: 8px 16px;
+    text-align: center;
+    vertical-align: middle;
+    color: #495057;
+    border-right: 1px solid #d9d9d9;
+    z-index: 1;
+    /* border: 1px solid #dee2e6; */
+    /* position: sticky; */
+    /* top: 0; */
+    /* border-bottom: 2px solid #dee2e6; */
+    /* border-bottom: 1px solid #dee2e6; */
+    /* font-weight: 600; */
+    /* padding: 16px 12px; */
+}
+.compare-table th:last-child,
+td:last-child {
+    border-right: none;
+}
+.table-header-label {
+    /* background: #007bff !important; */
+    /* color: white !important; */
+    /* text-align: left !important; */
+    /* min-width: 140px; */
+    /* position: sticky; */
+    /* left: 0; */
+    /* z-index: 2; */
+    /* min-width: 120px; */
+    background: #f8f8fa;
+}
+/* 구분 열 고정 너비 */
+.compare-table .table-header-label,
+.compare-table .row-label {
+    width: 120px;
+    min-width: 120px;
+}
+/* 펀드 데이터 열들 균등 분할 */
+.compare-table .fund-header-cell,
+.compare-table .fund-data-cell {
+    width: auto; /* table-layout: fixed에서 자동으로 균등 분할됨 */
+}
+/* 펀드 헤더 셀 */
+.fund-header-cell {
+    /* background: linear-gradient(135deg, #007bff, #0056b3) !important; */
+    /* color: white !important; */
+    /* padding: 20px 16px !important; */
+    /* padding: 8px 16px; */
+    /* min-width: 240px; */
+    background: #f8f8fa;
+}
+.fund-header-name {
+    /* font-weight: 400; */
+    /* font-size: 16px; */
+    /* margin-bottom: 8px; */
+    /* line-height: 1.3; */
+}
+/* .fund-header-type {
+    font-size: 12px;
+    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 8px;
+    border-radius: 12px;
+    display: inline-block;
+}
+*/
+/* 테이블 바디 설정 */
+.compare-table td {
+    /* background: #f8f8fa; */
+
+    /* padding: 8px 16px; */
+    /* border-bottom: 1px solid #e9ecef; */
+    /* text-align: center; */
+    /* vertical-align: middle; */
+}
+.compare-table tr {
+    border-bottom: 1px solid #d9d9d9;
+}
+.compare-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* 데이터 셀 스타일 */
+.compare-table .row-label {
+    /* background: #f8f9fa; */
+    font-weight: 400;
+    color: #495057;
+    text-align: center;
+    /* position: sticky; */
+    /* left: 0; */
+    /* z-index: 1; */
+    border-right: 1px solid #dee2e6;
+    /* min-width: 120px; */
+}
+.fund-data-cell {
+    /* padding: 12px 16px; */
+    /* min-width: 240px; */
+}
+.data-main {
+    font-weight: 400;
+    font-size: 12px;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+}
+.data-sub {
+    font-size: 12px;
+    color: #6c757d;
+}
+/* 수익률 스타일 */
+.return-positive {
+    color: #dc3545 !important;
+    font-weight: 600;
+}
+.return-negative {
+    color: #007bff !important;
+    font-weight: 600;
+}
+.return-neutral {
+    color: #6c757d !important;
+}
+
+/* 위험등급 배지 */
+/* .risk-badge {
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+.risk-badge.risk-1 {
+    background: #ffebee;
+    color: #c62828;
+}
+.risk-badge.risk-2 {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+.risk-badge.risk-3 {
+    background: #fff8e1;
+    color: #f57f17;
+}
+.risk-badge.risk-4 {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+.risk-badge.risk-5 {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+.risk-badge.risk-6 {
+    background: #e3f2fd;
+    color: #1565c0;
+} */
+
+/* 차트 섹션 */
+/* .chart-section {
+    padding: 32px;
+    background: #fafbfc;
+    border-top: 1px solid #e9ecef;
+}
+.chart-title {
+    margin: 0 0 24px 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.chart-container {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+*/
+
+/* 모달 푸터 */
+/* .modal-footer {
+    padding: 24px 32px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}*/
+
+/*.footer-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}*/
+.modal-actions {
+    padding-top: 16px;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+.modal-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+    font-family: "BNK";
+    /* font-size: 16px; */
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    /* gap: 8px; */
+}
+.modal-btn-primary {
+    background: #007bff;
+    color: white;
+}
+.modal-btn-primary:hover {
+    background: #0056b3;
+    /* transform: translateY(-1px); */
+}
+.modal-btn-secondary {
+    background: white;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+}
+.modal-btn-secondary:hover {
+    background: #f8f9fa;
+    color: #495057;
+    border-color: #adb5bd;
+}
+
+/* 모달 ai 분석 로딩 */
+.loading-analyse-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+.loading-analyse-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+.loading-container p {
+    color: #6c757d;
+    font-size: 14px;
+    margin: 0;
+}
+/* 모달 ai 분석 에러 */
+.error-container {
+    padding: 20px;
+    text-align: center;
+    color: #dc3545;
+}
+.error-container p {
+    margin: 8px 0;
+}
+
+/*-------모달 AI 비교 CSS-------------------------------------------------------*/
+
+/* 분석 결과 전체 컨테이너 */
+.aiAnaylseContainer {
+    padding: 24px;
+    background-color: #f5f7f9;
+    font-family: "Segoe UI", "Pretendard", sans-serif;
+    font-size: 15px;
+    color: #333;
+}
+
+/* 카드형으로 바뀐 비교 결과 박스 */
+.fund-comparison-result {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 24px;
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.fund-comparison-result:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* 섹션 제목 스타일 */
+.fund-comparison-result h2 {
+    font-size: 18px;
+    margin-bottom: 12px;
+    color: #1a202c;
+    position: relative;
+}
+.fund-comparison-result h2::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -4px;
+    width: 40px;
+    height: 3px;
+    background-color: #4e73df;
+    border-radius: 2px;
+}
+
+/* 본문 공통 스타일 */
+.fund-comparison-result p,
+.fund-comparison-result ul {
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* 투자자 성향 요약 */
+.investor-profile {
+    background-color: #edf2fa;
+    padding: 12px 16px;
+    border-left: 4px solid #2b6cb0;
+    border-radius: 4px;
+}
+
+/* 수익성과 안정성 요약 */
+.performance-summary {
+    background-color: #fef9e7;
+    padding: 12px 16px;
+    border-left: 4px solid #d69e2e;
+    border-radius: 4px;
+}
+
+/* 장단점 목록 */
+.fund-pros-cons {
+    list-style-type: disc;
+    padding-left: 20px;
+}
+.fund-pros-cons li {
+    margin-bottom: 8px;
+}
+
+/* 추천 펀드 */
+.recommendation {
+    background-color: #e6fffa;
+    padding: 12px 16px;
+    border-left: 4px solid #319795;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+/* ── 안내 문구 영역 ── */
+.ai-notices {
+    margin-bottom: 16px;
+    font-family: "Segoe UI", "Pretendard", sans-serif;
+}
+
+.ai-reference-note {
+    font-size: 13px;
+    color: #555;
+    margin: 0 0 4px;
+}
+
+.ai-reload-note {
+    font-size: 13px;
+    color: #888;
+    margin: 0;
+}
+
+/* 반응형 디자인 */
+/* @media (max-width: 768px) {
+    .modal-overlay {
+        padding: 10px;
+    }
+
+    .modal-container {
+        max-height: 95vh;
+        border-radius: 12px;
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+    }
+
+    .modal-title {
+        font-size: 20px;
+    }
+
+    .compare-summary {
+        padding: 20px 24px;
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+
+    .compare-table th,
+    .compare-table td {
+        padding: 12px 8px;
+        font-size: 13px;
+    }
+
+    .fund-header-cell {
+        min-width: 160px;
+        padding: 16px 12px !important;
+    }
+
+    .fund-header-name {
+        font-size: 14px;
+    }
+
+    .fund-data-cell {
+        min-width: 160px;
+        padding: 10px 12px;
+    }
+
+    .chart-section {
+        padding: 24px 20px;
+    }
+
+    .modal-footer {
+        padding: 20px 24px;
+    }
+
+    .footer-actions {
+        flex-direction: column;
+    }
+
+    .modal-btn {
+        justify-content: center;
+    }
+}
+*/
+
+/* @media (max-width: 480px) {
+    .table-header-label {
+        min-width: 100px;
+    }
+
+    .fund-header-cell,
+    .fund-data-cell {
+        min-width: 140px;
+    }
+
+    .compare-table {
+        font-size: 12px;
+    }
+}
+*/
+
+/* ─────────── 반응형 ─────────── */
+/* @media (max-width: 640px) {
+    .row-label {
+        margin-bottom: 4px;
+    }
+    .options label {
+        font-size: 13px;
+    }
+}
+*/

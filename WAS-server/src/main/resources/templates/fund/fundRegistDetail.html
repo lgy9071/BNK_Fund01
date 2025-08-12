@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>펀드 상세</title>
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/admin/admin_layout.css"/>
+  <link rel="stylesheet" href="/css/admin/fund_register.css"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="admin/admin_header :: adminHeader"></div>
+  <div class="main-wrapper">
+    <div th:replace="admin/admin_aside :: adminAside"></div>
+    <main class="content">
+      <div class="container edit-container">
+        <h2 class="fund-list-title">펀드 상세</h2>
+        <p class="detail-fund-title"><strong>펀드 이름 : </strong> <span th:text="${fund.fundName}">펀드 이름</span></p>
+        <div class="detail-box">
+            <h3 class="detail-box-title">펀드 기본 정보</h3>
+            <table class="detail-table">
+                <tr><td class="label">펀드 이름</td><td th:text="${fund.fundName}"></td></tr>
+                <tr><td class="label">펀드 ID</td><td th:text="${fund.fundId}"></td></tr>
+                <tr><td class="label">펀드 유형</td><td th:text="${fund.fundType}"></td></tr>
+                <tr><td class="label">운용지역</td><td th:text="${fund.investmentRegion}"></td></tr>
+                <tr><td class="label">설정일</td><td th:text="${fund.establishDate}"></td></tr>
+                <tr><td class="label">총보수율</td><td th:text="${fund.totalExpenseRatio}"></td></tr>
+                <tr><td class="label">위험등급</td><td th:text="${fund.riskLevel}"></td></tr>
+                <tr><td class="label">운용사</td><td th:text="${fund.managementCompany}"></td></tr>
+                <tr><td class="label">테마</td>
+                    <td th:text="${policy != null ? policy.fundTheme : '-'}">-</td>
+                </tr>
+            </table>
+
+            <h3 class="detail-box-title">등록된 문서</h3>
+            <table class="detail-table">
+                <tr th:if="${termsFileId != null}">
+                    <td class="label">약관</td>
+                    <td>
+                        <a th:href="@{/api/funds/files/document/{id}(id=${termsFileId})}" target="_blank">
+                            <span th:text="${termsFileName} + '.pdf'">약관.pdf</span> 다운로드
+                        </a>
+                    </td>
+                </tr>
+                <tr th:if="${manualFileId != null}">
+                    <td class="label">상품설명서</td>
+                    <td>
+                        <a th:href="@{/api/funds/files/document/{id}(id=${manualFileId})}" target="_blank">
+                            <span th:text="${manualFileName} + '.pdf'">manual.pdf</span> 다운로드
+                        </a>
+                    </td>
+                </tr>
+                <tr th:if="${prospectusFileId != null}">
+                    <td class="label">투자설명서</td>
+                    <td>
+                        <a th:href="@{/api/funds/files/document/{id}(id=${prospectusFileId})}" target="_blank">
+                            <span th:text="${prospectusFileName} + '.pdf'">prospectus.pdf</span> 다운로드
+                        </a>
+                    </td>
+                </tr>
+            </table>
+
+            
+            <div class="detail-actions">
+              <button id="detail-approval-btn" th:if="${session.admin.role != 'super'}" 
+                      th:onclick="|location.href='/admin/approval/form?fundId=${fund.fundId}'|">결재</button>
+              <div>
+                <button class="deatil-list-btn" onclick="location.href='/admin/fund/list'">목록</button>
+                <button th:if="${session.admin.role != 'super'}" th:onclick="|location.href='/admin/fund/edit/${fund.fundId}'|">수정</button>
+              </div>
+            </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>

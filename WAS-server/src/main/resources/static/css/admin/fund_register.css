@@ -1,0 +1,533 @@
+@charset "UTF-8";
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background-color: #f3f3f3;
+  margin: 0;
+  color: #222;
+}
+
+.container {
+  max-width: 1600px;
+  background-color: #fff;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.fund-list-title {
+  font-size: 1.5rem;
+  margin-bottom: 16px;
+  color: #117C88;
+  font-weight: 700;
+}
+
+.fund-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.fund-table th,
+.fund-table td {
+  padding: 10px 9px;
+  border: 1px solid #e0e0e0;
+  text-align: left;
+}
+
+.fund-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.new-fund-btn {
+  padding: 8px 16px;
+  background-color: #117C88;
+  color: #ffffff;
+  float: right;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.modal { display: none; position: fixed; top: 30%; left: 50%; transform: translate(-50%, -50%); background: white; border: 1px solid #ccc; padding: 20px; z-index: 1000; }
+.modal.active { display: block; }
+.tab { display: none; }
+.tab.active { display: block; }
+.tab-buttons button { margin-right: 5px; }
+
+.content h2.tab-button {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .edit-container {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+
+    .regist-title {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 15px;
+    }
+
+    .new-fund-btn {
+      background-color: #007C91;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .new-fund-btn:hover {
+      background-color: #005f6a;
+    }
+
+    .fund-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .fund-table thead {
+      background-color: #f6f8fa;
+    }
+
+    .fund-table th,
+    .fund-table td {
+      border: 1px solid #ddd;
+      padding: 12px 10px;
+      text-align: center;
+    }
+
+    .fund-table tbody tr:hover {
+      background-color: #f9f9f9;
+    }
+
+    .fund-table td:last-child {
+      color: #007C91;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .fund-table td:last-child:hover {
+      text-decoration: underline;
+    }
+
+/* fund-register */
+
+
+/* 전체 레이아웃 정리 */
+
+.funt-list-title {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 25px;
+  color: #333;
+}
+
+/* 폼 요소 */
+form label {
+  display: block;
+  margin-top: 15px;
+  max-width: 800px;
+  font-weight: 500;
+  color: #333;
+}
+
+.themeSelect{
+
+}
+
+input[type="text"],
+select {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 60%;
+  margin-left: 10px;
+}
+
+input[type="file"] {
+  margin-left: 10px;
+}
+
+button {
+  padding: 8px 14px;
+  background-color: #007C91;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #005f6a;
+}
+
+/* 탭 버튼 */
+.tab-buttons {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.tab-buttons button {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.tab-buttons button:hover {
+  background-color: #ccc;
+}
+
+/* 탭 콘텐츠 영역 */
+.tab {
+  display: none;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+#terms{
+    max-width: 1000px;
+}
+
+.tab.active {
+  display: block;
+}
+
+/* 모달 스타일 */
+.modal {
+  display: none;
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  transform: translate(-50%, 0);
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 25px;
+  border-radius: 8px;
+  z-index: 1000;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  width: 600px;
+  min-height: 500px;
+}
+
+.modal-title {
+  font-size: 24px;
+  text-align: center;
+  margin-bottom: 50px;
+  color: #117C88;
+  font-weight: 700;
+}
+
+.modal.active {
+  display: block;
+}
+
+.modal-search-btn{
+    float: right;
+    width : 80px;
+    height: 40px;
+    margin-left: 10px;
+}
+
+.modal-search-div {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.modal-close-btn{
+  position: absolute;
+  bottom: 20px;
+  right:20px;
+}
+
+#searchKeyword{
+    height: 40px;
+}
+
+.modal input[type="text"] {
+  width: calc(100% - 20px);
+  margin-bottom: 10px;
+}
+
+#fundResult {
+  max-height: 250px;
+  overflow-y: auto;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding-left: 0;
+}
+
+#fundResult li {
+  list-style: none;
+  padding: 6px 8px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+#fundResult li:hover {
+  background-color: #f0f0f0;
+}
+
+/* 펀드 상세 정보 테이블 */
+.fund-detail-box {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 10px;
+  border: 1px solid #ddd;
+  max-width: 800px;
+}
+
+.fund-detail-box h3 {
+  margin-bottom: 15px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.fund-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background-color: #fff;
+}
+
+.fund-detail-table th,
+.fund-detail-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+}
+
+.fund-detail-table th {
+  background-color: #f1f3f5;
+  font-weight: 600;
+  width: 30%;
+  color: #333;
+}
+
+.fund-detail-table td {
+  color: #555;
+}
+
+.tab-buttons button.file-attached {
+  background-color: #007C91;
+  color: white;
+}
+
+.register-btn-div{
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.register-btn-div > button, .detail-actions button {
+    width: 120px;
+    height: 40px;
+    font-size: 1rem;
+}
+
+.cencel-btn, .deatil-list-btn {
+  background-color: #ccc;
+  color: #333;
+  margin-right: 30px;
+}
+.cencel-btn:hover {
+  background-color: #bbb;
+}
+
+/* deatail */
+.detail-box {
+  background-color: #f9fafb;
+  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid #e0e0e0;
+  margin-top: 16px;
+  margin-left: 5px;
+}
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.detail-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.detail-table td.label {
+  width: 160px;
+  font-weight: bold;
+  color: #333;
+  background-color: #f0f2f5;
+}
+
+h2.fund-list-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #008294;
+  margin-bottom: 20px;
+}
+
+.detail-fund-title{
+    font-size: 1rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 16px;
+    margin-left: 5px;
+}
+
+.detail-box-title {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #333;
+  margin: 20px 0;
+}
+.detail-box-title:first-of-type{
+    margin-top: 0px;
+}
+
+.detail-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.detail-actions button {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#detail-approval-btn {
+  background-color: #117C88;
+  color: white;
+}
+
+.detail-actions button:first-child {
+  background-color: #ccc;
+  color: #333;
+}
+
+.detail-actions button:last-child {
+  background-color: #008294;
+  color: #fff;
+}
+
+.detail-actions button:hover {
+  opacity: 0.9;
+}
+
+.detail-table a:hover, .edit-file a:hover {
+  text-decoration: underline;
+  color: #008294;
+}
+
+
+
+#confirmModal.finish-modal {
+  position: fixed;
+  z-index: 10000;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px); /* 🔹 블러 효과 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.3s ease;
+}
+
+.finish-modal-content {
+  background: linear-gradient(145deg, #ffffff, #f1f1f1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  padding: 40px 30px;
+  border-radius: 16px;
+  text-align: center;
+  width: 420px;
+  animation: fadeInUp 0.4s ease;
+}
+
+.finish-modal-content h3 {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.finish-modal-content p {
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 25px;
+  line-height: 1.4;
+}
+
+.finish-modal-buttons {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+}
+
+.finish-modal-buttons button {
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#finish-modal-success {
+  color: #008294;
+  font-weight: bold;
+  margin-bottom: 30px;
+  font-size: 2rem;
+}
+
+.finish-modal-buttons button#goToList {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.finish-modal-buttons button#goToList:hover {
+  background-color: #ccc;
+}
+
+
+/* 페이징 */
+.pagination{
+text-align:center;
+margin : 10px 0;
+}
+
+.pagination a{
+margin:0 6px;
+padding:6px 12px;
+border:1px solid #337D89;
+border-radius:6px;
+              color:#337D89;
+              font-weight:bold;
+              text-decoration:none;
+              }
+.pagination a.active,.pagination a:hover{
+background:#337D89;
+color:#fff
+}

@@ -1,0 +1,91 @@
+<div th:fragment="qna-UnAnsweredList" class="qnaFwrap">
+  <div class="qnaWrap">
+    <div th:if="${qnaList != null and qnaList.isEmpty()}">
+      <p>내역이 없습니다</p>
+    </div>
+
+    <table class="table" th:if="${qnaList != null and !qnaList.isEmpty()}">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>제목</th>
+          <th>작성자</th>
+          <th>등록일</th>
+          <th>관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="qna, stat : ${qnaList}">
+          <td th:text="${stat.index + 1}"></td>
+          <td th:text="${qna.title}"></td>
+          <td th:text="${qna.user.username}"></td>
+          <td th:text="${#temporals.format(qna.regDate, 'yyyy-MM-dd')}"></td>
+          <td>
+            <a
+              th:href="@{'/admin/qna/detail/' + ${qna.qnaId}}"
+              data-url="/admin/qnaList"
+              class="group_a"
+              >답변하기</a
+            >
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div th:if="${page.totalPages > 1}" class="pagination">
+      <button
+        type="button"
+        th:each="i : ${#numbers.sequence(0, page.totalPages - 1)}"
+        th:data-page="${i}"
+        th:data-status="${page.content[0].status}"
+        th:text="${i + 1}"
+        th:classappend="${i} == ${page.number} ? 'active' : ''"
+        class="page-button"
+      ></button>
+    </div>
+  </div>
+</div>
+
+<div th:fragment="qna-AnsweredList" class="qnaFwrap">
+  <div class="qnaWrap">
+    <div th:if="${qnaList != null and qnaList.isEmpty()}">
+      <p>내역이 없습니다</p>
+    </div>
+    <table class="table" th:if="${qnaList != null and !qnaList.isEmpty()}">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>제목</th>
+          <th>작성자</th>
+          <th>등록일</th>
+          <th>동작</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="qna, stat : ${qnaList}">
+          <td th:text="${stat.index + 1}"></td>
+          <td th:text="${qna.title}"></td>
+          <td th:text="${qna.user.username}"></td>
+          <td th:text="${#temporals.format(qna.regDate, 'yyyy-MM-dd')}"></td>
+          <td>
+            <a th:href="@{'/admin/qna/answeredDetail/' + ${qna.qnaId}}">
+              상세보기
+            </a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div th:if="${page.totalPages > 1}" class="pagination">
+      <button
+        type="button"
+        th:each="i : ${#numbers.sequence(0, page.totalPages - 1)}"
+        th:data-page="${i}"
+        th:data-status="${page.content[0].status}"
+        th:text="${i + 1}"
+        th:classappend="${i} == ${page.number} ? 'active' : ''"
+        class="page-button"
+      ></button>
+    </div>
+  </div>
+</div>

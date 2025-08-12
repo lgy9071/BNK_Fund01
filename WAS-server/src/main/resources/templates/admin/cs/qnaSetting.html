@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/css/admin/admin_layout.css" />
+    <link rel="stylesheet" href="/css/admin/admin_qna.css" />
+    <title>QnaList</title>
+  </head>
+  <body>
+    <div class="layout">
+      <div th:replace="admin/admin_header :: adminHeader"></div>
+
+      <div class="main-wrapper">
+        <div th:replace="admin/admin_aside :: adminAside"></div>
+        <main class="content">
+          <div th:if="${msg}">
+            <script th:inline="javascript">
+              alert("답변이 성공적으로 등록되었습니다");
+            </script>
+          </div>
+
+          <div class="tab-buttons">
+            <button type="button" class="tab-button active" data-status="대기">
+              미답변
+            </button>
+            <button type="button" class="tab-button" data-status="완료">
+              답변 완료
+            </button>
+          </div>
+
+          <div id="qna-content" class="mt-3">
+            <!-- AJAX로 불러온 목록이 들어올 자리 -->
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      function loadQnaList(status, page = 0) {
+        fetch(`/admin/qna?status=${encodeURIComponent(status)}&page=${page}`, {
+          method: "GET",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("서버 오류");
+            }
+            return response.text();
+          })
+          .then((html) => {
+            document.getElementById("qna-content").innerHTML = html;
+
+            // 버튼 상태 전환
+            document.querySelectorAll(".tab-button").forEach((btn) => {
+              btn.classList.remove("active");
+            });
+            document
+              .querySelector(`.tab-button[data-status="${status}"]`)
+              .classList.add("active");
+          })
+          .catch((err) => {
+            console.error("불러오기 실패:", err);
+            alert("목록을 불러오는 데 실패했습니다.");
+          });
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        // 초기 미답변 탭 로딩
+        loadQnaList("대기");
+
+        // 버튼 클릭 이벤트 바인딩
+        document.querySelectorAll(".tab-button").forEach((button) => {
+          button.addEventListener("click", () => {
+            const status = button.dataset.status;
+            loadQnaList(status);
+          });
+        });
+      });
+
+      //페이지 버튼 이벤트
+      document.addEventListener("click", function (e) {
+        if (e.target.classList.contains("page-button")) {
+          const page = e.target.dataset.page;
+          const status = e.target.dataset.status;
+          loadQnaList(status, page);
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>자주 묻는 질문</title>
+  <link rel="stylesheet" href="/css/userHeader.css">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/faq.css">
+  <link rel="stylesheet" href="/css/userHeader.css" />
+<link rel="stylesheet" href="/css/footer.css" />
+<link rel="stylesheet" href="/css/fundMainHeader.css" />
+</head>
+<body>
+<th:block th:replace="fragments/userHeader :: userHeader"></th:block>
+<th:block th:replace="fragments/fundMainHeader :: fundMainHeader"></th:block>
+
+<h1>자주 묻는 질문</h1>
+
+<div class="search-wrapper">
+  <!-- 오리 이미지: 검색창 위에 걸쳐지게 -->
+  <img src="/images/faq4.png" class="duck-image" alt="오리 캐릭터">
+  <img src="/images/faq5.png" class="question-icon" alt="물음표 이모티콘">
+
+  <!-- 실제 검색창 -->
+  <form class="search-box" onsubmit="event.preventDefault(); searchFaq();">
+    <input type="text" id="keyword" placeholder="검색어를 입력해주세요">
+    <button type="submit">
+      <img src="images/search_icon.png" alt="검색">
+    </button>
+  </form>
+</div>
+
+  <ul id="faq-list">
+  </ul>
+  
+  <div id="pagination" class="pagination"></div>
+
+  <script>
+  let currentKeyword = ""; // 검색어
+  let currentPage = 0; // 현재 페이지 번호
+
+  function answerToggle() {
+    document.querySelectorAll(".question").forEach(q => {
+      q.addEventListener("click", function () {
+        const answer = this.nextElementSibling;
+        const isOpen = this.classList.toggle('open');
+        answer.style.display = isOpen ? 'block' : 'none';
+      });
+    });
+  }
+
+  function searchFaq(page = 0) {
+    currentKeyword = document.getElementById("keyword").value;
+    currentPage = page;
+
+    fetch(`/searchFaq?keyword=${encodeURIComponent(currentKeyword)}&page=${page}&size=10`)
+      .then(res => res.json())
+      .then(data => {
+        const ul = document.getElementById("faq-list");
+        ul.innerHTML = '';
+
+        data.content.forEach(faq => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+        	  <div class="question">
+        	    <img src="/images/Q5.png" alt="Q">
+        	    <span class="q-text">${faq.question}</span>
+        	    <span class="arrow"></span>
+        	  </div>
+        	  <div class="answer" style="display:none;">
+        	 	<img src="/images/A2.png" alt="A">
+        	 	<span class="a-text">${faq.answer}</span>
+        	  </div>
+        	`;
+          ul.appendChild(li);
+        });
+
+        renderPagination(data.totalPages, data.currentPage);
+        answerToggle();
+      })
+      .catch(error => {
+        console.error("FAQ 검색 중 오류:", error);
+      });
+  }
+
+  function renderPagination(totalPages, currentPage) {
+    const pagination = document.getElementById("pagination");
+    pagination.innerHTML = '';
+
+    for (let i = 0; i < totalPages; i++) {
+      const btn = document.createElement("button");
+      btn.textContent = i + 1;
+      btn.disabled = (i === currentPage);
+      btn.addEventListener("click", () => searchFaq(i));
+      pagination.appendChild(btn);
+    }
+  }
+
+  // 초기 로딩
+  document.addEventListener("DOMContentLoaded", () => {
+    searchFaq(); // 초기 FAQ 목록 + 페이지네이션
+  });
+</script>
+<th:block th:replace="fragments/footer :: siteFooter"></th:block>
+</body>
+</html>

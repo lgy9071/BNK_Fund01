@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>보유 펀드 목록</title>
+</head>
+<body>
+<th:block th:replace="~{fragments/header :: header}"></th:block>
+
+<h2>보유 펀드 목록</h2>
+
+<div th:if="${#lists.isEmpty(holdings)}" class="alert alert-warning">
+    가입한 상품이 존재하지 않습니다.
+</div>
+
+<table th:if="${!#lists.isEmpty(holdings)}" class="table table-hover">
+    <thead>
+    <tr>
+        <th>펀드명</th>
+        <th>수량</th>
+        <th>평균 단가</th>
+        <th>가입일</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="h : ${holdings}">
+        <td th:text="${h.fund.fundName}"></td>
+        <td th:text="${h.quantity}"></td>
+        <td th:text="${#numbers.formatInteger(h.avgPrice, 1, 'COMMA')} + '원'"></td>
+        <td th:text="${#temporals.format(h.joinedAt, 'yyyy-MM-dd')}"></td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

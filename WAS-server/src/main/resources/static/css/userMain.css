@@ -1,0 +1,536 @@
+    @charset "UTF-8";
+
+    @font-face {
+      font-family: 'BNK';
+      src: url('/font/BNKGothic-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    a{text-decoration: none; color: inherit;}
+    .bg {
+      position: fixed;
+      top: -10%;
+      left: -10%;
+      width: 120%;
+      height: 120%;
+      opacity: 0.1;
+      background-image: url('/images/background2.jpg');
+      /* 경로 확인 */
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      transform: translate(0px, 0px);
+      transition: transform 0.1s ease-out;
+      z-index: -1;
+      will-change: transform;
+    }
+
+    .wrapper {
+      perspective: 1000px;
+      transform-style: preserve-3d;
+    }
+
+    .start-text-div {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 100vw;
+      text-align: center;
+      font-family: 'BNK';
+      font-size: 7rem;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+
+    .start-text span {
+      color: red;
+      font-weight: bold;
+    }
+
+    .start-text-div.fade-in {
+      opacity: 1;
+    }
+
+    .start-text-div.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .swiper {
+      width: 120%;
+      height: 120%;
+    }
+
+    .swiper-slide {
+      box-sizing: border-box;
+      padding: 20px;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+      background: #eee;
+      border-radius: 10px;
+    }
+
+    .content {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      padding: 40px;
+      background: transparent;
+      /* ✅ 덮지 않게 */
+    }
+
+    /* 각 열 */
+    .content>div {
+      margin-top: 100px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    /* 공통 콘텐츠 박스 스타일 */
+    [class^="div-content"] {
+      background: #fff;
+      border-radius: 20px;
+      padding: 20px;
+      cursor: pointer;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-width: 200px;
+      max-width: 100%;
+      color: #fff;
+      overflow: hidden;
+      visibility: hidden;
+      opacity: 0;
+      transform: translate(0, 0) scale(0.1);
+      transition: all 0.8s ease;
+    }
+
+    .div-content-appear {
+      position: static;
+      transform: scale(1);
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .content {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      padding: 40px;
+    }
+
+    /* 각 박스 크기 (반응형) */
+    .div-content1 {
+      width: 10vw;
+      height: 8vh;
+      aspect-ratio: 6 / 5;
+      background: url(/images/content1-bg.jpg) no-repeat center;
+      background-size: 100%;
+      transition: background-size 0.9s ease, 0.7s ease;
+    }
+
+    .div-content1:hover {
+      background-size: 160%;
+    }
+
+    .div-content2 {
+      box-shadow:
+        inset 0 0 20px rgba(0, 0, 0, 0.2);
+      background: linear-gradient(-45deg, #3956e3, #5ba2e8);
+      width: 10vw;
+      height: 20vh;
+      aspect-ratio: 6 / 5;
+    }
+
+    .div-content3 {
+      background-color: black;
+      z-index: 2;
+      position: relative;
+      width: 10vw;
+      height: 20vh;
+      aspect-ratio: 6 / 5;
+    }
+
+    .div-content4 {
+      width: 10vw;
+      height: 20vh;
+      aspect-ratio: 6 / 5;
+    }
+
+
+    .div-content5 {
+      background: url(/images/content3.png) no-repeat right bottom;
+      background-size: 120%;
+      width: 10vw;
+      height: 60vh;
+      aspect-ratio: 6 / 5.5;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+      box-shadow:
+        inset 0 0 20px rgba(0, 0, 0, 0.2);
+      transition: background-size 0.9s ease, 0.7s ease;
+    }
+
+    .div-content5:hover {
+      background-size: 140%;
+    }
+
+    .div-content6 {
+      width: 10vw;
+      height: 25vh;
+      aspect-ratio: 6 / 5.5;
+    }
+
+    .div-content7 {
+      background: linear-gradient(-45deg, #206561, #42976b);
+      width: 10vw;
+      height: 15vh;
+      aspect-ratio: 6 / 5.5;
+    }
+
+    .div-content8 {
+      background: linear-gradient(-45deg, #e390d7, #768dff);
+      width: 10vw;
+      height: 7vh;
+      aspect-ratio: 6 / 5.5;
+    }
+
+    .div-content9 {
+      background: linear-gradient(-45deg, #ddda13, #6fffbc);
+      width: 10vw;
+      height: 8vh;
+      aspect-ratio: 6 / 5.5;
+    }
+
+    .div-content10 {
+      width: 10vw;
+      height: 5vh;
+      aspect-ratio: 5 / 4;
+      background: url(/images/content10.jpg) no-repeat center;
+      background-size: 100%;
+      transition: background-size 0.9s ease, 0.7s ease;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+      box-shadow:
+        inset 0 0 20px rgba(0, 0, 0, 0.2);
+
+    }
+
+    .div-content10:hover {
+      background-size: 140%;
+    }
+
+    .div-content4,
+    .div-content6 {
+      width: 10vw;
+      background: none;
+      aspect-ratio: 6 / 2.5;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .div-content4 .swiper,
+    .div-content6 .swiper {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    [class^="div-content"]:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+
+    .arrow-icon {
+      position: absolute;
+      bottom: 15px;
+      right: 15px;
+      width: 10px;
+      height: 10px;
+      background: url('/images/arrow-icon.svg') no-repeat center;
+      background-size: contain;
+      opacity: 0;
+      transform: translate(-10px, 10px);
+      transition: opacity 0.7s ease, transform 0.5s ease;
+    }
+
+    [class^="div-content"]:hover .arrow-icon {
+      opacity: 1;
+      transform: translate(0, 0);
+    }
+
+    /* 텍스트 요소들 */
+    [class^="div-content"] p {
+      font-size: 20px;
+      font-weight: bold;
+      margin: 0 0 5px;
+    }
+
+    [class^="div-content"] span,
+    [class^="div-content"] strong {
+      font-size: 14px;
+      color: #fff;
+    }
+
+    /* 배경화면 지정 */
+    .invite-bnk {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      color: #fff;
+      font-size: 900;
+      background: url(/images/invite-bnk.png) no-repeat center;
+      background-size: cover;
+      background-attachment: fixed;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+    }
+
+    .bond-event {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      font-size: 900;
+      background: url(/images/bond-event.png) no-repeat center;
+      background-size: cover;
+      background-attachment: fixed;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    .caution-fishing {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      font-size: 900;
+      background: url(/images/caution-fishing.png) no-repeat center;
+      background-size: cover;
+      background-attachment: fixed;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 화살표 아이콘 예시 */
+    .arrow-icon {
+      width: 20px;
+      height: 20px;
+      background: url('/images/arrow-icon.svg') no-repeat center;
+      background-size: contain;
+      position: absolute;
+      bottom: 15px;
+      right: 15px;
+    }
+
+    .video-slide {
+      position: relative;
+      padding: 0 !important;
+      overflow: hidden;
+    }
+
+    .swiper-slide video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      padding: 0;
+      margin: 0;
+      border: none;
+      display: block;
+    }
+
+    .video-text {
+      position: absolute;
+      padding: 20px;
+      top: 0;
+      left: 0;
+      color: white;
+      text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.7);
+    }
+
+    .youtube-slide {
+      background-color: #b11818;
+      background: linear-gradient(-45deg, #b11818, #dc5e48);
+      padding: 20px;
+      border-radius: 12px;
+      position: relative;
+      box-shadow:
+        inset 0 0 20px rgba(0, 0, 0, 0.2);
+      transition: box-shadow 0.3s ease;
+    }
+
+
+    .gourmet-busan {
+      position: absolute;
+      bottom: -50px;
+      z-index: -1;
+      right: -50px;
+      width: 200px;
+      opacity: 0.5;
+      height: 200px;
+      background: url('/images/gourmet-busan-b.png') no-repeat center;
+      background-size: contain;
+      transition: transform 0.5s ease, opacity 0.5s ease;
+    }
+
+    .div-content3:hover .gourmet-busan {
+      transform: scale(1.1);
+      opacity: 0.8;
+    }
+
+    .youtube-icon {
+      position: absolute;
+      bottom: 10px;
+      right: 30px;
+      width: 80px;
+      height: 80px;
+      background: url('/images/youtube-icon.svg') no-repeat center;
+      background-size: contain;
+      transition: transform 0.5s ease;
+    }
+
+    .youtube-slide:hover .youtube-icon {
+      transform: scale(1.2);
+    }
+
+    .video-text span,
+    .youtube-slide span {
+      color: #fff;
+    }
+
+
+    /* 이미지 확장 영역 */
+    .img-hover-expand {
+      width: 100%;
+      height: 100px;
+      border-radius: 10px;
+      background-size: 100%;
+      margin-top: auto;
+    }
+
+    [class^="div-content"]:hover .img-hover-expand {
+      transform: scale(1.2);
+    }
+
+    .event-icon {
+      transition: transform 0.5s ease;
+      transform-origin: bottom right;
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 100px;
+      height: 100px;
+      background: url('/images/event-icon.png') no-repeat center;
+      background-size: contain;
+    }
+
+    /* 비전 키워드 */
+    .vision-keywords {
+      list-style: none;
+      margin: 10px 0 0;
+      padding: 0;
+    }
+
+    .vision-keywords li {
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      line-height: 20px;
+      margin-bottom: 5px;
+    }
+
+    .arrow-twin {
+      width: 30px;
+      height: 30px;
+      background: url('/images/arrow-twin.svg') no-repeat center;
+      background-size: contain;
+    }
+
+    .emergency-icon {
+      width: 30px;
+      height: 30px;
+      background: url('/images/emergency.svg') no-repeat center;
+      background-size: contain;
+    }
+
+
+    /* 반응형 */
+    @media (max-width: 768px) {
+
+      html,
+      body {
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      .content {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      [class^="div-content"] {
+        width: 44vw;
+        /* 기본 2열 */
+      }
+
+      /* 1번 박스 (div-content1)와 6번 박스 (div-content6)는 2칸 차지 */
+      .div-content1,
+      .div-content6 {
+        width: 90vw;
+      }
+
+      /* 텍스트 크기 줄이기 */
+      [class^="div-content"] p {
+        font-size: 16px;
+      }
+
+      /* 아이콘 크기 줄이기 */
+      .arrow-icon,
+      .youtube-icon,
+      .event-icon,
+      .gourmet-busan {
+        width: 50px;
+        height: 50px;
+      }
+
+      /* 텍스트 배너 크기 줄이기 */
+      .start-text-div {
+        font-size: 2.5rem;
+        padding: 0 10px;
+      }
+
+      /* 슬라이드 높이 고정 */
+      .swiper,
+      .swiper-slide {
+        width: 100% !important;
+        height: 200px !important;
+      }
+
+      .div-content4 .swiper,
+      .div-content6 .swiper {
+        height: 200px;
+      }
+    }

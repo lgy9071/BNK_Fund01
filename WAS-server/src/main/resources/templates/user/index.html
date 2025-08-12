@@ -1,0 +1,187 @@
+<head>
+  <meta charset="UTF-8">
+  <title>부산은행</title>
+  <link rel="stylesheet" th:href="@{/css/userHeader.css}">
+  <link rel="stylesheet" th:href="@{/css/userMain.css}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+</head>
+
+<body>
+  <div th:replace="fragments/userHeader ::userHeader"></div>
+  <div class="start-text-div">
+    <p class="start-text"><span>BNK</span> BUSAN BANK</p>
+  </div>
+  <div class="first-page">
+    <div class="bg"></div>
+    <div class="content">
+      <div class="div-1st">
+        <div class="div-content1">
+          <p>금융뉴스</p>
+          <span>돈이 되는 <br>최신 금융 소식</span>
+          <div class="arrow-icon"></div>
+        </div>
+        <div class="div-content2">
+          <p>이벤트</p>
+          <span>부산은행의 다양한 이벤트</span>
+          <div class="img-hover-expand event-icon"></div>
+        </div>
+      </div>
+
+      <div class="div-2nd">
+        <a href="https://www.instagram.com/gomebusan/">
+          <div class="div-content3">
+            <p>고메부산</p>
+            <strong>Instagram</strong>
+            <span>부산은 부산은행이 잘 압니다!</span>
+            <div class="gourmet-busan"></div>
+          </div>
+        </a>
+        <div class="div-content4">
+          <div class="swiper vision-swiper">
+            <div class="swiper-wrapper">
+              <div class="swiper-slide video-slide">
+                <video autoplay muted loop playsinline>
+                  <source th:src="@{/images/video-background.mp4}" type="video/mp4" />
+                </video>
+                <div class="video-text">
+                  <p>최신 트렌드</p>
+                  <span>부산은행과 함께 →</span>
+                </div>
+              </div>
+              <div class="swiper-slide youtube-slide">
+                <p>Youtube</p>
+                <span>영상으로 함께하는<br>부산은행 최신소식</span>
+                <div class="youtube-icon"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="div-3rd">
+        <a th:href="@{/fund}">
+          <div class="div-content5">
+            <p>금융상품</p>
+            <ul class="vision-keywords">
+              <li>예ㆍ적금</li>
+              <li>카드</li>
+              <li>펀드</li>
+              <li>퇴직연금</li>
+              <li>외환</li>
+            </ul>
+            <div class="arrow-icon"></div>
+          </div>
+        </a>
+
+      </div>
+
+      <div class="4th-div">
+        <div class="div-content6">
+          <div class="swiper invest-swiper">
+            <div class="swiper-wrapper"><div class="swiper-slide invite-bnk"><p>소중한 지인을<br>부산 은행으로 <Br>초대합니다</p></div>
+            <div class="swiper-slide bond-event"><p>국민주택채권<br>발행 이벤트</p></div>
+            <div class="swiper-slide caution-fishing"><p>부산은행 사칭<br>보이스피싱 주의 안내</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="div-content7">
+          <p>새 소식</p>
+          <span>부산은행의 소식을<br> 전해드려요</span>
+          <div class="arrow-icon"></div>
+        </div>
+      </div>
+
+      <div class="5th-div">
+        <div class="div-content8">
+          <p>빠른조회서비스</p>
+          <div class="arrow-icon arrow-twin"></div>  
+        </div>
+          <div class="div-content9">
+            <p>사고분실신고</p>
+            <div class="arrow-icon emergency-icon"></div>
+          </div>
+        <a href="https://www.busanbank.co.kr/ib20/mnu/BHPCSC344000001">
+          <div class="div-content10">
+            <p>서식 | 약관 | 자료실</p>   
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const bg = document.querySelector('.bg');
+
+    document.addEventListener('mousemove', function (e) {
+      const moveX = -(e.clientX / window.innerWidth - 0.5) * 80;
+      const moveY = -(e.clientY / window.innerHeight - 0.5) * 80;
+      const moveZ = -(e.clientY / window.innerHeight - 0.5) * 1000; // 깊이값 예시
+
+      bg.style.transform = `translate3d(${moveX}px, ${moveY}px, ${moveZ}px)`;
+    });
+
+    new Swiper(".vision-swiper", {
+      effect: "cube",
+      direction: "vertical",
+      speed: 1500,
+      grabCursor: false,
+      simulateTouch: false,
+      allowTouchMove: false,
+      autoplay: {
+        delay: 7000,
+        disableOnInteraction: false,
+      },
+      loop: true,
+      cubeEffect: {
+        shadow: false,
+        slideShadows: false,
+      }
+    });
+
+    new Swiper(".invest-swiper", {
+      effect: "cube",
+      speed: 1500,
+      grabCursor: false,
+      simulateTouch: false,
+      allowTouchMove: false,
+      autoplay: {
+        delay: 4000,
+        disableOnInteraction: false,
+      },
+      loop: true,
+      cubeEffect: {
+        shadow: false,
+        slideShadows: false,
+      }
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const startText = document.querySelector(".start-text-div");
+      const contents = document.querySelectorAll('[class^="div-content"]');
+
+      // 0.1초 뒤에 페이드인
+      setTimeout(() => {
+        startText.classList.add("fade-in");
+      }, 100);
+
+      // 2초 후 페이드아웃
+      setTimeout(() => {
+        startText.classList.remove("fade-in");
+        startText.classList.add("fade-out");
+
+        // 콘텐츠 등장
+        contents.forEach((el, i) => {
+          setTimeout(() => {
+            el.classList.add("div-content-appear");
+          }, i * 150);
+        });
+      }, 2100); // 페이드인 시간(1s) + 대기시간(1s)
+    });
+
+
+
+  </script>
+</body>
+
+</html>

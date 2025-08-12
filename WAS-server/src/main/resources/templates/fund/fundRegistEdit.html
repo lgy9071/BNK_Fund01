@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>펀드 수정</title>
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/admin/admin_layout.css"/>
+  <link rel="stylesheet" href="/css/admin/fund_register.css"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="admin/admin_header :: adminHeader"></div>
+  <div class="main-wrapper">
+    <div th:replace="admin/admin_aside :: adminAside"></div>
+    <main class="content">
+      <div class="container edit-container">
+        <h2 class="fund-list-title">펀드 수정</h2>
+
+        <form id="fundForm" method="post" enctype="multipart/form-data"
+              th:action="@{/admin/fund/update/{id}(id=${fund.fundId})}">
+          <input type="hidden" name="fundId" th:value="${fund.fundId}"/>
+
+          <label>펀드 이름 :
+            <input type="text" id="fundName" name="fundName" th:value="${fund.fundName}" readonly>
+          </label>
+
+          <div class="fund-detail-box">
+            <h3>펀드 기본 정보</h3>
+            <table class="fund-detail-table">
+              <tr><th>펀드유형</th><td th:text="${fund.fundType}">-</td></tr>
+              <tr><th>운용지역</th><td th:text="${fund.investmentRegion}">-</td></tr>
+              <tr><th>설정일</th><td th:text="${fund.establishDate}">-</td></tr>
+              <tr><th>총보수율</th><td th:text="${fund.totalExpenseRatio}">-</td></tr>
+              <tr><th>위험등급</th><td th:text="${fund.riskLevel}">-</td></tr>
+              <tr><th>운용사</th><td th:text="${fund.managementCompany}">-</td></tr>
+            </table>
+          </div>
+
+          <label class="themeSelect">테마 :
+            <select id="themeSelect" name="fundTheme" required>
+              <option value="주식형" th:selected="${fund.fundTheme == '주식형'}">주식형</option>
+              <option value="채권형" th:selected="${fund.fundTheme == '채권형'}">채권형</option>
+              <option value="혼합형" th:selected="${fund.fundTheme == '혼합형'}">혼합형</option>
+              <option value="대체투자형" th:selected="${fund.fundTheme == '대체투자형'}">대체투자형</option>
+              <option value="기타" th:selected="${fund.fundTheme == '기타'}">기타</option>
+            </select>
+          </label><br><br>
+
+          <!-- 탭 버튼 -->
+          <div class="tab-buttons">
+            <button type="button" id="tab-terms" onclick="showTab('terms')">약관</button>
+            <button type="button" id="tab-manual" onclick="showTab('manual')">상품설명서</button>
+            <button type="button" id="tab-prospectus" onclick="showTab('prospectus')">투자설명서</button>
+          </div>
+
+          <!-- 탭 영역 -->
+          <div id="terms" class="tab active edit-file">
+            <label>현재 파일:
+                <a th:href="@{/api/funds/files/document/{id}(id=${fund.termsFileId})}" target="_blank">
+                    <span th:text="${fund.termsFileName} + '.pdf'">약관.pdf</span>
+                </a>
+            </label><br>
+            <label>새 파일 업로드: <input type="file" name="fileTerms" accept="application/pdf"></label><br>
+          </div>
+
+          <div id="manual" class="tab">
+            <label>현재 파일:
+                <a th:href="@{/api/funds/files/document/{id}(id=${fund.manualFileId})}" target="_blank">
+                    <span th:text="${fund.manualFileName} + '.pdf'">약관.pdf</span>
+                </a>
+            </label><br>
+            <label>새 파일 업로드: <input type="file" name="fileManual" accept="application/pdf"></label><br>
+          </div>
+
+          <div id="prospectus" class="tab">
+            <label>현재 파일:
+                <a th:href="@{/api/funds/files/document/{id}(id=${fund.prospectusFileId})}" target="_blank">
+                    <span th:text="${fund.prospectusFileName} + '.pdf'">약관.pdf</span>
+                </a>
+            </label><br>
+            <label>새 파일 업로드: <input type="file" name="fileProspectus" accept="application/pdf"></label><br>
+          </div>
+
+          <br>
+          <div class="register-btn-div">
+              <button class="cencel-btn" type="button" onclick="location.href='/admin/fund/list'">취소</button>
+            <button type="submit">수정 저장</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+  function showTab(tabId) {
+    document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+    document.getElementById(tabId).classList.add("active");
+  }
+</script>
+</body>
+</html>
