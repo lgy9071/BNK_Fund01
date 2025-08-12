@@ -2,14 +2,14 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mobile_front/core/constants/colors.dart';
+import '../core/routes/routes.dart';
 import '../models/fund.dart';
 
-/* 색 */
 const tossBlue = Color(0xFF0064FF);
-const tossGray = Color(0xFF202632);
 Color pastel(Color c) => Color.lerp(Colors.white, c, 0.12)!;
 
-/* ====== 커스텀 배경 모델 ====== */
+/* ===== 배경 선택 모델 ===== */
 class BgChoice {
   final Color? c1, c2;
   final File? image;
@@ -22,7 +22,20 @@ class BgChoice {
   bool get isGradient => c2 != null && image == null;
 }
 
-/* ====== 홈 ====== */
+/* 배경 대비용 글자색 계산 */
+Color _idealOn(BgChoice bg,
+    {Color light = AppColors.fontColor, Color dark = Colors.white}) {
+  if (bg.isImage) return dark;
+  if (bg.isGradient) {
+    final l1 = bg.c1!.computeLuminance();
+    final l2 = bg.c2!.computeLuminance();
+    return ((l1 + l2) / 2) < 0.55 ? dark : light;
+  }
+  final lum = (bg.c1 ?? Colors.white).computeLuminance();
+  return lum < 0.55 ? dark : light;
+}
+
+/* ===== 홈 ===== */
 class HomeScreen extends StatefulWidget {
   final List<Fund> myFunds;
   final String investType;
@@ -41,10 +54,11 @@ class HomeScreen extends StatefulWidget {
 enum FundSort { amountDesc, newest, nameAsc, rateDesc }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool _obscure = false;
-  bool _expandFunds = false;
+  bool _obscure = false;          // 금액 숨김
+  bool _expandFunds = false;      // 더보기
   FundSort _sort = FundSort.amountDesc;
 
+  // 디자인 커스텀은 ‘총 평가금액’ 카드에만 적용됨
   BgChoice _bg = BgChoice.solid(pastel(tossBlue));
   File? _bgImageFile;
 
@@ -54,18 +68,10 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Fund> _sortedFunds() {
     final list = [...widget.myFunds];
     switch (_sort) {
-      case FundSort.amountDesc:
-        list.sort((a, b) => b.balance.compareTo(a.balance));
-        break;
-      case FundSort.newest:
-        list.sort((a, b) => b.id.compareTo(a.id)); // id 큰게 최신 가정
-        break;
-      case FundSort.nameAsc:
-        list.sort((a, b) => a.name.compareTo(b.name));
-        break;
-      case FundSort.rateDesc:
-        list.sort((a, b) => b.rate.compareTo(a.rate));
-        break;
+      case FundSort.amountDesc: list.sort((a, b) => b.balance.compareTo(a.balance)); break;
+      case FundSort.newest:     list.sort((a, b) => b.id.compareTo(a.id)); break;
+      case FundSort.nameAsc:    list.sort((a, b) => a.name.compareTo(b.name)); break;
+      case FundSort.rateDesc:   list.sort((a, b) => b.rate.compareTo(a.rate)); break;
     }
     return list;
   }
@@ -80,7 +86,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return (_pnl / base) * 100.0;
   }
 
-  Future<void> _openDesignSheet() async {
+  void _toMyFinance() => Navigator.of(context).pushNamed('/my-finance');
+
+  /* ===== 설정 모달(디자인 + 금액 숨기기) ===== */
+  Future<void> _openSettingsSheet() async {
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -88,6 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) => _DesignSheet(
+        isObscure: _obscure,
+        onToggleObscure: (v) => setState(() => _obscure = v),
         onPickPreset: (choice) {
           setState(() {
             _bg = choice;
@@ -108,17 +119,37 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _toMyFinance() => Navigator.of(context).pushNamed('/my-finance');
+  /* ===== 보유 펀드 옵션 모달(정렬 + 전체보기 스위치) ===== */
+  Future<void> _openFundsOptionsSheet() async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _FundsOptionsSheet(
+        currentSort: _sort,
+        isExpanded: _expandFunds,
+        onSelectSort: (s) => setState(() => _sort = s),
+        onToggleExpand: (v) => setState(() => _expandFunds = v),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final funds = _sortedFunds();
-    final visible = _expandFunds ? funds.length : math.min(2, funds.length);
-    final titleShadow = _bg.isImage
-        ? [Shadow(color: Colors.black.withOpacity(.55), blurRadius: 8, offset: const Offset(0, 1.5))]
-        : null;
+    final baseText = AppColors.fontColor;
+    final baseDim = baseText.withOpacity(.54);
+    final onColor = _idealOn(_bg); // 총 평가금액 상단 텍스트 대비색
+
+    // 더보기: 처음 2개 고정 + 나머지는 아래로 추가
+    final int baseCount = math.min(2, funds.length);
+    final List<Fund> firstTwo = funds.take(baseCount).toList();
+    final List<Fund> rest = _expandFunds ? funds.skip(baseCount).toList() : const [];
 
     return Scaffold(
+      backgroundColor: Colors.white, // 메인 뒷배경 흰색
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
@@ -130,37 +161,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 InkWell(
                   onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
                   borderRadius: BorderRadius.circular(8),
-                  child: Row(
-                    children: [
-                      // 로고 이미지
-                      Image.asset(
-                        'assets/images/splash_logo.png',
-                        height: 33,
-                        fit: BoxFit.contain,
-                        // 폴백: 로고 로드 실패하면 아이콘 표시
-                        errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.account_balance, color: Colors.black),
-                      ),
-                      // 필요하면 로고 옆에 여백
-                      // const SizedBox(width: 6),
-                    ],
+                  child: Image.asset(
+                    'assets/images/splash_logo.png',
+                    height: 33,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) =>
+                        Icon(Icons.account_balance, color: baseText),
                   ),
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.notifications_none, color: Colors.black54),
+                  icon: Icon(Icons.notifications_none, color: baseDim),
                   onPressed: () {},
-                ),
-                IconButton(
-                  icon: const Icon(Icons.palette_outlined, color: Colors.black87),
-                  onPressed: _openDesignSheet,
                 ),
               ]),
               const SizedBox(height: 12),
 
-              /* 투자성향 — 흰 배경 + 얇은 파란 테두리 */
+              /* 투자성향 카드 (이름/성향 + 화살표) */
               InkWell(
-                onTap: () => Navigator.of(context).pushNamed('/invest-type'),
+                onTap: () => Navigator.of(context).pushNamed(AppRoutes.investType), // ✅ 수정
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
                   height: 72,
@@ -173,19 +192,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     children: [
                       Text('${widget.userName}님의 투자성향',
-                          style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                          style: TextStyle(fontSize: 15, color: baseText)),
                       const Spacer(),
                       Text(widget.investType,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black)),
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.w800, color: baseText)),
                       const SizedBox(width: 8),
-                      const Icon(Icons.chevron_right, color: Colors.black54),
+                      Icon(Icons.chevron_right, color: baseDim),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 28),
 
-              /* 총 평가금액 — 테두리 + 상/하 분리 (최종) */
+              /* 총 평가금액 카드 */
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
@@ -196,9 +216,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // ─── 상단(커스텀 영역) : 숨김 모드면 카드 전체처럼 보이도록 아래 모서리까지 둥글게
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
+                      Container(
+                        constraints: const BoxConstraints(minHeight: 100),
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                         decoration: BoxDecoration(
                           image: _bg.isImage && _bgImageFile != null
@@ -208,16 +227,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           gradient: _bg.isGradient
                               ? LinearGradient(
                               colors: [_bg.c1!, _bg.c2!],
-                              begin: Alignment.topLeft, end: Alignment.bottomRight)
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight)
                               : null,
-                          borderRadius: _obscure
-                              ? BorderRadius.circular(16) // ← 숨김 시 카드 전체처럼
-                              : const BorderRadius.vertical(top: Radius.circular(16)),
                         ),
                         child: Stack(
                           children: [
                             if (_bg.isImage)
-                              Positioned.fill(child: Container(color: Colors.black.withOpacity(.35))),
+                              Positioned.fill(
+                                child: Container(color: Colors.black.withOpacity(.28)),
+                              ),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -229,30 +248,30 @@ class _HomeScreenState extends State<HomeScreen> {
                                       child: Text(
                                         '총 평가금액',
                                         style: TextStyle(
-                                          fontSize: 15, fontWeight: FontWeight.w700,
-                                          color: _bg.isImage ? Colors.white : Colors.black,
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w700,
+                                          color: onColor,
                                           shadows: _bg.isImage
-                                              ? [Shadow(color: Colors.black.withOpacity(.55), blurRadius: 8, offset: const Offset(0, 1.5))]
+                                              ? [
+                                            Shadow(
+                                                color: Colors.black.withOpacity(.55),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 1.5))
+                                          ]
                                               : null,
                                         ),
                                       ),
                                     ),
                                     const Spacer(),
-                                    PopupMenuButton(
-                                      icon: Icon(Icons.more_horiz, color: _bg.isImage ? Colors.white : Colors.black54),
-                                      onSelected: (_) => setState(() => _obscure = !_obscure),
-                                      itemBuilder: (_) => [
-                                        PopupMenuItem(
-                                          value: 'toggle',
-                                          child: Text(_obscure ? '잔액보기' : '잔액 숨기기'),
-                                        )
-                                      ],
+                                    IconButton(
+                                      icon: Icon(Icons.more_horiz,
+                                          color: _bg.isImage ? Colors.white : onColor.withOpacity(.6)),
+                                      onPressed: _openSettingsSheet,
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 12),
 
-                                // 금액 or '잔액 보기'
                                 AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 220),
                                   child: _obscure
@@ -264,10 +283,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                       child: Text(
                                         '잔액 보기',
                                         style: TextStyle(
-                                          fontSize: 26, fontWeight: FontWeight.bold,
-                                          color: _bg.isImage ? Colors.white : Colors.black,
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.bold,
+                                          color: onColor,
                                           decoration: TextDecoration.underline,
-                                          decorationColor: _bg.isImage ? Colors.white70 : Colors.black45,
+                                          decorationColor: (_bg.isImage
+                                              ? Colors.white70
+                                              : onColor.withOpacity(.45)),
                                         ),
                                       ),
                                     ),
@@ -278,10 +300,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                     child: Text(
                                       _won(_totalBal),
                                       style: TextStyle(
-                                        fontSize: 26, fontWeight: FontWeight.bold,
-                                        color: _bg.isImage ? Colors.white : Colors.black,
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.bold,
+                                        color: onColor,
                                         shadows: _bg.isImage
-                                            ? [Shadow(color: Colors.black.withOpacity(.55), blurRadius: 8, offset: const Offset(0, 1.5))]
+                                            ? [
+                                          Shadow(
+                                              color: Colors.black.withOpacity(.55),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 1.5))
+                                        ]
                                             : null,
                                       ),
                                     ),
@@ -293,7 +321,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
-                      // ─── 하단(평가손익/수익률) : 숨김 모드면 완전히 접힘
                       AnimatedSize(
                         duration: const Duration(milliseconds: 220),
                         curve: Curves.easeInOut,
@@ -306,7 +333,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             final up = _pnl >= 0;
                             final sign = up ? '+' : '−';
                             final c = up ? Colors.red : Colors.blue;
-
                             return Row(
                               children: [
                                 const Spacer(),
@@ -316,20 +342,32 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Text('평가손익', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                                        Text('평가손익',
+                                            style: TextStyle(
+                                                fontSize: 14,
+                                                color: baseText.withOpacity(.54))),
                                         const SizedBox(width: 10),
                                         Text('$sign ${_won(_pnl.abs())}',
-                                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c)),
+                                            style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: c)),
                                       ],
                                     ),
                                     const SizedBox(height: 2),
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Text('수익률', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                                        Text('수익률',
+                                            style: TextStyle(
+                                                fontSize: 14,
+                                                color: baseText.withOpacity(.54))),
                                         const SizedBox(width: 10),
                                         Text('$sign ${_returnPct.abs().toStringAsFixed(2)}%',
-                                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c)),
+                                            style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: c)),
                                       ],
                                     ),
                                   ],
@@ -343,16 +381,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 30),
 
-              /* 보유 펀드 — 테두리 */
+              /* 보유 펀드 */
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(.03), blurRadius: 10, offset: const Offset(0, 4))],
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4))
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -361,34 +404,51 @@ class _HomeScreenState extends State<HomeScreen> {
                       InkWell(
                         onTap: _toMyFinance,
                         borderRadius: BorderRadius.circular(8),
-                        child: const Text('보유 펀드',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        child: Text('보유 펀드',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w600, color: baseText)),
                       ),
                       const Spacer(),
-                      PopupMenuButton<FundSort>(
-                        icon: const Icon(Icons.more_horiz, color: Colors.black54),
-                        onSelected: (s) => setState(() => _sort = s),
-                        itemBuilder: (_) => [
-                          _sortItem('금액 많은 순', FundSort.amountDesc),
-                          _sortItem('최신순', FundSort.newest),
-                          _sortItem('이름순', FundSort.nameAsc),
-                          _sortItem('수익률 높은 순', FundSort.rateDesc),
-                        ],
+                      IconButton(
+                        icon: Icon(Icons.more_horiz, color: baseDim),
+                        onPressed: _openFundsOptionsSheet,
                       ),
                     ]),
                     const SizedBox(height: 10),
-                    for (int i = 0; i < visible; i++) ...[
+
+                    for (int i = 0; i < firstTwo.length; i++) ...[
                       _FundMiniTile(
-                        fund: funds[i],
+                        fund: firstTwo[i],
                         obscure: _obscure,
                         onTap: () => Navigator.of(context).pushNamed(
                           '/fund/transactions',
-                          arguments: funds[i].id,
+                          arguments: firstTwo[i].id,
                         ),
                       ),
-                      if (i != visible - 1) const SizedBox(height: 8),
+                      if (i != firstTwo.length - 1) const SizedBox(height: 10),
                     ],
-                    if (funds.length > 2) const SizedBox(height: 10),
+
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeInOut,
+                      child: Column(
+                        children: [
+                          for (int i = 0; i < rest.length; i++) ...[
+                            const SizedBox(height: 10),
+                            _FundMiniTile(
+                              fund: rest[i],
+                              obscure: _obscure,
+                              onTap: () => Navigator.of(context).pushNamed(
+                                '/fund/transactions',
+                                arguments: rest[i].id,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    if (funds.length > 2) const SizedBox(height: 14),
                     if (funds.length > 2)
                       GestureDetector(
                         onTap: () => setState(() => _expandFunds = !_expandFunds),
@@ -399,9 +459,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: tossBlue,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text(
-                            _expandFunds ? '접기' : '더보기',
-                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 180),
+                            child: Text(
+                              _expandFunds ? '접기' : '더보기',
+                              key: ValueKey(_expandFunds),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -410,7 +478,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               const SizedBox(height: 12),
-              Text('추천/공지 섹션 자리', style: TextStyle(color: Colors.grey[600])),
+              Text('추천/공지 섹션 자리',
+                  style: TextStyle(color: baseText.withOpacity(.6))),
             ],
           ),
         ),
@@ -422,9 +491,10 @@ class _HomeScreenState extends State<HomeScreen> {
     value: v,
     child: Row(
       children: [
-        Icon(_sort == v ? Icons.radio_button_checked : Icons.radio_button_off, size: 18),
+        Icon(_sort == v ? Icons.radio_button_checked : Icons.radio_button_off,
+            size: 18, color: AppColors.fontColor),
         const SizedBox(width: 8),
-        Text(label),
+        Text(label, style: const TextStyle(color: AppColors.fontColor)),
       ],
     ),
   );
@@ -445,7 +515,7 @@ class _FundMiniTile extends StatelessWidget {
     final up = fund.rate >= 0;
     final arrow = up ? '▲' : '▼';
     final color = up ? Colors.red : Colors.blue;
-    final delta = (fund.balance * (fund.rate / 100)).round(); // 증감 금액
+    final delta = (fund.balance * (fund.rate / 100)).round();
 
     return Material(
       color: Colors.white,
@@ -463,7 +533,8 @@ class _FundMiniTile extends StatelessWidget {
                   fund.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.fontColor),
                 ),
               ),
               Column(
@@ -472,13 +543,12 @@ class _FundMiniTile extends StatelessWidget {
                   if (!obscure)
                     Text(
                       '${fund.balance.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원',
-                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      style: const TextStyle(fontSize: 14, color: AppColors.fontColor),
                     ),
                   const SizedBox(height: 2),
-                  // 증감 금액 + 퍼센트
                   Text(
                     '$arrow ${_fmtWon(delta.abs())} (${fund.rate.toStringAsFixed(2)}%)',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color),
                   ),
                 ],
               ),
@@ -490,11 +560,37 @@ class _FundMiniTile extends StatelessWidget {
   }
 }
 
-/* ===== 디자인 시트 ===== */
-class _DesignSheet extends StatelessWidget {
+/* ===== 바텀시트: 디자인 + 금액 숨기기 ===== */
+class _DesignSheet extends StatefulWidget {
+  final bool isObscure;
+  final ValueChanged<bool> onToggleObscure;
   final void Function(BgChoice) onPickPreset;
   final VoidCallback onPickImage;
-  const _DesignSheet({required this.onPickPreset, required this.onPickImage});
+
+  const _DesignSheet({
+    required this.isObscure,
+    required this.onToggleObscure,
+    required this.onPickPreset,
+    required this.onPickImage,
+  });
+
+  @override
+  State<_DesignSheet> createState() => _DesignSheetState();
+}
+
+class _DesignSheetState extends State<_DesignSheet> {
+  late bool _isObscure;
+
+  @override
+  void initState() {
+    super.initState();
+    _isObscure = widget.isObscure; // 모달 열릴 때 상태 반영
+  }
+
+  void _setObscure(bool v) {
+    setState(() => _isObscure = v); // 모달 내 즉시 갱신
+    widget.onToggleObscure(v);      // 상위(HomeScreen)에도 반영
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -513,6 +609,14 @@ class _DesignSheet extends StatelessWidget {
       ),
     );
 
+    final presets = <BgChoice>[
+      BgChoice.solid(pastel(const Color(0xFF7FA7FF))),
+      BgChoice.gradient(const Color(0xFF6FA8FF), const Color(0xFFFFA8D0)),
+      BgChoice.gradient(const Color(0xFF59E5FF), const Color(0xFF8FFF9F)),
+      BgChoice.gradient(const Color(0xFFFFC371), const Color(0xFFFF5F6D)),
+      BgChoice.solid(const Color(0xFFF5F7FF)),
+    ];
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(
@@ -520,36 +624,158 @@ class _DesignSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Text('메인 영역 설정', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const Text('메인 영역 설정',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.fontColor)),
             const Spacer(),
-            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context))
+            IconButton(
+              icon: const Icon(Icons.close, color: AppColors.fontColor),
+              onPressed: () => Navigator.pop(context),
+            ),
           ]),
           const SizedBox(height: 6),
-          const Text('디자인 설정', style: TextStyle(fontSize: 13, color: Colors.black54)),
+          Text('디자인 설정',
+              style: TextStyle(fontSize: 15, color: AppColors.fontColor.withOpacity(.6))),
           const SizedBox(height: 12),
+
           Wrap(
             spacing: 12,
             runSpacing: 12,
             children: [
-              tile(onTap: () => onPickPreset(BgChoice.solid(pastel(tossBlue))), child: Container(color: pastel(tossBlue))),
-              tile(
-                onTap: () => onPickPreset(BgChoice.gradient(const Color(0xFFFF9AB7), const Color(0xFFF7E88B))),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFFF9AB7), Color(0xFFF7E88B)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+              for (final p in presets)
+                tile(
+                  onTap: () => widget.onPickPreset(p),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: (!p.isImage && !p.isGradient) ? p.c1 : null,
+                      gradient: p.isGradient
+                          ? LinearGradient(
+                        colors: [p.c1!, p.c2!],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                          : null,
                     ),
                   ),
                 ),
-              ),
-              tile(onTap: () => onPickPreset(BgChoice.solid(const Color(0xFF3D6BFF))), child: Container(color: const Color(0xFF3D6BFF))),
-              tile(onTap: () => onPickPreset(BgChoice.solid(const Color(0xFFFBE5DB))), child: Container(color: const Color(0xFFFBE5DB))),
-              tile(onTap: () => onPickPreset(BgChoice.solid(const Color(0xFFE9E6FF))), child: Container(color: const Color(0xFFE9E6FF))),
-              tile(onTap: onPickImage, child: const _PlusTile()),
+              tile(onTap: widget.onPickImage, child: const _PlusTile()),
             ],
           ),
+
+          const SizedBox(height: 18),
+
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              _isObscure ? '금액 보기' : '금액 숨기기',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.fontColor,
+              ),
+            ),
+            trailing: Switch(
+              value: _isObscure,
+              onChanged: _setObscure,
+            ),
+            onTap: () => _setObscure(!_isObscure),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/* ===== 보유 펀드 옵션 모달 ===== */
+class _FundsOptionsSheet extends StatefulWidget {
+  final FundSort currentSort;
+  final bool isExpanded;
+  final ValueChanged<FundSort> onSelectSort;
+  final ValueChanged<bool> onToggleExpand;
+
+  const _FundsOptionsSheet({
+    required this.currentSort,
+    required this.isExpanded,
+    required this.onSelectSort,
+    required this.onToggleExpand,
+  });
+
+  @override
+  State<_FundsOptionsSheet> createState() => _FundsOptionsSheetState();
+}
+
+class _FundsOptionsSheetState extends State<_FundsOptionsSheet> {
+  late FundSort _selected;
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.currentSort;
+    _expanded = widget.isExpanded;
+  }
+
+  Widget _radio(String label, FundSort v) {
+    return RadioListTile<FundSort>(
+      value: v,
+      groupValue: _selected,
+      onChanged: (nv) {
+        if (nv == null) return;
+        setState(() => _selected = nv);
+        widget.onSelectSort(nv);
+      },
+      title: Text(label, style: const TextStyle(color: AppColors.fontColor)),
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      activeColor: tossBlue,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Text(
+              '보유 펀드 옵션',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.fontColor),
+            ),
+            const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.close, color: AppColors.fontColor),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          Text('정렬', style: TextStyle(fontSize: 15, color: AppColors.fontColor.withOpacity(.6))),
+          const SizedBox(height: 6),
+          _radio('금액 많은 순', FundSort.amountDesc),
+          _radio('최신순', FundSort.newest),
+          _radio('이름순', FundSort.nameAsc),
+          _radio('수익률 높은 순', FundSort.rateDesc),
+
+          const SizedBox(height: 10),
+          const Divider(height: 1),
+
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('전체 보기', style: TextStyle(color: AppColors.fontColor, fontWeight: FontWeight.w600)),
+            subtitle: Text(
+              _expanded ? '접어서 2개만 보기' : '펀드를 모두 펼쳐 보기',
+              style: TextStyle(color: AppColors.fontColor.withOpacity(.6)),
+            ),
+            value: _expanded,
+            onChanged: (v) {
+              setState(() => _expanded = v);
+              widget.onToggleExpand(v);
+            },
+            activeColor: tossBlue,
+          ),
+
+          const SizedBox(height: 6),
         ],
       ),
     );
@@ -572,7 +798,7 @@ class _PlusTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.black26, width: 1.2),
             ),
-            child: const Icon(Icons.add, size: 20, color: Colors.black54),
+            child: Icon(Icons.add, size: 20, color: AppColors.fontColor.withOpacity(.7)),
           ),
         ),
       ],

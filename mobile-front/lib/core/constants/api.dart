@@ -1,5 +1,5 @@
 class ApiConfig {
-  // 기본 서버 주소(소희) (IP/포트 변경 시 여기만 수정)
+  // 기본 서버 주소 (IP/포트 변경 시 여기만 수정)
   static const String baseUrl = 'http://10.0.2.2:8090';
 
   // 회원가입 API
