@@ -17,6 +17,9 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
+# 민감한 설정 파일
+src/main/resources/application-secret.properties
+
 ### IntelliJ IDEA ###
 .idea
 *.iws
