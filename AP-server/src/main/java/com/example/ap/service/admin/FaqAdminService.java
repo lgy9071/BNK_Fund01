@@ -8,9 +8,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import com.example.ap.repository.admin.FaqCategoryMapRepository;
 import com.example.ap.repository.admin.projection.FaqCategoryCount;
-import com.example.common.entity.admin.FaqCategoryMap;
+import com.example.ap.repository.fund.FaqCategoryMapRepository;
+import com.example.ap.repository.fund.FaqRepository;
+import com.example.common.entity.fund.Faq;
+import com.example.common.entity.fund.FaqCategoryMap;
 
 import lombok.RequiredArgsConstructor;
 

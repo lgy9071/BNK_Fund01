@@ -25,8 +25,7 @@ public class ApprovalLogService {
         approvalLogRepository.save(log);
     }
 
-    public 
-    <ApprovalLog> findAllByNewStatus(String newStatus) {
+    public List<ApprovalLog> findAllByNewStatus(String newStatus) {
         return approvalLogRepository.findByStatusOrderByChangedAtDesc(newStatus);
     }
 

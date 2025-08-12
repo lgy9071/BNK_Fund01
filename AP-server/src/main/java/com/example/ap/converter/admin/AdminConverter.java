@@ -3,6 +3,9 @@ package com.example.ap.converter.admin;
 
 import org.springframework.stereotype.Component;
 
+import com.example.common.dto.admin.AdminDTO;
+import com.example.common.entity.admin.Admin;
+
 @Component
 public class AdminConverter {
     // DTO -> Entity, Entity -> DTO 변환 클래스

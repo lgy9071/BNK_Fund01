@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 import com.example.ap.repository.admin.AdminRepository_A;
 import com.example.ap.repository.admin.ApprovalRepository;
 import com.example.ap.repository.admin.projection.StatusCount;
+import com.example.ap.repository.fund.FundRepository;
 import com.example.common.entity.admin.Approval;
+import com.example.common.entity.fund.Fund;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

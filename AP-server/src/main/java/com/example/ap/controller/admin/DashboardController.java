@@ -14,6 +14,7 @@ import com.example.ap.service.admin.AdminDashboardService;
 import com.example.ap.service.admin.AdminNoticeService;
 import com.example.ap.service.admin.ApprovalService;
 import com.example.ap.service.admin.FaqAdminService;
+import com.example.ap.service.fund.QnaService;
 import com.example.common.dto.admin.AdminDTO;
 import com.example.common.dto.admin.AdminNoticeDTO;
 import com.example.common.entity.admin.Approval;

@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.example.ap.service.admin.FaqAdminService;
 import com.example.common.dto.admin.AdminDTO;
+import com.example.common.entity.fund.Faq;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
