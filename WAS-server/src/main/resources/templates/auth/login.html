@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>로그인</title>
+    <link rel="stylesheet" href="/css/login.css" />
+    <link rel="stylesheet" href="/css/reset.css" />
+    <link rel="stylesheet" href="/css/userHeader.css" />
+    <link rel="stylesheet" href="/css/footer.css" />
+  </head>
+  <body>
+    <!-- 공통 헤더 -->
+    <th:block th:replace="fragments/userHeader :: userHeader"></th:block>
+
+    <div class="login-container">
+      <div class="login-card">
+        <h3 class="login-title">로그인</h3>
+
+        <form
+          th:action="@{/auth/login}"
+          th:object="${loginRequest}"
+          method="post"
+          novalidate
+        >
+          <!-- 아이디 -->
+          <div class="form-group">
+            <input
+              th:field="*{username}"
+              class="form-input"
+              placeholder="아이디"
+            />
+            <div class="form-error" th:errors="*{username}"></div>
+          </div>
+
+          <!-- 비밀번호 -->
+          <div class="form-group">
+            <input
+              th:field="*{password}"
+              type="password"
+              class="form-input"
+              placeholder="비밀번호"
+            />
+            <div class="form-error" th:errors="*{password}"></div>
+          </div>
+
+          <!-- 서버 측 오류 -->
+          <div
+            class="form-error"
+            th:if="${loginError}"
+            th:text="${loginError}"
+          ></div>
+
+          <!-- 로그인 버튼 -->
+          <div class="form-group">
+            <button type="submit" class="btn-primary">로그인</button>
+          </div>
+        </form>
+
+        <div class="login-footer">
+          <a th:href="@{/auth/join}" class="link-bank"
+            >계정이 없나요? 회원가입</a
+          >
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

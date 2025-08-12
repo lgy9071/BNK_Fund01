@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>QnA 등록 완료</title>
+  <style>
+    body {
+      background-color: #ede4e2;
+      font-family: 'Noto Sans KR', sans-serif;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card {
+      background-color: #fff;
+      padding: 3rem;
+      border-radius: 30px;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.05);
+      text-align: center;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .card p {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .btn-group {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .btn {
+      padding: 0.6rem 1.4rem;
+      font-size: 0.95rem;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .btn-faq {
+      background-color: #892020;
+      color: white;
+    }
+
+    .btn-faq:hover {
+      background-color: #6f1a1a;
+    }
+
+    .btn-home {
+      background-color: #eee;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .btn-home:hover {
+      background-color: #ddd;
+    }
+
+    .btn-home::before {
+      content: "🏠";
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <p>등록이 완료되었습니다</p>
+    <p>평균 1~2영업일 이내 답변드립니다</p>
+
+    <div class="btn-group">
+      <button class="btn btn-faq" onclick="location.href='/faq'">펀드 FAQ 보러가기</button>
+      <button class="btn btn-home" onclick="location.href='/'">홈으로 돌아가기</button>
+    </div>
+  </div>
+
+</body>
+</html>

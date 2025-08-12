@@ -1,0 +1,493 @@
+/*
+*admin 관리자 설정 메뉴 css
+*/
+
+@font-face {
+  font-family: 'BNK';
+  src: url('/font/BNKGothic-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'BNK';
+  src: url('/font/BNKGothic-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* 탭 컨테이너 */
+.tab-container {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 탭 버튼 그룹 */
+.tabs {
+  display: flex;
+  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 16px;
+}
+
+/* 각 탭 버튼 */
+.tab-button {
+  background: none;
+  border: none;
+  padding: 10px 20px;
+  margin-right: 8px;
+  font-size: 1rem;
+  color: #555;
+  cursor: pointer;
+  transition: color 0.2s ease, border-bottom 0.2s ease;
+}
+
+.tab-button:hover {
+  color: #117C88;
+}
+
+.tab-button.active {
+  color: #117C88;
+  border-bottom: 3px solid #117C88;
+  font-weight: bold;
+}
+
+/* 탭 컨텐츠 */
+.tab-content {
+  display: none; /* JS로 토글됨 */
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ROLE 필터 드롭다운 */
+#roleFilter {
+  margin: 0 0 16px;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+/* 관리자 리스트 컨테이너 */
+#adminListContainer {
+  margin-top: 12px;
+}
+
+/* ─────────── 모달 오버레이 & 박스 ─────────── */
+/* 외부 오버레이 */
+#adminModal {
+  display: none; /* JS로 토글됨 */
+  position: fixed;
+  z-index: 1100;
+  inset: 0; /* top/right/bottom/left:0 */
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+/* 모달 콘텐츠 박스 */
+#adminModalContent {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;  
+  background-color: #ffffff;
+  width: 480px;
+  max-width: 90%;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  position: relative;
+  overflow-y: auto;
+  max-height: 80vh;
+}
+
+/* 닫기 버튼 */
+#closeModalBtn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important; 
+  font-size: 1.2rem;
+  color: #117C88 !important;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+#closeModalBtn:hover {
+  background: none !important;
+  color: #002125;
+  font-weight: 700;
+}
+
+
+/* ─────────── 탭 콘텐츠 박스 ─────────── */
+.tab-content {
+  background-color: #ffffff;
+  padding: 24px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  margin-bottom: 24px;
+}
+
+/* 필터 / 폼 요소 그룹 */
+.tab-content label,
+.tab-content select,
+.tab-content input,
+.tab-content button {
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+/* 필터 셀렉트 박스 */
+.tab-content select {
+  min-width: 150px;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* 관리자 리스트 테이블 (예: #adminListContainer) */
+#adminListContainer table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  border: solid 1px #e0e0e0;
+  border-radius: 8px;
+}
+#adminListContainer table th,
+#adminListContainer table td {
+  padding: 8px 9px;
+  border: 1px solid #e0e0e0;
+  text-align: left;
+  font-size: 14px;
+}
+
+#adminListContainer table td a{
+    text-decoration: none;
+}
+#adminListContainer table th {
+  background-color: #f0f4f5;
+  font-size: 16px;
+  font-weight: 600;
+}
+#adminListContainer table tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+#adminListContainer table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+
+/* 관리자 목록 “수정” 버튼 스타일 */
+#adminListContainer table button {
+  padding: 3px 12px;
+  background-color: #117C88;
+  color: #ffffff;
+  font-size: 0.8rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+/* 버튼 호버/액티브 상태 */
+#adminListContainer table button:hover {
+  background-color: #0e666f;
+}
+#adminListContainer table button:active {
+  transform: scale(0.98);
+}
+
+/* 버튼 안 a 태그 전체 영역 클릭 처리 */
+#adminListContainer table button a {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+  line-height: inherit;
+}
+
+/* 컬럼별 너비 비율 지정 */
+#adminListContainer table th:nth-child(1),
+#adminListContainer table td:nth-child(1) {
+  width: 8%;              /* No. */
+  text-align: center;
+}
+#adminListContainer table th:nth-child(2),
+#adminListContainer table td:nth-child(2) {
+  width: 28%;             /* 이름 */
+}
+#adminListContainer table th:nth-child(3),
+#adminListContainer table td:nth-child(3) {
+  width: 28%;             /* 아이디 */
+}
+#adminListContainer table th:nth-child(4),
+#adminListContainer table td:nth-child(4) {
+  width: 23%;             /* 권한 */
+}
+#adminListContainer table th:nth-child(5),
+#adminListContainer table td:nth-child(5) {
+  width: 13%;             /* 동작 */
+  text-align: center;
+}
+
+/* 공지문(Notice) 스타일 */
+.tab-content p {
+  margin: 12px 0;
+  line-height: 1.5;
+  color: #555;
+}
+
+/* 관리자 등록(단락별) */
+.admin-register-content > * {
+  margin-bottom: 16px;
+}
+
+/* 입력 폼(관리자 등록) */
+.admin-register-content input[type="text"],
+.admin-register-content input[type="password"],
+.admin-register-content select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.admin-register-content input:focus,
+.admin-register-content select:focus {
+  outline: none;
+  border-color: #117C88;
+  box-shadow: 0 0 0 2px rgba(17,124,136,0.2);
+}
+
+/* 등록 / 수정 버튼 */
+.admin-register-content button,
+.admin-register-content input[type="submit"] {
+  padding: 10px 16px;
+  background-color: #117C88;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.admin-register-content button:hover,
+.admin-register-content input[type="submit"]:hover {
+  background-color: #0e666f;
+}
+
+
+
+/* ─────────── 모달 내부 버튼 스타일 ─────────── */
+#adminModalContent button,
+#adminModalContent input[type="button"],
+#adminModalContent input[type="submit"] {
+  padding: 10px 20px;
+  margin: 8px 4px 0 0;
+  background-color: #117C88;
+  color: #ffffff;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+/* 호버 및 액티브 효과 */
+#adminModalContent button:hover,
+#adminModalContent input[type="button"]:hover,
+#adminModalContent input[type="submit"]:hover {
+  background-color: #0e666f;
+}
+
+#adminModalContent button:active,
+#adminModalContent input[type="button"]:active,
+#adminModalContent input[type="submit"]:active {
+  transform: scale(0.98);
+}
+
+/* 모달 내 삭제 버튼 */
+#adminModalContent .btn-delete {
+  background-color: #e74c3c;       /* 레드 계열 */
+  color: #fff;
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+}
+#adminModalContent .btn-delete:hover {
+  background-color: #c0392b;
+}
+#adminModalContent .btn-delete:active {
+  transform: scale(0.98);
+}
+
+/* ─── 조회 버튼 스타일 ─── */
+#tab1 .btn-search,
+#tab1 input[type="button"][value="조회"],
+#tab1 button[value="조회"] {
+  padding: 5px 10px;
+  background-color: #117C88;
+  color: #ffffff;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+#tab1 .btn-search:hover,
+#tab1 input[type="button"][value="조회"]:hover,
+#tab1 button[value="조회"]:hover {
+  background-color: #0e666f;
+}
+
+#tab1 .btn-search:active,
+#tab1 input[type="button"][value="조회"]:active,
+#tab1 button[value="조회"]:active {
+  transform: scale(0.98);
+}
+
+
+.admin-register-content {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.admin-register-content .form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.admin-register-content .form-group label {
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.admin-register-content .form-group .input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-register-content .form-group input,
+.admin-register-content .form-group select {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.admin-register-content #id_check {
+  padding: 8px 12px;
+  background-color: #117C88;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.admin-register-content #id_check:hover {
+  background-color: #0e666f;
+}
+
+.admin-register-content .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.admin-register-content .form-actions input[type="submit"] {
+  padding: 10px 20px;
+  background-color: #117C88;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.admin-register-content .form-actions input[type="submit"]:hover {
+  background-color: #0e666f;
+}
+
+.admin-register-content .notes {
+  margin-top: 24px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.admin-register-content .notes p + p {
+  margin-top: 4px;
+}
+
+
+/* 페이지네이션 컨테이너 */
+.pagination-nav {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.pagination {
+  display: inline-flex;
+  list-style: none;
+  padding: 0;
+}
+
+.pagination li {
+  margin: 0 4px;
+}
+
+.pagination li.disabled .page-link {
+  color: #ccc;
+  pointer-events: none;
+}
+
+.pagination li.active .page-link {
+  background-color: #117C88;
+  color: #fff;
+  font-weight: bold;
+  border-radius: 4px;
+}
+
+.page-link {
+  display: block;
+  padding: 6px 12px;
+  text-decoration: none;
+  color: #117C88;
+  border: 1px solid #117C88;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.page-link:hover {
+  background-color: #117C88;
+  color: #fff;
+}
+
+.tableWarp{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+.wrap2{
+  display: flex;
+  justify-content: left;  
+}

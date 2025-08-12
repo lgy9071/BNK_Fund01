@@ -1,0 +1,138 @@
+<div th:fragment="userHeader" xmlns:th="http://www.thymeleaf.org">
+  <header class="header no-reset">
+    <div class="logo">
+      <a th:href="@{/}"><img src="/images/logo.png" alt="BNK 부산은행 로고" /></a>
+    </div>
+
+    <div class="right-section">
+      <nav class="main-nav">
+
+        <div class="dropdown">
+          <button class="nav-btn">금융상품</button>
+          <div class="dropdown-content">
+            <a href="#">추천상품</a>
+            <a th:href="@{/fund}">펀드</a>
+            <a href="#">카드</a>
+            <a href="#">예금</a>
+            <a href="#">대출</a>
+            <a href="#">보험/공제</a>
+          </div>
+        </div>
+        <button class="nav-btn">개인</button>
+        <button class="nav-btn">기업</button>
+      </nav>
+
+      <div class="user-info">
+        <!-- 로그인 안 된 경우 -->
+        <div th:if="${session.user == null}">
+          <a th:href="@{/auth/login}">로그인</a>
+          <span>|</span>
+          <a th:href="@{/auth/join}">회원가입</a>
+        </div>
+
+        <!-- 로그인 된 경우 -->
+        <div th:if="${session.user != null}">
+          <a th:href="@{/mypage}"><span th:text="${session.user.name + '님 환영합니다'}"></span><img src="/images/profile.svg"
+              alt="마이페이지 프로필 아이콘"></a>
+          <span>|</span>
+          <a th:href="@{/auth/logout}">로그아웃</a>
+        </div>
+
+        <button class="menu-icon" onclick="toggleMenu()"><img src="/images/menu_icon.png" alt="menu 아이콘"></button>
+      </div>
+
+      <script>
+        function toggleMenu() {
+          const menu = document.getElementById("hiddenMenu");
+          menu.classList.toggle("show");
+        }
+      </script>
+
+      <div class="hidden-menu" id="hiddenMenu">
+        <div class="hidden-menu-title">
+          <h3>전체 메뉴보기</h3>
+          <button onclick="toggleMenu()"><img src="/images/close-icon.png" alt="메뉴 닫기"></button>
+        </div>
+        <div class="hidden-menu-wrap">
+          <div class="hidden-menu-tabBar">
+            <div class="hidden-menu-tab active">금융상품</div>
+            <div class="hidden-menu-tab">개인뱅킹</div>
+            <div class="hidden-menu-tab">기업뱅킹</div>
+          </div>
+
+          <div class="hidden-menu-subTab">
+            <span>펀드</span> |
+            <span>카드</span> |
+            <span>예금</span> |
+            <span>대출</span> |
+            <span>보험/공제</span>
+          </div>
+          <hr>
+
+          <div class="subTab-menu-list">
+            <h3>펀드</h3>
+            <ul>
+              <li><a th:href="@{/fund}">펀드 메인</a></li>
+              <li><a th:href="@{/fund/list}">펀드 상품</a></li>
+              <li><a th:href="@{/profile}">투자성향분석</a></li>
+              <li><a th:href="@{/fund_status}">자료실</a></li>
+              <li><a th:href="@{/guide}">펀드 서비스</a></li>
+            </ul>
+          </div>
+
+          <script>
+              const mainTabSpans = document.querySelectorAll(".hidden-menu-tab");
+              mainTabSpans.forEach(tab => {
+                tab.addEventListener("click", function () {
+                  mainTabSpans.forEach(t => t.classList.remove("active"));
+                  this.classList.add("active");
+                });
+              });
+
+              const subTabSpans = document.querySelectorAll(".hidden-menu-subTab span");
+              subTabSpans.forEach(tab => {
+                tab.addEventListener("click", function () {
+                  subTabSpans.forEach(t => t.classList.remove("active"));
+                  this.classList.add("active");
+                });
+              });
+
+              // 스크롤 시 active 자동 제거
+              window.addEventListener("scroll", () => {
+                if (window.scrollY > 0) {
+                  mainTabSpans.forEach(t => t.classList.remove("active"));
+                  subTabSpans.forEach(t => t.classList.remove("active"));
+                }
+              });
+          </script>
+
+          <script>
+            document.addEventListener("DOMContentLoaded", function () {
+              const subTabs = document.querySelectorAll(".hidden-menu-subTab span");
+              const fundMenu = document.querySelector(".subTab-menu-list");
+
+              subTabs.forEach(tab => {
+                tab.addEventListener("click", function () {
+                  subTabs.forEach(t => t.classList.remove("active"));
+                  this.classList.add("active");
+
+                  // 텍스트가 '펀드'일 때만 subTab-menu-list 보이기
+                  if (this.textContent.trim() === "펀드") {
+                    fundMenu.style.display = "block";
+                  } else {
+                    fundMenu.style.display = "none";
+                  }
+                });
+              });
+
+              // 페이지 처음 로드될 때도 상태 확인
+              const initialActive = document.querySelector(".hidden-menu-subTab span.active");
+              if (initialActive && initialActive.textContent.trim() === "펀드") {
+                fundMenu.style.display = "block";
+              }
+            });
+          </script>
+        </div>
+      </div>
+  </header>
+</div>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${fund.fundName}">펀드 상세</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+
+<body class="container">
+
+<!-- ───────── 펀드 기본 정보 ───────── -->
+<h2 th:text="${fund.fundName}">펀드명</h2>
+
+<ul>
+    <li>운용사 : <span th:text="${fund.managementCompany}">운용사명</span></li>
+    <li>설정일 :
+        <span th:text="${#temporals.format(fund.establishDate, 'yyyy-MM-dd')}">
+    2025-01-01
+  </span>
+    </li>
+    <li>펀드 유형 : <span th:text="${fund.fundType}">유형</span></li>
+    <li>운용 상태 : <span th:text="${fund.fundStatus}">운용중</span></li>
+    <li>투자 지역 : <span th:text="${fund.investmentRegion}">글로벌</span></li>
+    <li>통화 : <span th:text="${fund.baseCurrency}">KRW</span></li>
+    <li>위험 등급 : <span th:text="${fund.riskLevel}">3등급</span></li>
+</ul>
+
+<!-- ───────── ♥ 관심 등록 / 해제 버튼 ───────── -->
+<button id="favBtn"
+        th:data-id="${fund.fundId}"
+        th:text="${isFavorite} ? '♥ 해제' : '♥ 등록'"
+        class="btn btn-outline-primary">
+</button>
+
+<!-- ───────── JS (관심 토글) ───────── -->
+<script>
+    $('#favBtn').on('click', function () {
+        const id = $(this).data('id');
+        $.post(`/mypage/favorites/${id}/toggle`, () => location.reload());
+    });
+</script>
+
+</body>
+</html>

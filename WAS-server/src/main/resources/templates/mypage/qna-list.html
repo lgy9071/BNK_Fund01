@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <link rel="stylesheet" href="/css/reset.css" />
+  <link rel="stylesheet" href="/css/userHeader.css" />
+  <link rel="stylesheet" href="/css/mypage.css" />
+  <link rel="stylesheet" href="/css/footer.css" />
+</head>
+
+<body>
+  <!-- 헤더 -->
+  <th:block th:replace="fragments/userHeader :: userHeader"></th:block>
+  <div class="qna-page">
+    <!-- 뒤로가기 버튼 -->
+    <div class="back-container">
+      <a href="javascript:history.back()" class="back-btn">
+        ← 뒤로가기
+      </a>
+    </div>
+
+    <!-- 1) 페이지 헤더: 제목 + 새 문의 버튼 -->
+    <div class="qna-header">
+      <h2>나의 문의 내역</h2>
+      <a th:href="@{/qna}" class="btn btn-primary new-qna-btn">새 문의 작성</a>
+    </div>
+    <div class="qna-table-container">
+      <!-- 조회된 게시물 개수 -->
+      <p class="qna-count">
+        총 <span th:text="${countQna}">0</span>개의 게시물이 조회되었습니다.
+      </p>
+      <table class="table qna-table">
+        <thead>
+          <tr>
+            <th>번호</th>
+            <th>제목</th>
+            <th>내용</th>
+            <th>작성일</th>
+            <th>답변</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="q, iter : ${qnaList}">
+            <td th:text="${iter.count}"></td>
+            <td>
+              <a href="#" class="link-bank" th:data-qna-id="${q.qnaId}" th:text="${q.title}">
+                문의 제목></a>
+            </td>
+            <td th:text="${#strings.abbreviate(q.content, 30)}"></td>
+            <td th:text="${#temporals.format(q.regDate, 'yyyy-MM-dd HH:mm')}"></td>
+            <td th:text="${q.status}" th:attr="data-status=${q.status}"></td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(qnaList)}">
+            <td colspan="5" class="empty-row">문의 내역이 없습니다</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="qna-note">
+        ※ 제목을 클릭하면 상세 내용을 확인할 수 있습니다
+      </p>
+    </div>
+  </div>
+  <div id="modalPlaceholder"></div>
+  <!-- 푸터 -->
+  <th:block th:replace="fragments/footer :: siteFooter"></th:block>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelector('.qna-table').addEventListener('click', e => {
+        const a = e.target.closest('a.link-bank');
+        if (!a) return;
+        e.preventDefault();
+        const qnaId = a.dataset.qnaId;
+        console.log('clicked qnaId=', qnaId);
+        openQnaModal(qnaId);
+      });
+    });
+
+    function openQnaModal(qnaId) {
+      console.log('openQnaModal 호출, qnaId=', qnaId);
+      fetch(`/mypage/qna/${qnaId}`)
+        .then(res => {
+          if (!res.ok) throw new Error('상세를 불러오는 중 오류가 발생했습니다.');
+          return res.text();
+        })
+        .then(html => {
+          document.getElementById('modalPlaceholder').innerHTML = html;
+          const modal = document.getElementById('qnaDetailModal');
+          if (modal) modal.style.display = 'block';
+        })
+        .catch(err => alert(err.message));
+    }
+    // 모달 닫기
+    function closeModal() {
+      const modal = document.getElementById('qnaDetailModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    // ESC 닫기
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+  </script>
+
+</body>
+
+</html>

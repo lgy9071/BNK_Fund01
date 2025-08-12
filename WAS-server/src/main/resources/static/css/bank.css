@@ -1,0 +1,44 @@
+/* ---------- Color Scheme ---------- */
+:root{
+  --bank-dark: #0f2557;
+  --bank-gold: #d4af37;
+}
+
+.bg-bank-dark { background-color: var(--bank-dark) !important; }
+.btn-gold     { background-color: var(--bank-gold); color:#000; }
+.btn-gold:hover { background-color:#c19a2e; color:#000; }
+
+.link-bank    { color: var(--bank-dark); }
+.link-bank:hover{ color: var(--bank-gold); text-decoration: underline; }
+
+/* ---------- Typography ---------- */
+body{ font-family: 'Noto Sans KR', sans-serif; }
+h1,h2,h3,h4,h5,h6{ font-weight:700; }
+
+/* ---------- Card ---------- */
+.card{ border-radius:1rem; }
+/* ---------- Layout (추가 필요) ---------- */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* ---------- Table (추가 필요) ---------- */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.table th,
+.table td {
+  padding: 1rem;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+/* ---------- Utility (추가 필요) ---------- */
+.text-center {
+  text-align: center;
+}

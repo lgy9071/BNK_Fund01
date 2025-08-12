@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="${notice != null} ? '공지 수정' : '공지 등록'">공지 등록</title>
+  <link rel="stylesheet" href="/css/admin/admin_layout.css"/>
+  <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+  <style>
+    :root {
+      --primary: #337D89;
+      --border: #ddd;
+      --shadow: rgba(0,0,0,.06);
+    }
+    .form-container {
+      max-width: 700px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+    .form-container h1 {
+      font-size: 24px;
+      color: var(--primary);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .form-group input[type="text"],
+    .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      resize: none;
+    }
+    .btn-submit,
+    .btn-cancel {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .btn-submit {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-submit:hover {
+      filter: brightness(.9);
+    }
+    .btn-cancel {
+      background: #ccc;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="admin/admin_header :: adminHeader"></div>
+  <div class="main-wrapper">
+    <div th:replace="admin/admin_aside :: adminAside"></div>
+    <main class="content">
+      <div class="form-container">
+        <h1>
+          <i class="fas fa-bullhorn"></i>
+          <span th:text="${notice != null} ? '공지 수정' : '공지 등록'">공지 등록</span>
+        </h1>
+        <form th:action="${notice != null}
+                            ? @{'/admin/notice/edit/' + ${notice.id}}
+                            : @{/admin/notice/new}"
+              method="post">
+          <div class="form-group">
+            <label for="title">제목</label>
+            <input type="text"
+                   id="title"
+                   name="title"
+                   placeholder="제목을 입력하세요"
+                   th:value="${notice?.title}"
+                   required/>
+          </div>
+          <div class="form-group">
+            <label for="content">내용</label>
+            <textarea id="content"
+                      name="content"
+                      rows="6"
+                      placeholder="내용을 입력하세요"
+                      required
+                      th:text="${notice?.content}"></textarea>
+          </div>
+          <button type="submit" class="btn-submit"
+                  th:text="${notice != null} ? '수정' : '등록'">등록</button>
+          <a th:href="@{/admin/notice/list}" class="btn-cancel">취소</a>
+        </form>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>

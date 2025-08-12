@@ -1,0 +1,100 @@
+/* ── 컨테이너 ── */
+.container {
+  max-width: 480px;
+  margin: 80px auto 40px;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+/* ── 카드 ── */
+.card {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  overflow: hidden;
+  width: 100%;
+}
+.card-body {
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── 제목 ── */
+.card-body h3 {
+  margin: 0 0 24px;
+  font-size: 1.5rem;
+  color: #333333;
+  text-align: center;
+}
+
+/* ── 폼 그룹 ── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+/* ── 입력창 ── */
+.form-control {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-control:focus {
+  border-color: #d93025;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(217,48,37,0.2);
+}
+
+/* ── 에러 메시지 ── */
+.form-error {
+  margin-top: 4px;
+  color: #d93025;
+  font-size: 0.875rem;
+}
+
+/* ── 가입 버튼 ── */
+.form-actions {
+  margin-top: 12px;
+}
+
+.btn-gold {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #d93025;
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-gold:hover {
+  background-color: #b1271f;
+}
+
+/* ── 푸터 링크 ── */
+.form-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.link-bank {
+  color: #333;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: color 0.2s;
+}
+
+.link-bank:hover {
+  color: #b1271f;
+  text-decoration: underline;
+}

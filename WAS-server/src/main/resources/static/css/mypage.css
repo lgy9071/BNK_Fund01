@@ -1,0 +1,669 @@
+/* 본문 전체 여백 */
+.main-content {
+  max-width: 1000px;
+  margin: 60px auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+/* 카드 3개 그리드 */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+/* 카드 공통 */
+.mypage-card {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  padding: 32px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mypage-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* 아이콘 영역 */
+.card-icon {
+  font-size: 40px;
+  margin-bottom: 16px;
+}
+
+/* 카드 제목 */
+.mypage-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 12px;
+  color: #1a202c;
+}
+
+/* 카드 설명 */
+.mypage-card p {
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* 버튼 */
+.mypage-card .btn {
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.mypage-card .btn-primary {
+  background-color: #D7191F;
+  color: #fff;
+  border: none;
+}
+
+.mypage-card .btn-primary:hover {
+  background-color: #D7191F;
+}
+
+.mypage-banner {
+  margin-top: 40px;
+  margin-bottom: 40px;
+  width: 100%;
+  height: 150px;
+  border-radius: 8px;
+  overflow: hidden;
+
+  /* 배경 이미지 설정 변경 */
+  background-size: contain;
+  /* ← 이미지를 온전히 보여주되, 컨테이너에 맞게 축소 */
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* ── “내 정보” 카드 ── */
+.user-info-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  max-width: 1000px;
+  margin: 40px auto 32px;
+}
+
+/* 프로필 메인 */
+.profile-main {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 24px;
+}
+
+/* 투자성향 배지 컨테이너 */
+.profile-investment {
+  margin-left: auto;
+  /* 프로필 정보 우측 끝으로 붙이기 */
+}
+
+/* 공통 배지 스타일 */
+.investment-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* 타입별 색상 */
+.investment-badge.stable {
+  background-color: #3182ce;
+}
+
+/* 안 정 형 */
+.investment-badge.conservative {
+  background-color: #38a169;
+}
+
+/* 안 정 추 구 형 */
+.investment-badge.neutral {
+  background-color: #d69e2e;
+}
+
+/* 위 험 중 립 형 */
+.investment-badge.aggressive {
+  background-color: #ed8936;
+}
+
+/* 적 극 투 자 형 */
+.investment-badge.attack {
+  background-color: #e53e3e;
+}
+
+/* 공 격 투 자 형 */
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  overflow: hidden;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.profile-username {
+  margin-top: 4px;
+  color: #888;
+  font-size: 0.95rem;
+}
+
+/* 프로필 완성도 */
+.profile-completion {
+  padding: 0 24px 16px;
+}
+
+.profile-completion span {
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.progress {
+  margin-top: 8px;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #4e73df;
+  border-radius: 4px;
+}
+
+/* 주요 통계 */
+.profile-stats {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 24px 24px;
+  margin: 0;
+  list-style: none;
+  border-bottom: 1px solid #eee;
+}
+
+.profile-stats li {
+  text-align: center;
+  flex: 1;
+}
+
+.profile-stats li+li {
+  border-left: 1px solid #eee;
+}
+
+.profile-stats strong {
+  display: block;
+  color: #333;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.profile-stats span {
+  color: #4e73df;
+  font-weight: 600;
+}
+
+/* 빠른 액션 버튼 */
+.profile-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 24px 24px;
+}
+
+.profile-actions .btn-outline {
+  padding: 8px 20px;
+  border: 1px solid #D7191F;
+  border-radius: 4px;
+  color: #D7191F;
+  transition: background 0.2s, color 0.2s;
+  text-decoration: none;
+}
+
+.profile-actions .btn-outline:hover {
+  background: #D7191F;
+  color: #fff;
+}
+
+/* ── 테이블 래퍼 ── */
+.qna-table-container {
+  margin: 40px auto;
+  max-width: 1000px;
+  padding: 0 20px;
+  overflow-x: auto;
+  box-sizing: border-box;
+}
+
+/* ── 기본 테이블 스타일 ── */
+.qna-table {
+  width: 100%;
+  border-collapse: collapse;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: #fff;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* 헤더 */
+.qna-table thead th {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  color: #333;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+/* 본문 셀 */
+.qna-table tbody td {
+  padding: 12px 16px;
+  color: #555;
+  border-bottom: 1px solid #eceff1;
+}
+
+/* 줄무늬와 호버 */
+.qna-table tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.qna-table tbody tr:hover {
+  background: #eef2f7;
+}
+
+/* 링크 스타일 */
+.link-bank {
+  color: #4e73df;
+  text-decoration: none;
+  transition: color .2s;
+}
+
+.link-bank:hover {
+  color: #2e59d9;
+  text-decoration: underline;
+}
+
+/* 빈 내역 표시 */
+.empty-row {
+  text-align: center;
+  padding: 24px 0;
+  color: #888;
+  font-style: italic;
+}
+
+
+/* (data-status 사용 시) */
+.qna-table td[data-status='대기'] {
+  color: #d97706;
+  background-color: #fffbeb;
+  font-weight: 600;
+}
+
+.qna-table td[data-status='완료'] {
+  color: #047857;
+  background-color: #ecfdf5;
+  font-weight: 600;
+}
+
+/* ── 페이지 래퍼 ── */
+.qna-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+  /* 밑에 80px 여백 추가 */
+  box-sizing: border-box;
+  min-height: 650px;
+}
+
+/* ── 헤더 ── */
+.qna-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 20px;
+}
+
+.qna-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.new-qna-btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background .2s;
+  background-color: transparent;  /* 배경 투명 */
+  color: #D7191F;  /* 글자색 */
+  border: 1px solid #D7191F; /* 테두리 색 */
+}
+
+/* 1:1 문의 리스트 안내 문구 */
+.qna-note {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 12px 0;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.new-qna-btn:hover {
+  background-color: #D7191F;
+  color: #fff;
+}
+
+/* ── 테이블 컨테이너 ── */
+.qna-table-container {
+  overflow-x: auto;
+  margin-bottom: 32px;
+  /* 테이블과 페이지네이션 사이 간격 */
+}
+
+
+/* 뒤로가기 버튼 영역 */
+.back-container {
+  max-width: 1000px;
+  margin: 20px auto 0;
+  /* 상단 여백 + 중앙정렬 */
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+/* 뒤로가기 링크 */
+.back-btn {
+  display: inline-block;
+  font-size: 0.95rem;
+  color: #4e73df;
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.back-btn:hover {
+  background-color: rgba(78, 115, 223, 0.1);
+  color: #2e59d9;
+}
+
+/* ── 모달 공통 ── */
+.modal {
+  display: none; /* JS 로 block/none 제어 */
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1000;
+}
+.modal-overlay {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+}
+.modal-container {
+  position: relative;
+  width: 90%; max-width: 600px;
+  max-height: 90%;
+  margin: 0 auto;
+  top: 50%; transform: translateY(-50%);
+  background: #fff;
+  border-radius: 8px;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  padding: 24px;
+}
+
+/* 닫기 버튼 */
+.modal-close {
+  position: absolute;
+  top: 12px; right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  color: #888;
+}
+.modal-close:hover {
+  color: #333;
+}
+
+/* ── QnA 게시글 스타일 ── */
+.qna-post h2 {
+  margin: 0 0 12px;
+  font-size: 1.5rem;
+  color: #333;
+}
+.qna-meta {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.qna-meta .status {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  /* 상태별 색상 (대기/완료) */
+}
+/* 대기 상태 */
+.qna-table td.status-pending {
+  background-color: #fffbeb;  /* 연한 옐로우 */
+  color: #d97706;             /* 앰버 계열 진한 텍스트 */
+  font-weight: 600;
+}
+
+/* 완료 상태 */
+.qna-table td.status-completed {
+  background-color: #ecfdf5;  /* 연한 그린 */
+  color: #047857;             /* 에메랄드 계열 진한 텍스트 */
+  font-weight: 600;
+}
+
+
+.qna-content {
+  line-height: 1.6;
+  color: #444;
+  margin-bottom: 24px;
+}
+
+.qna-answer h3 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  color: #4e73df;
+}
+.qna-answer div {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 4px;
+  color: #333;
+  line-height: 1.6;
+}
+
+/* 모달 내 상태 뱃지 공통 */
+.modal-container .status {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* 대기 상태: 연한 옐로우 바탕 + 앰버 텍스트 */
+.modal-container .status-pending {
+  background-color: #fffbeb;   /* amber-50 */
+  color: #d97706;              /* amber-700 */
+}
+
+/* 완료 상태: 연한 그린 바탕 + 에메랄드 텍스트 */
+.modal-container .status-completed {
+  background-color: #ecfdf5;   /* emerald-50 */
+  color: #047857;              /* emerald-700 */
+}
+
+/* 조회된 게시물 개수 */
+.qna-count {
+  font-size: 0.95rem;
+  color: #444;
+  margin: 8px 0 16px; /* qna-note 와 테이블 사이 적당한 여백 */
+}
+
+/* ── 폼 컨테이너 ── */
+.form-container {
+  max-width: 600px;
+  margin: 40px auto 60px;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* 페이지 타이틀 */
+.page-title {
+  margin-bottom: 24px;
+  font-size: 1.5rem;
+  color: #333;
+  text-align: center;
+}
+
+/* ── 폼 그룹 ── */
+.form-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 레이블 */
+.form-label {
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #444;
+}
+
+/* 입력창 */
+.form-control {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-control:focus {
+  border-color: #4e73df;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(78,115,223,0.2);
+}
+
+/* readonly/plaintext 입력 */
+.form-control-plaintext {
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  padding: 10px 12px;
+  color: #555;
+}
+
+/* 에러 메시지 */
+.form-error {
+  margin-top: 4px;
+  color: #d93025;
+  font-size: 0.875rem;
+}
+
+/* 성공 메시지 */
+.form-success {
+  margin-top: 4px;
+  color: #188038;
+  font-size: 0.875rem;
+}
+
+/* ── 액션 버튼 ── */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background-color: transparent;  /* 배경 투명 */
+  color: #D7191F;  /* 글자색 */
+  border: 1px solid #D7191F; /* 테두리 색 */
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #D7191F;
+  color: #fff;  /* 글자색 */
+}
+
+
+/* 반응형: 작은 화면에서 글자 크기 약간 축소 */
+@media (max-width: 600px) {
+
+  .qna-table thead th,
+  .qna-table tbody td {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+}
+
+
+
+/* 모바일에서 줄 바꿈 & 가운데 정렬 */
+@media (max-width: 600px) {
+  .profile-main {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+  }
+
+  .profile-investment {
+    margin-left: 0;
+  }
+}
+
+
+/* 반응형: 모바일 */
+@media (max-width: 600px) {
+  .main-content {
+    margin: 40px auto;
+  }
+
+  .mypage-card {
+    padding: 24px 16px;
+  }
+}

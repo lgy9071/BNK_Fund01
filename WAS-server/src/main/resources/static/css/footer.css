@@ -1,0 +1,96 @@
+/* ── 기본 레이아웃 ── */
+      .site-footer {
+        background-color: #fff;
+        border-top: 1px solid #e0e0e0;
+        padding: 40px 0;
+        font-family: "Segoe UI", "Pretendard", sans-serif;
+        font-size: 14px;
+        color: #555;
+      }
+      .site-footer__top {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .site-footer__bottom {
+        text-align: center;
+        margin-top: 24px; 
+        font-size: 13px;
+        color: #888;
+      }
+
+      /* ── 정책/약관 링크 ── */
+      .footer-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .footer-nav li a {
+        color: #444;
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+      .footer-nav li a:hover {
+        color: #1a202c;
+      }
+
+      /* ── 고객센터 ── */
+      .footer-contact {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-weight: 500;
+      }
+      .footer-contact__intl {
+        margin-left: 16px;
+        font-weight: 400;
+        color: #666;
+      }
+
+      /* ── SNS 아이콘 ── */
+      .footer-sns {
+        display: flex;
+        gap: 12px;
+      }
+      .footer-sns a {
+        font-size: 18px;
+        color: #666;
+        transition: color 0.2s;
+      }
+      .footer-sns a:hover {
+        color: #000;
+      }
+
+      /* ── 셀렉트 박스 ── */
+      .footer-selects {
+        display: flex;
+        gap: 12px;
+      }
+      .footer-selects select {
+        padding: 6px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: #fff;
+        appearance: none;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      /* 모바일 대응 */
+      @media (max-width: 768px) {
+        .site-footer__top {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .footer-selects {
+          width: 100%;
+          justify-content: flex-start;
+        }
+      }

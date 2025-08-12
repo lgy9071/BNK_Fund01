@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Page</title>
+    <link rel="stylesheet" href="/css/admin/admin_layout.css" />
+    <style>
+        .layout {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .main-wrapper {
+            display: flex;
+            flex: 1;
+            /* 헤더 아래 영역을 남은 공간 전부 차지 */
+        }
+
+        /* 2) content를 flex 컨테이너로 만들고 세로·가로 중앙정렬 */
+        main.content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            /* main-wrapper에서 남은 높이를 전부 가져옴 */
+        }
+
+        /* 3) under-construction은 별도 높이 지정 불필요 */
+        .under-construction {
+            /* 여기에 padding, 폰트 크기 등만 남겨둬도 OK */
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .construction-img {
+            width: 250px;
+        }
+
+        /* 공통 스타일 */
+        .construction-text {
+            margin: 12px 0;
+            line-height: 1.4;
+            text-align: center;
+        }
+        
+        /* 추가 안내 문구 */
+        .construction-text.open-date {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #333;
+            padding-top: 15px;
+        }
+
+        /* 오픈 예정 날짜 강조 */
+        .construction-text.note {
+            font-size: 1rem;
+            color: #555;
+            opacity: 0.85;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <div th:replace="admin/admin_header :: adminHeader"></div>
+        <div class="main-wrapper">
+            <div th:replace="admin/admin_aside :: adminAside"></div>
+            <main class="content">
+                <section class="under-construction">
+                    <!-- 이미지 경로는 실제 리소스 위치에 맞춰 수정 -->
+                    <img th:src="@{/images/constructionImage.png}" src="/images/constructionImage.png" alt="공사중"
+                        class="construction-img" />
+
+                    <p class="construction-text open-date">추후 서비스 예정입니다</p>
+                    <p class="construction-text note">예정일자: 2025년 8월 27일</p>
+
+                </section>
+            </main>
+        </div><!-- main-wrapper end -->
+    </div><!-- layout end -->
+</body>
+
+
+</html>

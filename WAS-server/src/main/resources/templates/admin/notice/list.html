@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>전체 공지 목록</title>
+  <link rel="stylesheet" href="/css/admin/admin_layout.css"/>
+  <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+  <style>
+    :root {
+      --primary: #337D89;
+      --border: #ddd;
+      --shadow: rgba(0,0,0,.06);
+    }
+    .container {
+      max-width: 1000px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+    .container h1 {
+      font-size: 24px;
+      color: var(--primary);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    table.table-list {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table.table-list th,
+    table.table-list td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    table.table-list th {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .clickable-row {
+      cursor: pointer;
+    }
+    .btn-primary {
+      display: inline-block;
+      margin-bottom: 16px;
+      background: var(--primary);
+      color: #fff;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+    }
+    .btn-primary:hover {
+      filter: brightness(.9);
+    }
+    .actions a,
+    .actions button {
+      margin-right: 8px;
+      color: var(--primary);
+      text-decoration: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="admin/admin_header :: adminHeader"></div>
+  <div class="main-wrapper">
+    <div th:replace="admin/admin_aside :: adminAside"></div>
+    <main class="content">
+      <div class="container">
+        <h1>
+          <i class="fas fa-bullhorn"></i> 전체 공지 목록
+        </h1>
+
+        <!-- super만 노출 -->
+        <a th:if="${role=='super'}"
+           th:href="@{/admin/notice/new}"
+           class="btn-primary">
+          <i class="fas fa-plus"></i> 공지 등록
+        </a>
+
+        <table class="table-list">
+          <thead>
+          <tr>
+            <th>ID</th>
+            <th>제목</th>
+            <th>작성일</th>
+            <!-- 액션 칼럼 제거 -->
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="n : ${allNotices}"
+              class="clickable-row"
+              th:onclick="'location.href=\'/admin/notice/detail/' + ${n.id} + '\';'">
+            <td th:text="${n.id}">1</td>
+            <td th:text="${n.title}">공지 제목</td>
+            <td th:text="${#temporals.format(n.createdAt,'yyyy-MM-dd HH:mm')}">
+              2025-07-20 14:00
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>

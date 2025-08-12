@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/css/admin/admin_layout.css" />
+    <link rel="stylesheet" href="/css/admin/qna_answered_detail.css" />
+    <title>QnaAnsweredDetail</title>
+  </head>
+  <body>
+    <div class="layout">
+      <div th:replace="admin/admin_header :: adminHeader"></div>
+
+      <div class="main-wrapper">
+        <div th:replace="admin/admin_aside :: adminAside"></div>
+        <main class="content qna-answered-detail">
+          <!-- 목록으로 돌아가기 버튼 -->
+          <div class="back-container">
+            <a th:href="@{/admin/qnaList}" class="btn-back">
+              << 목록으로 돌아가기</a
+            >
+          </div>
+          <!-- 전체 내용 감싸는 박스 -->
+          <div class="detail-container">
+            <h2 class="qna-title" th:text="${qna.title}">문의 제목</h2>
+            <div class="qna-meta">
+              <p>
+                <strong>작성자:</strong>
+                <span th:text="${qna.user.username}">userId</span>
+              </p>
+              <p>
+                <strong>작성일:</strong>
+                <span
+                  th:text="${#temporals.format(qna.regDate, 'yyyy-MM-dd HH:mm')}"
+                  >2025-07-13</span
+                >
+              </p>
+            </div>
+            <div class="detail-content-box">
+              <p class="detail-p"><strong>문의 내용:</strong></p>
+              <div class="qna-body card" th:text="${qna.content}">
+                문의 본문 내용
+              </div>
+              <p class="detail-p"><strong>답변 내용:</strong></p>
+              <div class="qna-answer-body card" th:text="${qna.answer}">
+                문의 답변 내용
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,633 @@
+@charset "UTF-8";
+
+body {
+  margin: 0;
+  background: #e4d0ff;
+  font-family: 'Press Start 2P', cursive;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.top-label,
+.headline,
+.start-btn {
+  font-family: 'Galmuri11' !important;
+}
+
+.slot-machine {
+  width: 450px;
+  margin: 40px auto;
+  background: #f3b8e4;
+  border: 4px solid #301e8c;
+  border-radius: 30px;
+  padding: 20px;
+  position: relative;
+  box-shadow: 6px 6px 0 #301e8c;
+}
+
+.top-label {
+  background: #fff;
+  border: 2px solid #301e8c;
+  color: #f135a3;
+  font-weight: bold;
+  text-align: center;
+  padding: 8px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.screen {
+  background: #a18dff;
+  padding: 30px 10px;
+  border-radius: 12px;
+  border: 3px solid #301e8c;
+  color: white;
+}
+
+.headline {
+  font-size: 16px;
+  color: white;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.mbti-boxes {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.mbti-letter {
+  background-color: #fff35c;
+  color: #f135a3;
+  font-size: 20px;
+  width: 50px;
+  height: 50px;
+  line-height: 50px;
+  border-radius: 6px;
+  border: 2px solid #301e8c;
+  box-shadow: 2px 2px 0 #301e8c;
+  text-align: center;
+}
+
+.start-btn {
+  background-color: #f135a3;
+  color: white;
+  border: 2px solid #301e8c;
+  padding: 14px 20px;
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 #301e8c;
+  font-size: 12px;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+
+.start-btn:hover {
+  animation: shake 0.4s ease-in-out;
+}
+
+.lever {
+  position: absolute;
+  top: 60px;
+  right: -30px;
+  width: 30px;
+  height: 80px;
+  background: #b57aff;
+  border: 3px solid #301e8c;
+  border-radius: 20px;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0 10px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 2px solid #301e8c;
+  margin: 0 6px;
+  border-radius: 50%;
+}
+
+.dot.big {
+  width: 16px;
+  height: 16px;
+}
+
+.coin-slot {
+  width: 30px;
+  height: 50px;
+  background: #aaffcc;
+  border: 2px solid #301e8c;
+  border-radius: 8px;
+  position: absolute;
+  bottom: 40px;
+  right: 20px;
+}
+
+.printer {
+  width: 150px;
+  height: 30px;
+  background: #fff;
+  border: 2px solid #301e8c;
+  margin: 10px auto 0;
+  border-radius: 5px;
+}
+
+.sparkle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle, #fff 30%, transparent 70%);
+  border-radius: 50%;
+  opacity: 0;
+  animation: sparkleAnim 2s infinite ease-in-out;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.sparkle.one {
+  top: 20px;
+  left: 40px;
+  animation-delay: 0s;
+}
+.sparkle.two {
+  top: 100px;
+  left: 300px;
+  animation-delay: 0.8s;
+}
+.sparkle.three {
+  top: 220px;
+  left: 180px;
+  animation-delay: 1.6s;
+}
+
+@keyframes sparkleAnim {
+  0%, 100% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 0.8;
+  }
+}
+
+.result-container{
+  display:flex;
+  justify-content:center;   /* 가로 중앙 */
+  align-items:center;       /* 세로 중앙 */
+  min-height:100vh;
+  background:#e4d0ff;
+  position:relative;        /* 버튼 절대위치 기준 */
+}
+
+
+/* ② 박스+버튼 묶음 */
+.frame-wrap{
+  position:relative;        /* btn-column 의 기준 */
+  display:inline-block;     /* 폭이 browser-frame 만큼만 */
+}
+
+.mbti-card{
+  background: white;
+  border-radius: 30px;
+  padding: 30px 40px;
+  width: 880px;
+  box-shadow: 6px 6px 0 #301e8c;
+  border: 4px solid #301e8c;
+  text-align: center;
+}
+/* [1] 전체 질문 영역 중앙 정렬 및 너비 지정 */
+.question-container {
+  position: fixed;            /* 뷰포트에 고정 */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  /* 크기는 내용(카드)만큼만 */
+  width: 100%;
+  max-width: 1000px;
+  height: auto;               /* min-height:100vh 제거 */
+
+  /* 기존 스타일 유지 */
+  background: #e4d0ff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;            /* 좌우 살짝 여유 */
+}
+
+/* [2] 질문 카드 */
+.question-style {
+  background: white;
+  border-radius: 30px;
+  padding: 30px 40px;
+  width: 880px;
+  max-width: 95%;
+  box-shadow: 6px 6px 0 #301e8c;
+  border: 4px solid #301e8c;
+  text-align: center;
+}
+
+/* [3] 이미지 크기 제한 */
+.option-card img {
+  width: 700px;         /* ✅ 줄였음 */
+  height: auto;
+  border-radius: 20px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  object-fit: contain;
+   max-width: 150px;
+}
+
+
+.question-header {
+  font-family: 'Galmuri11', sans-serif;
+  font-size: 26px;
+  color: #301e8c;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.question-options {
+  display: flex;
+  justify-content: space-around;
+  gap: 40px;
+  margin-bottom: 20px;
+}
+
+.option-card {
+	display: flex;                  /* ✨ flex 활성화 */
+  flex-direction: column;         /* 세로 정렬 */
+  align-items: center;            /* 중앙 정렬 */
+  justify-content: space-between; /* 위 아래 요소 분리 정렬 (또는 flex-start) */
+  flex: 1;
+  max-width: 320px;
+  background: #fdfcff;
+  border: 3px solid #a48de3;
+  border-radius: 24px;
+  padding: 20px;
+  cursor: pointer;
+  position: relative;
+  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+  text-align: center;
+  align-items: center;
+justify-content: center;
+}
+
+.option-card:hover {
+  transform: translateY(-6px);
+}
+
+.option-desc {
+  font-family: 'Galmuri11', sans-serif;
+  font-size: 22px;
+  color: #301e8c;
+  white-space: pre-line;
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+.option-label {
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  background: #fff35c;
+  border: 2px solid #301e8c;
+  color: #f135a3;
+  font-size: 18px;
+  padding: 4px 14px;
+  border-radius: 50%;
+  font-weight: bold;
+}
+
+.option-card.A {
+  background: #dbf3f6;
+  border-color: #43b3c6;
+}
+.option-card.B {
+  background: #f5e4fc;
+  border-color: #b47ed7;
+}
+
+#prev-btn {
+  font-family: 'Galmuri11';
+  background-color: #301e8c;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 10px;
+  box-shadow: 2px 2px 0 #000;
+}
+
+#prev-btn:hover {
+  background-color: #472f9b;
+}
+
+@keyframes slideOutLeft {
+  0% { transform: translateX(0); opacity: 1; z-index: 2; }
+  100% { transform: translateX(-100%); opacity: 0; z-index: 1; }
+}
+
+@keyframes slideInFromBack {
+  0% { transform: scale(0.9); opacity: 0.2; z-index: 1; }
+  100% { transform: scale(1); opacity: 1; z-index: 2; }
+}
+
+@keyframes slideInReverse {
+  0% { transform: translateX(-100%); opacity: 0; z-index: 1; }
+  100% { transform: translateX(0); opacity: 1; z-index: 2; }
+}
+
+.slide-out-left {
+  animation: slideOutLeft 0.8s forwards;
+}
+
+.slide-in-back {
+  animation: slideInFromBack 0.8s forwards;
+}
+
+.slide-in-reverse {
+  animation: slideInReverse 0.8s forwards;
+}
+
+/* ===== 카드 UI 레트로 스타일 =================================== */
+.mbti-card {
+  /* 1) 크기‧레이아웃 */
+  width: 640px;                 /* 필요하면 조절 */
+  max-width: 90%;
+  padding: 60px 50px 50px;      /* 헤더바 높이만큼 위쪽 여유 */
+  margin: 0 auto;               /* 가운데 정렬 유지 */
+  
+  /* 2) 보라색 테두리 & 둥근 모서리 */
+  border: 4px solid #9f7ffa;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 0 0 4px #cab7ff inset; /* 안쪽 살짝 채도 낮은 보라 */
+  
+  /* 3) 내용 중앙 정렬 */
+  text-align: center;
+  position: relative;           /* ⬇ pseudo‑element 헤더바용 */
+}
+
+/* ── 상단 헤더 바 (보라색 스트립) ──────────────────────────────── */
+.mbti-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 48px;                 /* 헤더 바 높이 */
+  background: #d7b9ff;          /* 연보라 */
+  border-bottom: 4px solid #9f7ffa;
+  
+  /* 둥근 모서리와 맞추기 */
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  z-index: 0;                   /* 텍스트보다 뒤 */
+}
+
+/* 헤더바 아래쪽 여백(테두리)와 겹치지 않도록 z‑index 조정 */
+.mbti-card > * { position: relative; z-index: 1; }
+
+/* ── 타이틀 색상·크기(선택) ───────────────────────────── */
+#mbti-type,       /* ESFP 같은 코드 */
+.mbti-card h2 {   /* 혹시 제목태그 그대로 쓰는 경우 */
+  color: #301e8c;
+  font-weight: 800;
+}
+
+/* ── 해시태그·이미지 간격 손보기(선택) ─────────────────── */
+#mbti-tag  { margin-top: 12px; }
+#mbti-image{ margin-top: 20px; }
+/* ── 브라우저 프레임 ─────────────────────────────── */
+.browser-frame{
+  display:inline-block;
+  border:4px solid #2b20a8;
+  border-radius:16px;
+  background:#e8ffe8;
+  box-shadow:0 4px 0 #2b20a8,0 8px 0 #cab7ff;
+}
+
+/* 헤더 바 */
+.browser-header{
+  height:34px; padding:0 8px;
+  display:flex; align-items:center; gap:6px;
+  background:linear-gradient(180deg,#ecc5ff 0%,#d8b3ff 100%);
+  border-bottom:4px solid #2b20a8;
+  border-top-left-radius:12px; border-top-right-radius:12px;
+  font-family:'Galmuri11',sans-serif;
+}
+.window-title{font-size:14px;color:#2b20a8;margin-right:6px;}
+.nav-btn{
+  width:10px;height:10px;border-radius:50%;
+  background:#fff;border:2px solid #2b20a8;
+}
+.url-bar{
+  flex:1;height:14px;background:#fff;
+  border:2px solid #2b20a8;border-radius:10px;
+}
+.header-icon{
+  width:10px;height:10px;background:#fff;
+  border:2px solid #2b20a8;border-radius:2px;
+}
+.browser-body{padding:40px 40px 60px;}
+
+/* 기존 mbti-card 헤더 스트립 겹침 방지 */
+.browser-body .mbti-card::before{display:none;}
+.browser-body .mbti-card{padding-top:30px;}
+
+/* 결과‑창과 버튼을 한 줄에 놓기 */
+.result-row{
+  display:flex;
+  justify-content:center;  /* ★ 이 한 줄 추가 */
+  align-items:center;       /* 세로 중앙 */
+  gap:28px;
+}
+
+/* ③ 버튼 컬럼 – 오른쪽 옆에 절대 위치 */
+.btn-column{
+  position:absolute;
+  top:50%;                  /* 세로 가운데 */
+  left:100%;                /* 박스 끝 기준 */
+  transform:translateX(28px) translateY(-50%); /* 28px 간격 주고 중앙 정렬 */
+  
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+/* 버튼 스타일 (기존 유지) */
+.btn-column button{
+  font-family:'Galmuri11',sans-serif;
+  padding:10px 22px;
+  border:2px solid #2b20a8;
+  border-radius:10px;
+  background:#fff;
+  box-shadow:2px 2px 0 #2b20a8;
+  cursor:pointer;
+  transition:transform .2s;
+  min-width:180px;     /* ▶︎ 버튼 가로폭 확보 */
+  white-space:nowrap;  /* ▶︎ 줄바꿈 금지 (가로 유지) */
+}
+.btn-column button:hover{transform:translateY(-2px);}
+
+/* ─── 오버레이 기본 ─── */
+#intro-overlay{
+  position:fixed; inset:0;
+  background:#e4d0ff;
+  display:flex; justify-content:center; align-items:flex-start;
+  overflow:hidden; z-index:9999;
+  pointer-events:none;
+}
+
+/* ─── 풍선 ─── */
+.balloon{
+  position:absolute;
+  top:35vh;                                   /* 중앙보다 살짝 위 */
+  left:50%;
+  width:110px; height:auto;
+  opacity:0;
+  z-index:2;                                  /* 구름 위 */
+  will-change:transform,opacity;
+  transform:translate(calc((var(--idx)*120px) - 180px), -80px) scale(.9);
+}
+
+/* ↓ 떨어질 때 (JS: .drop 추가) */
+.balloon.drop{
+  animation:balloonDrop 0.95s cubic-bezier(.34,1.56,.64,1) forwards;
+  animation-delay:calc(var(--idx)*0.25s);
+}
+@keyframes balloonDrop{
+  0%   {opacity:0; transform:translate(calc((var(--idx)*120px) - 180px), -140px) scale(.85) rotate(-6deg);}
+  65%  {opacity:1; transform:translate(calc((var(--idx)*120px) - 180px),   0)     scale(1.05) rotate(3deg);}
+  100% {opacity:1; transform:translate(calc((var(--idx)*120px) - 180px),   0)     scale(1)    rotate(0deg);}
+}
+
+/* ↓ 서서히 사라질 때 (JS: .fade 추가) */
+.balloon.fade{
+  animation:balloonFade 0.65s ease-in-out forwards;
+}
+@keyframes balloonFade{
+  0%   {opacity:1;   transform:translate(calc((var(--idx)*120px) - 180px),   0)    scale(1)    rotate(0deg);}
+  60%  {opacity:.4;  transform:translate(calc((var(--idx)*120px) - 180px), -40px)  scale(.92)  rotate(-3deg);}
+  100% {opacity:0;   transform:translate(calc((var(--idx)*120px) - 180px), -80px)  scale(.85)  rotate(-6deg);}
+}
+
+
+
+/* 원하는 배율만 바꿔서 쓰기 (전체 공통) */
+:root{
+  --cloud-scale: 1.5;   /* ← 1 = 원래 크기, 1.5면 50% 크게 */
+}
+
+/* ─── 구름 ─── */
+.cloud{
+  --s: var(--cloud-scale);
+
+  position:absolute;
+  width:calc(340px * var(--s));
+  height:calc(160px * var(--s));
+  bottom:12%;
+  filter:blur(2px);
+  opacity:0;
+  transform:translateY(60px) scale(calc(.95 * var(--s)));
+  z-index:1;
+  will-change:transform,opacity;
+}
+.cloud span{
+  position:absolute;
+  background:#fff;
+  border-radius:50%;
+  box-shadow:0 0 6px rgba(255,255,255,.6) inset;
+  backface-visibility:hidden;
+  
+}
+
+/* 구름 내부 원들의 위치/크기 (원 5개 예시) */
+.cloud span:nth-child(1){ width:120px;height:120px; left:10px;  bottom:0;   }
+.cloud span:nth-child(2){ width:150px;height:150px; left:90px;  bottom:10px;}
+.cloud span:nth-child(3){ width:110px;height:110px; left:200px; bottom:25px;}
+.cloud span:nth-child(4){ width:90px; height:90px;  left:250px; bottom:0;   }
+.cloud span:nth-child(5){ width:100px;height:100px; left:150px; bottom:-10px;}
+
+/* 등장 */
+.cloud.enter{
+  animation:cloudEnter 1s ease-out forwards;
+}
+@keyframes cloudEnter{
+  0% {opacity:0; transform:translateY(60px) scale(.95);}
+  100%{opacity:1; transform:translateY(0)   scale(1);}
+}
+
+/* 퇴장: 좌우로 밀리며 서서히 페이드 */
+.cloud.exit-left{
+  animation:cloudLeftFade 1.3s ease-in-out forwards;
+}
+.cloud.exit-right{
+  animation:cloudRightFade 1.3s ease-in-out forwards;
+}
+@keyframes cloudLeftFade{
+  0%   {opacity:1; transform:translateX(0)       scale(1);}
+  100% {opacity:0; transform:translateX(-120vw)  scale(.9);}
+}
+@keyframes cloudRightFade{
+  0%   {opacity:1; transform:translateX(0)       scale(1);}
+  100% {opacity:0; transform:translateX(120vw)   scale(.9);}
+}
+
+/* 기존 공용 퇴장(.exit) 쓰고 싶으면 여기 유지/삭제 선택 */
+.cloud.exit{
+  animation:cloudExit .8s forwards;
+}
+@keyframes cloudExit{
+  to{transform:translateY(-50px) scale(.8); opacity:0;}
+}
+
+/* 위치 조절용 */
+.c1{ left:-60px; }
+.c2{ right:-40px; bottom:16%; width:380px; height:180px; }
+
+#intro-overlay.fade-overlay{
+  animation:overlayFade 1.0s ease forwards;
+}
+@keyframes overlayFade{
+  to{opacity:0; background:rgba(228,208,255,0); visibility:hidden;}
+}
+
+#letter-M{
+  width:120px;   /* 기존 110px → 원하는 크기 */
+}
+#letter-B{
+  width:100px;   /* 기존 110px → 원하는 크기 */
+  margin-left: 16px;
+  margin-right: 5px;
+}
+
+#letter-I{
+  width:100px;   /* 기존 110px → 원하는 크기 */
+}
+

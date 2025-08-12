@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>펀드 시황 상세</title>
+  <link rel="stylesheet" href="/css/status_detail.css">
+</head>
+<body>
+  <div class="detail-container">
+    
+    <!-- 제목 -->
+    <h2 class="detail-title" th:text="|[${#temporals.format(fund.regDate, 'M/d')} ${fund.category}] ${fund.title}|"></h2>
+
+    <!-- 작성일 / 조회수 -->
+    <div class="detail-meta">
+      <span th:text="|작성일 : ${#temporals.format(fund.regDate, 'yyyy-MM-dd')}|"></span>
+      <span th:text="|조회수 : ${fund.viewCount}|"></span>
+    </div>
+
+    <!-- 본문 내용 -->
+    <div class="detail-content" th:utext="${fund.content}"></div>
+
+    <!-- 이전글 / 다음글 -->
+    <div class="detail-navigation">
+    <hr class="divider">
+	  <div class="nav-item">
+	    <span>이전글 ▸</span>
+	    <span th:if="${prev != null}">
+	      <a th:href="@{'/fund_status_detail/' + ${prev.statusId}}" th:text="${prev.title}"></a>
+	    </span>
+	    <span th:if="${prev == null}">이전 글이 없습니다</span>
+	  </div>
+	
+	   <hr class="divider">
+	
+	  <div class="nav-item">
+	    <span>다음글 ▸</span>
+	    <span th:if="${next != null}">
+	      <a th:href="@{'/fund_status_detail/' + ${next.statusId}}" th:text="${next.title}"></a>
+	    </span>
+	    <span th:if="${next == null}">다음 글이 없습니다</span>
+	  </div>
+	  <hr class="divider">
+	</div>
+
+
+    <!-- 목록 버튼 -->
+    <div class="list-btn">
+      <a class="back-link" href="/fund_status">목록</a>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Admin Login</title>
+    <link rel="stylesheet" href="/css/admin/admin_login.css" />
+  </head>
+  <body>
+    <div class="login-container">
+      <div class="logo-container">
+        <img src="/images/BnkLogo.png" alt="로고" />
+      </div>
+
+      <!-- 페이지 타이틀 -->
+      <div class="page-title">관리자 로그인</div>
+
+      <form action="/admin/login" method="post">
+        <input
+          type="text"
+          name="adminname"
+          id="adminname"
+          placeholder="ID"
+          required
+          oninvalid="this.setCustomValidity('아이디를 입력해주세요')"
+          oninput="this.setCustomValidity('')"
+        />
+        <input
+          type="password"
+          name="password"
+          id="password"
+          placeholder="PW"
+          required
+          oninvalid="this.setCustomValidity('비밀번호를 입력해주세요')"
+          oninput="this.setCustomValidity('')"
+        />
+        <input type="submit" value="로그인" />
+      </form>
+
+      <p th:if="${msg}" th:text="${msg}"></p>
+      <p th:if="${param.error}" th:text="'로그인이 필요합니다'"></p>
+      <div th:if="${logoutMsg}">
+        <script th:inline="javascript">
+          alert("로그아웃 되었습니다");
+        </script>
+      </div>
+    </div>
+  </body>
+</html>

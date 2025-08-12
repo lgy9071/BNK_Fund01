@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Admin List</title>
+  </head>
+  <body>
+    <div th:fragment="admin-list-content">
+      <div class="wrap2">
+        <div class="tableWarp">
+          <table>
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>이름</th>
+                <th>ID</th>
+                <th>권한</th>
+                <th>동작</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="admin, stat : ${adminList}">
+                <td th:text="${stat.index + 1}"></td>
+                <!-- 0부터 시작하므로 +1 -->
+                <td th:text="${admin.name}"></td>
+                <td th:text="${admin.adminname}"></td>
+                <td th:text="${admin.role}"></td>
+                <td>
+                  <button>
+                    <a
+                      href="#"
+                      class="open-modal"
+                      th:data-id="${admin.admin_id}"
+                    >
+                      수정
+                    </a>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- 페이지네이션 -->
+          <nav class="pagination-nav">
+            <ul class="pagination">
+              <!-- 페이지 번호 -->
+              <li
+                th:each="i : ${#numbers.sequence(0, adminPage.totalPages - 1)}"
+                th:classappend="${i == adminPage.number} ? 'active'"
+              >
+                <a
+                  href="#"
+                  th:attr="data-page=${i}"
+                  th:text="${i + 1}"
+                  class="page-link"
+                ></a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <div th:fragment="admin-modify-modal">
+      <h3>관리자 상세 정보</h3>
+      <form id="adminEditForm">
+        <input type="hidden" id="editAdminId" th:value="${admin.admin_id}" />
+
+        <p>이름: <span id="editName" th:text="${admin.name}"></span></p>
+        <p>
+          아이디: <span id="editAdminname" th:text="${admin.adminname}"></span>
+        </p>
+        <p>
+          권한:
+          <select id="editRole">
+            <option value="super" th:selected="${admin.role == 'super'}">
+              Super
+            </option>
+            <option value="planner" th:selected="${admin.role == 'planner'}">
+              Planner
+            </option>
+            <option value="approver" th:selected="${admin.role == 'approver'}">
+              Approver
+            </option>
+            <option value="cs" th:selected="${admin.role == 'cs'}">
+              CS 관리자
+            </option>
+          </select>
+        </p>
+
+        <button type="button" id="submitEditBtn">수정</button>
+        <button type="button" id="deleteAdminBtn" class="btn-delete">
+          삭제
+        </button>
+        <button type="button" id="closeModalBtn">X</button>
+      </form>
+    </div>
+  </body>
+</html>

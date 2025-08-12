@@ -1,0 +1,32 @@
+<div th:fragment="qnaDetailModal">
+    <div id="qnaDetailModal" class="modal">
+        <div class="modal-overlay" onclick="closeModal()"></div>
+        <div class="modal-container">
+
+            <button type="button" class="modal-close" onclick="closeModal()">×</button>
+
+            <div class="qna-post">
+                <h2 th:text="${qna.title}">문의 제목</h2>
+                <div class="qna-meta">
+                    <span th:text="${#temporals.format(qna.regDate,'yyyy-MM-dd HH:mm')}">
+                        2025-07-22 10:00
+                    </span>
+                    <span class="status" th:text="${qna.status}" th:classappend="${ 
+                            qna.status == '대기'   ? ' status-pending' : 
+                            (qna.status == '완료' ? ' status-completed' : '') 
+                        }">
+                        대기
+                    </span>
+                </div>
+                <div class="qna-content" th:text="${qna.content}">
+                    문의 내용이 여기에 들어갑니다.
+                </div>
+                <div class="qna-answer" th:if="${qna.answer}">
+                    <h3>답변</h3>
+                    <div th:text="${qna.answer}">답변 내용이 여기에 들어갑니다.</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

@@ -1,0 +1,58 @@
+<!-- src/main/resources/templates/admin/super/admin_register.html -->
+<div th:fragment="admin-register-content" class="admin-register-content">
+  <form action="/admin/adminRegist" method="post" id="adminForm">
+    
+    <div class="form-group">
+      <label for="adminname">ID</label>
+      <div class="input-wrapper">
+        <input
+          type="text"
+          name="adminname"
+          id="adminname"
+          placeholder="ID 설정"
+          required
+          oninvalid="this.setCustomValidity('아이디를 입력해주세요')"
+          oninput="this.setCustomValidity('')">
+        <button
+          type="button"
+          id="id_check"
+          onclick="checkDuplicate()">중복확인</button>
+      </div>
+      <p id="notice_p"></p>
+    </div>
+    
+    <div class="form-group">
+      <label for="name">성명</label>
+      <input
+        type="text"
+        name="name"
+        id="name"
+        placeholder="성명 입력"
+        required
+        oninvalid="this.setCustomValidity('성명을 입력해주세요')"
+        oninput="this.setCustomValidity('')">
+    </div>
+    
+    <div class="form-group">
+      <label for="role">ROLE 지정</label>
+      <select name="role" id="role" required>
+        <option value="" hidden selected>Role 선택</option>
+        <option value="super">super</option>
+        <option value="planner">planner</option>
+        <option value="approver">approver</option>
+        <option value="cs">cs</option>
+      </select>
+    </div>
+    
+    <div class="form-actions">
+      <input type="submit" value="등록">
+    </div>
+    
+  </form>
+
+  <div class="notes">
+    <p><strong>※ Notice ※</strong></p>
+    <p>초기 비밀번호는 '1234'로 저장됩니다.</p>
+    <p>로그인 후 꼭 비밀번호를 변경해주세요.</p>
+  </div>
+</div>

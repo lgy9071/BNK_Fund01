@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<link rel="stylesheet" href="/css/qna.css">
+<link rel="stylesheet" href="/css/userHeader.css" />
+<link rel="stylesheet" href="/css/footer.css" />
+<link rel="stylesheet" href="/css/fundMainHeader.css" />
+</head>
+<body>
+<th:block th:replace="fragments/userHeader :: userHeader"></th:block>
+<th:block th:replace="fragments/fundMainHeader :: fundMainHeader"></th:block>
+<div class="container">
+<h1>1:1 문의</h1>
+<table>
+	<tr>
+		<th>문의분야</th>
+		<td>펀드</td>
+	</tr>
+	<tr>
+		<th>성명</th>
+		<td th:text="${user.name}"></td>
+	</tr>
+	<tr>
+		<th>제목</th>
+		<td><input type="text" name="title" placeholder="제목을 입력하세요"></td>
+	</tr>
+	<tr>
+		<th>내용</th>
+		<td><textarea name="content" placeholder="내용을 입력하세요"></textarea></td>
+	</tr>
+</table>
+	<div class="btn-wrap">
+      <button class="qna-btn" onclick="submitQna()">등록</button>
+    </div>
+</div>
+<script>
+	function submitQna(){
+		const title = document.querySelector('input[name="title"]').value;
+		const content = document.querySelector('textarea[name="content"]').value;
+		
+		if(!title){
+			alert("제목을 입력해주세요");
+			return;
+		}
+		if(!content){
+			alert("내용을 입력해주세요");
+			return;
+		}
+		
+		fetch('/regQna',{
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({title, content})
+		}).then(res => res.json())
+		  .then(data=>{
+			  alert("문의가 등록되었습니다.");
+			  window.location.href = data.redirectUrl;
+		  })
+		  .catch(error=>{
+			  console.log("1:1 문의 등록 중 에러 발생 : " + error);
+		  })
+	}
+</script>
+<th:block th:replace="fragments/footer :: siteFooter"></th:block>
+</body>
+</html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>펀드 MBTI 테스트</title>
+  <link rel="stylesheet" href="/css/mbti.css">
+</head>
+<body>
+
+  <!-- [1] 시작 화면 -->
+<div class="mbti-container" id="intro">
+  <div class="mbti-card">
+    <div class="title-row">
+      <h1><span class="bold">펀드</span> <span class="highlight">MBTI</span> - 투자성향 테스트</h1>
+      <br>
+      <div class="box">
+	    <p class="subtext">나의 투자 스타일, 궁금하지 않나요?</p>
+	    <p class="subtext">간단한 테스트로 당신의 펀드 <strong>MBTI</strong> 유형을 확인해보세요!</p><br>
+	    <button class="start-btn" onclick="startTest()">테스트 시작</button>
+      </div>
+    </div>
+    
+    <img src="/images/mbti_char1.jpg" alt="캐릭터" class="mbti-character">
+  </div>
+</div>
+
+  <!-- [2] 질문 화면 -->
+  <div class="question-container" id="question-box" style="display: none;">
+    <div class="question-card" id="question-card">
+      <h2 id="question-text"></h2>
+      <div class="option-buttons">
+        <button onclick="selectOption(0)" id="optionA"></button>
+        <button onclick="selectOption(1)" id="optionB"></button>
+      </div>
+      <img src="/images/mbti_char3.jpg" alt="캐릭터" class="icon" id="question-char">
+      <br>
+      <button onclick="prevQuestion()" id="prev-btn">이전으로</button>
+    </div>
+  </div>
+
+  <!-- [3] 결과 화면 -->
+  <div class="mbti-container" id="result-box" style="display: none;">
+    <div class="mbti-card">
+      <h2>나의 <span class="highlight">펀드 MBTI</span>는 ?</h2>
+      <div id="mbti-type" style="font-size: 24px; font-weight: bold; margin-top: 20px;"></div>
+      <p id="mbti-desc" class="subtext" style="margin: 20px 0;"></p>
+      <p id="mbti-tag" style="color: gray; font-weight: bold;"></p>
+      <img src="/images/mbti_char2.jpg" alt="MBTI 캐릭터" class="icon" style="margin-top: 30px; width: 300px;">
+    </div>
+  </div>
+
+<script>
+const questions = [
+  {
+    text: "1. 투자 시 더 중요한 것은?",
+    options: ["수익률", "안정성"],
+    bgColor: "#00D290",
+    char: "/images/mbti3.png"
+  },
+  {
+    text: "2. 투자를 시작할 때",
+    options: ["계획을 철저히 세운 뒤 \n신중히 시작", "일단 시작하고 \n경험하면서 배우는 편"],
+    bgColor: "#00CBD2",
+    char: "/images/icons6.png"
+  },
+  {
+    text: "3. 투자 정보를 얻을 때",
+    options: ["뉴스, 리포트", "SNS, 커뮤니티"],
+    bgColor: "#9AD200",
+    char: "/images/icons3.png"
+  },
+  {
+    text: "4. 펀드 수익률이 5% 하락했다면?",
+    options: ["바로 환매", "더 기다림"],
+    bgColor: "#FF2776",
+    char: "/images/icons11.png"
+  },
+  {
+    text: "5. 펀드 상품을 고를 때 기준은?",
+    options: ["높은 수익률", "꾸준한 수익"],
+    bgColor: "#ff9d23",
+    char: "/images/icons8.png"
+  }
+];
+
+let currentQuestion = 0;
+let answers = [];
+
+function startTest(){
+  const intro = document.getElementById('intro');
+  const questionBox = document.getElementById('question-box');
+  intro.classList.add('slide-out-left');
+  questionBox.style.display = 'flex';
+  questionBox.classList.add('slide-in-back');
+  renderQuestion(currentQuestion);
+  setTimeout(() => {
+    intro.style.display = 'none';
+  }, 600);
+}
+
+function renderQuestion(index, direction = 'forward') {
+  const q = questions[index];
+  const card = document.getElementById("question-card");
+
+  card.classList.remove('slide-in-back', 'slide-in-reverse');
+  void card.offsetWidth; // reflow 강제
+  card.classList.add(direction === 'backward' ? 'slide-in-reverse' : 'slide-in-back');
+
+  document.getElementById("question-text").innerText = q.text;
+  document.getElementById("optionA").innerText = q.options[0];
+  document.getElementById("optionB").innerText = q.options[1];
+  card.style.backgroundColor = q.bgColor;
+  document.getElementById("question-char").src = q.char;
+  document.getElementById("prev-btn").style.display = index === 0 ? "none" : "inline-block";
+}
+
+function selectOption(optionIndex) {
+	  answers[currentQuestion] = questions[currentQuestion].options[optionIndex];
+
+	  const card = document.getElementById("question-card");
+
+	  card.classList.remove('slide-in-back', 'slide-in-reverse');
+	  void card.offsetWidth;
+	  card.classList.add('slide-out-left');
+
+	  setTimeout(() => {
+	    // ✅ 마지막 질문이면 결과화면으로 이동
+	    if (currentQuestion < questions.length - 1) {
+	      currentQuestion++;
+	      renderQuestion(currentQuestion, 'forward');
+	    } else {
+	      document.getElementById("question-box").classList.add('slide-out-left');
+	      setTimeout(() => {
+	        showResult();
+	      }, 300); // 결과 화면 전환 애니메이션 타이밍 맞추기
+	    }
+	  }, 300);
+	}
+
+
+
+function prevQuestion() {
+  if (currentQuestion > 0) {
+    currentQuestion--;
+    answers[currentQuestion] = undefined;
+    renderQuestion(currentQuestion, 'backward');
+  }
+}
+
+function showResult() {
+  document.getElementById("question-box").style.display = "none";
+  document.getElementById("result-box").style.display = "flex";
+
+  let profile = { aggressiveness: 0, planning: 0, info: 0, response: 0, goal: 0 };
+  answers.forEach((answer, idx) => {
+    switch(idx) {
+      case 0: profile.aggressiveness = (answer === "수익률") ? 1 : 0; break;
+      case 1: profile.planning = (answer === "계획을 철저히 세운 뒤 신중히 시작") ? 1 : 0; break;
+      case 2: profile.info = (answer === "뉴스, 리포트") ? 1 : 0; break;
+      case 3: profile.response = (answer === "더 기다림") ? 1 : 0; break;
+      case 4: profile.goal = (answer === "꾸준한 수익") ? 1 : 0; break;
+    }
+  });
+
+  const code =
+    (profile.aggressiveness ? "AGG" : "SAFE") + "-" +
+    (profile.planning ? "PLAN" : "FREE") + "-" +
+    (profile.info ? "ANA" : "TREND") + "-" +
+    (profile.response ? "PATI" : "REACT") + "-" +
+    (profile.goal ? "STEAD" : "HIGH");
+
+  const result = resultMap[code];
+
+  document.getElementById("mbti-type").innerText = result.title;
+  document.getElementById("mbti-desc").innerText = result.description;
+  document.getElementById("mbti-tag").innerText = result.tag;
+  document.querySelector("#result-box img").src = result.image;
+}
+
+const resultMap = {
+  "AGG-PLAN-ANA-PATI-STEAD": {
+    title: "경제분석형",
+    description: "시장과 데이터를 기반으로 장기적 안목을 지닌 투자자입니다.",
+    tag: "#분석적장기투자자",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-PLAN-ANA-PATI-HIGH": {
+    title: "수익추구형",
+    description: "분석과 전략을 바탕으로 고수익을 추구하는 투자자입니다.",
+    tag: "#전략가 #고수익",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-PLAN-ANA-REACT-STEAD": {
+    title: "신중대응형",
+    description: "계획적으로 분석하지만 빠르게 반응할 줄 아는 투자자입니다.",
+    tag: "#계획형 #기민한",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-PLAN-ANA-REACT-HIGH": {
+    title: "분석공격형",
+    description: "계획과 분석력을 바탕으로 적극적인 수익을 추구합니다.",
+    tag: "#분석 #공격적투자",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-PLAN-TREND-PATI-STEAD": {
+    title: "트렌드분석형",
+    description: "시장 트렌드를 따르면서도 장기적인 성향을 유지합니다.",
+    tag: "#트렌드분석 #장기투자",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-PLAN-TREND-PATI-HIGH": {
+    title: "고수익트렌더",
+    description: "시장 흐름에 민감하며 고수익 기회를 노리는 투자자입니다.",
+    tag: "#트렌드 #수익형",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-PLAN-TREND-REACT-STEAD": {
+    title: "트렌드중시형",
+    description: "시장 흐름에 민감하게 반응하는 반응형 투자자입니다.",
+    tag: "#트렌드헌터",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-PLAN-TREND-REACT-HIGH": {
+    title: "공격형트렌더",
+    description: "변화에 즉각 대응하며 수익 극대화를 추구합니다.",
+    tag: "#즉응형 #공격투자자",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-FREE-ANA-PATI-STEAD": {
+    title: "직관분석형",
+    description: "자유롭게 접근하되 분석 기반으로 안정성을 추구합니다.",
+    tag: "#직관적 #분석형",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-FREE-ANA-PATI-HIGH": {
+    title: "자유수익형",
+    description: "분석보다는 직감과 수익성에 초점을 둔 투자자입니다.",
+    tag: "#자유형 #고수익지향",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-FREE-ANA-REACT-STEAD": {
+    title: "직관대응형",
+    description: "분석보다 반응에 강하며 균형 감각이 뛰어난 투자자입니다.",
+    tag: "#기민형 #직관형",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-FREE-ANA-REACT-HIGH": {
+    title: "공격직관형",
+    description: "감각적으로 움직이며 빠른 판단으로 수익을 추구합니다.",
+    tag: "#감투자 #스피드형",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-FREE-TREND-PATI-STEAD": {
+    title: "트렌드감성형",
+    description: "시장 감각에 민감하며 장기적 안정도 고려합니다.",
+    tag: "#감성형 #트렌디",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-FREE-TREND-PATI-HIGH": {
+    title: "감성수익형",
+    description: "트렌드를 타고 고수익을 노리는 감각적 투자자입니다.",
+    tag: "#감각형 #고위험",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-FREE-TREND-REACT-STEAD": {
+    title: "트렌드직감형",
+    description: "직관적이며 트렌드에 즉각 반응하는 균형잡힌 투자자입니다.",
+    tag: "#트렌디 #중립형",
+    image: "/images/mbti_char2.jpg"
+  },
+  "AGG-FREE-TREND-REACT-HIGH": {
+    title: "즉흥공격형",
+    description: "감각과 속도로 움직이는 민첩한 고위험 투자자입니다.",
+    tag: "#스피드투자 #고위험고수익",
+    image: "/images/mbti_char2.jpg"
+  },
+  "SAFE-PLAN-ANA-PATI-STEAD": {
+    title: "안정분석형",
+    description: "분석 기반의 안정형 투자자입니다.",
+    tag: "#분석형 #신중한",
+    image: "/images/mbti_char2.jpg"
+  }  ,
+  "SAFE-PLAN-ANA-PATI-HIGH": {
+	    title: "신중수익형",
+	    description: "분석 기반이지만 수익도 포기하지 않는 안정추구 투자자입니다.",
+	    tag: "#신중 #수익추구",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-PLAN-ANA-REACT-STEAD": {
+	    title: "보수대응형",
+	    description: "계획적으로 분석하면서도 빠르게 반응할 수 있는 투자자입니다.",
+	    tag: "#보수적 #기민한",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-PLAN-ANA-REACT-HIGH": {
+	    title: "조심공격형",
+	    description: "신중하지만 필요한 순간에는 공격적으로 움직일 수 있습니다.",
+	    tag: "#신중공격형",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-PLAN-TREND-PATI-STEAD": {
+	    title: "안정트렌더",
+	    description: "트렌드를 관찰하면서도 안정적인 접근을 선호합니다.",
+	    tag: "#트렌드 #안정형",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-PLAN-TREND-PATI-HIGH": {
+	    title: "트렌드수익형",
+	    description: "시장 흐름을 기반으로 수익을 추구하는 균형형 투자자입니다.",
+	    tag: "#트렌디 #수익형",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-PLAN-TREND-REACT-STEAD": {
+	    title: "보수트렌더",
+	    description: "트렌드를 민감하게 따르지만 안정성을 중요시합니다.",
+	    tag: "#트렌디 #안정추구",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-PLAN-TREND-REACT-HIGH": {
+	    title: "민첩수익형",
+	    description: "빠르게 시장에 반응하며 고수익을 노리는 조심스러운 투자자입니다.",
+	    tag: "#신중하지만 #스피디",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-FREE-ANA-PATI-STEAD": {
+	    title: "자유분석형",
+	    description: "분석은 철저히 하지만 자유롭게 투자하는 스타일입니다.",
+	    tag: "#자유형 #분석중시",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-FREE-ANA-PATI-HIGH": {
+	    title: "분석수익형",
+	    description: "분석을 바탕으로 고수익 상품을 찾는 자유로운 투자자입니다.",
+	    tag: "#분석기반 #수익형",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-FREE-ANA-REACT-STEAD": {
+	    title: "즉응형분석가",
+	    description: "상황에 따라 움직이지만 기반은 분석입니다.",
+	    tag: "#반응형 #분석중심",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-FREE-ANA-REACT-HIGH": {
+	    title: "공격분석형",
+	    description: "공격적으로 움직이지만 분석은 놓치지 않는 투자자입니다.",
+	    tag: "#공격 #분석기반",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-FREE-TREND-PATI-STEAD": {
+	    title: "감각안정형",
+	    description: "트렌드를 살피되 안정적인 상품 위주로 구성합니다.",
+	    tag: "#감성형 #안정지향",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-FREE-TREND-PATI-HIGH": {
+	    title: "감성수익형",
+	    description: "트렌드와 감을 바탕으로 수익을 노리는 투자자입니다.",
+	    tag: "#감각 #수익형",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-FREE-TREND-REACT-STEAD": {
+	    title: "민첩안정형",
+	    description: "빠른 반응을 하되, 안정적인 방향으로 유지합니다.",
+	    tag: "#신중기민 #안정중심",
+	    image: "/images/mbti_char2.jpg"
+	  },
+	  "SAFE-FREE-TREND-REACT-HIGH": {
+	    title: "즉흥형감성투자자",
+	    description: "감각적으로 반응하며 수익을 노리는 투자자입니다.",
+	    tag: "#감각형 #고수익 #유연함",
+	    image: "/images/mbti_char2.jpg"
+	  }
+
+};
+</script>
+
+
+</body>
+</html>

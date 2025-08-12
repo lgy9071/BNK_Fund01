@@ -1,0 +1,182 @@
+@charset "UTF-8";
+
+/* 우선 전체 body 폰트 회복 */
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background-color: #ffffff;
+  color: #222;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+/* 컨테이너 */
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  font-size: 14px;
+}
+
+/* h2: reset에서 font:inherit으로 초기화되므로 반드시 복구 필요 */
+.container h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #1a1a1a;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* section */
+.section {
+  margin-top: 60px;
+}
+
+/* 기본 테이블 스타일 회복 */
+.container table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-bottom: 40px;
+  background-color: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 셀 스타일 복구 */
+.container th,
+.container td {
+  border: 1px solid #ddd;
+  padding: 12px 16px;
+  text-align: center;
+  vertical-align: middle;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.container th {
+  background-color: #f5f7fa;
+  font-weight: 600;
+  color: #333;
+}
+
+
+
+/* 위험도 색상 스타일 */
+.risk-1 { background-color: #7A0000; color: #fff; font-weight: bold; }
+.risk-2 { background-color: #A80000; color: #fff; font-weight: bold; }
+.risk-3 { background-color: #D00000; color: #fff; font-weight: bold; }
+.risk-4 { background-color: #F25B5B; color: #fff; font-weight: 500; }
+.risk-5 { background-color: #FFBABA; color: #222; font-weight: 500; }
+.risk-6 { background-color: #FFF5F5; color: #222; }
+
+/* table-note 복구 */
+.table-note {
+  background-color: #fff8f8;
+  border: 1px solid #e0cfcf;
+  border-left: 5px solid #d9534f;
+  padding: 20px 24px;
+  margin-top: 30px;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: #333;
+  border-radius: 6px;
+}
+.table-note ul {
+  padding-left: 20px;
+  margin: 0;
+}
+.table-note li {
+  margin-bottom: 10px;
+}
+.table-note .warning-text {
+  color: #b22222;
+  font-weight: bold;
+  margin-top: 20px;
+}
+
+/* ul 리스트 스타일 복구 */
+.container ul {
+  font-size: 14px;
+  line-height: 1.8;
+  padding-left: 20px;
+  margin: 0;
+  list-style: disc;
+}
+
+/* 강조 텍스트 */
+.danger {
+  color: #b22222;
+  font-weight: bold;
+}
+
+/* 공지 박스 */
+.notice {
+  border: 1px solid #ccc;
+  background-color: #f8f8f8;
+  padding: 24px;
+  color: #222;
+  font-size: 14px;
+  line-height: 1.7;
+  margin-top: 40px;
+  border-left: 5px solid #d9534f;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* 버튼 */
+.btn-box {
+  text-align: center;
+  margin-top: 30px;
+}
+.btn-analyze {
+  background-color: #d9534f;
+  color: white;
+  padding: 12px 40px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.btn-analyze:hover {
+  background-color: #b52b27;
+}
+
+.notice2 {
+
+  color: #856404;
+  border: 2px solid ;
+  padding: 16px 24px;
+  margin: 24px 0;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+
+  text-align: center; /* ✅ 가운데 정렬 */
+}
+
+.notice2::before {
+  display: inline-block;
+  background-color: #ffc107;
+  font-weight: bold;
+  font-size: 14px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  position: absolute;
+  top: -12px;
+  left: 50%;                    /* 가운데 정렬 */
+  transform: translateX(-50%);  /* 정확한 중앙 위치 */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.notice2 .danger {
+  font-weight: bold;
+  color: #a94442;
+  font-size: 17px;
+  margin-bottom: 4px;
+  display: block;
+}

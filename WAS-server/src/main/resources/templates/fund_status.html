@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>펀드 시황</title>
+  <link rel="stylesheet" href="/css/fund_status.css">
+  <link rel="stylesheet" href="/css/reset.css" />
+  <link rel="stylesheet" href="/css/userHeader.css" />
+  <link rel="stylesheet" href="/css/footer.css" />
+  <link rel="stylesheet" href="/css/fundMainHeader.css" />
+  <style>
+    .no-result {
+      text-align: center;
+      padding: 40px 0;
+      font-size: 16px;
+      color: #777;
+      font-weight: 500;
+    }
+    .highlight {
+      color: #007bff; /* 파란색 */
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<th:block th:replace="fragments/userHeader :: userHeader"></th:block>
+<th:block th:replace="fragments/fundMainHeader :: fundMainHeader"></th:block>
+<div class="container">
+  <div class="header-box">
+  <h1>펀드시황</h1>
+    <!-- ✅ 검색 폼 -->
+    <form method="get" th:action="@{/fund_status}" class="search-box">
+      <input type="text" name="keyword" th:value="${keyword}" placeholder="검색어를 입력하세요">
+      <button type="submit">
+        <img src="/images/search_icon.png" alt="검색">
+      </button>
+    </form>
+
+    <div class="total-count">
+      [ 총 <span class="highlight" th:text="${totalCount}"></span>건 ]
+    </div>
+  </div>
+
+  <!-- ✅ 게시글 테이블 -->
+  <table>
+    <thead>
+      <tr>
+        <th>번호</th><th>제목</th><th>등록일</th><th>조회수</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- ✅ 검색 결과 없을 경우 -->
+      <tr th:if="${statusList.empty}">
+        <td colspan="4" class="no-result">검색 결과가 없습니다.</td>
+      </tr>
+
+      <!-- ✅ 결과 있을 경우 반복 -->
+      <tr th:each="status, stat : ${statusList}">
+        <td th:text="${totalCount - (currentPage * 10 + stat.index)}"></td>
+        <td>
+          <a th:href="@{/fund_status_detail/{id}(id=${status.statusId})}"
+             th:text="|[${#temporals.format(status.regDate, 'M/d')} ${status.category}]${status.title}|">
+          </a>
+        </td>
+        <td th:text="${#temporals.format(status.regDate, 'yyyy/MM/dd')}"></td>
+        <td th:text="${status.viewCount}"></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ✅ 페이지네이션 (검색 결과 있을 때만 표시) -->
+  <div class="pagination" th:if="${!statusList.empty}">
+    <!-- 이전 버튼 -->
+    <a th:href="@{/fund_status(page=${currentPage - 1}, keyword=${keyword})}"
+       th:style="${currentPage == 0} ? 'visibility: hidden;' : ''">&lt;</a>
+
+    <!-- 페이지 숫자 -->
+    <a th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+       th:href="@{/fund_status(page=${i}, keyword=${keyword})}"
+       th:classappend="${i == currentPage} ? ' active'" 
+       th:text="${i + 1}"></a>
+
+    <!-- 다음 버튼 -->
+    <a th:href="@{/fund_status(page=${currentPage + 1}, keyword=${keyword})}"
+       th:style="${currentPage == totalPages - 1} ? 'visibility: hidden;' : ''">&gt;</a>
+  </div>
+</div>
+<th:block th:replace="fragments/footer :: siteFooter"></th:block>
+</body>
+</html>

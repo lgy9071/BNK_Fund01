@@ -1,0 +1,78 @@
+<!-- /templates/fragments/fundHeader.html -->
+<th:block th:fragment="fundMainHeader">
+  <nav class="fund-tabs" aria-label="펀드 섹션 탭">
+    <div class="tab-wrap">
+      <a href="/fund" class="tab">메인</a>
+    </div>
+
+    <div class="tab-wrap">
+      <a href="/fund/list" class="tab has-dropdown">펀드 상품</a>
+      <ul class="fund-dropdown">
+        <li><a href="/fund/list">추천 펀드</a></li>
+        <li><a href="/fund/best-return">수익률 BEST</a></li>
+      </ul>
+    </div>
+
+    <div class="tab-wrap">
+      <a href="/profile" class="tab has-dropdown">투자성향분석</a>
+      <ul class="fund-dropdown">
+        <li><a href="/profile">나의 투자성향분석</a></li>
+        <li><a href="/mbti">펀드 MBTI</a></li>
+      </ul>
+    </div>
+
+    <div class="tab-wrap">
+      <a href="/fund_status" class="tab has-dropdown">자료실</a>
+      <ul class="fund-dropdown">
+        <li><a href="/fund_status">펀드시황</a></li>
+      </ul>
+    </div>
+
+    <div class="tab-wrap">
+      <a href="/guide" class="tab has-dropdown">펀드 서비스</a>
+      <ul class="fund-dropdown">
+        <li><a href="/guide">펀드 가이드</a></li>
+        <li><a href="/faq">FAQ</a></li>
+        <li><a href="/qna">1:1 문의</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- active 처리 스크립트 -->
+<script defer>
+(function () {
+  const path = location.pathname.replace(/\/$/, '');
+
+  // 1) URL → 대표 탭 href 매핑
+  const GROUPS = [
+    { match: p => p === '/fund',              tabHref: '/fund' },
+    { match: p => p.startsWith('/fund/list') 
+               || p.startsWith('/fund/best-return'),
+      tabHref: '/fund/list'
+    },
+    { match: p => p.startsWith('/profile') 
+               || p.startsWith('/mbti'),
+      tabHref: '/profile'
+    },
+    { match: p => p.startsWith('/fund_status'),
+      tabHref: '/fund_status'
+    },
+    { match: p => p.startsWith('/guide')
+               || p.startsWith('/faq')
+               || p.startsWith('/qna'),
+      tabHref: '/guide'
+    },
+  ];
+
+  // 2) 매칭
+  const hit = GROUPS.find(g => g.match(path)) || GROUPS[0];
+  const activeTab = document.querySelector(`.fund-tabs .tab[href="${hit.tabHref}"]`);
+
+  // 3) 초기화 & 세팅
+  document.querySelectorAll('.fund-tabs .tab').forEach(t => t.classList.remove('active'));
+  if (activeTab) activeTab.classList.add('active');
+})();
+</script>
+
+
+</th:block>

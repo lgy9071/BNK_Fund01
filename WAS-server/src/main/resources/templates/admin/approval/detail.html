@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>결재 상세 보기</title>
+
+  <!-- 공통 스타일 -->
+  <link rel="stylesheet" href="/css/admin/admin_layout.css" />
+  <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+  />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    :root {
+      --primary: #337D89;
+      --bg: #eef3f5;
+      --card: #fff;
+      --border: #ddd;
+      --shadow: rgba(0, 0, 0, .06);
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: var(--bg);
+      font-family: "Segoe UI", sans-serif;
+      color: #333;
+    }
+    .layout { display: flex; flex-direction: column; }
+    .main-wrapper { flex: 1; }
+
+    .detail-container {
+      max-width: 1300px;
+      margin: 40px auto;
+      background: var(--card);
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px var(--shadow);
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 24px;
+    }
+    .detail-header h1.title1 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 28px;
+      color: var(--primary);
+    }
+    .detail-header h1.title i { font-size: 24px; }
+
+    .detail-content { display: flex; gap: 24px; }
+    .detail-left { flex: 2; }
+    .detail-right { flex: 1.5; max-height: 400px; overflow-y: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    th {
+      width: 120px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    tr:last-child td { border-bottom: none; }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      display: inline-block;
+    }
+    .badge-결재대기 { background: #f39c12; }
+    .badge-배포대기 { background: #2980b9; }
+    .badge-반려     { background: #e74c3c; }
+    .badge-배포     { background: #2ecc71; }
+
+    .action-box {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+      padding: 20px;
+      background: #fafafa;
+      border: 1px dashed #ccc;
+      border-radius: 8px;
+    }
+    .action-box textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      resize: none;
+    }
+    .action-box .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      transition: filter .2s;
+    }
+    .btn-approve { background: #2ecc71; }
+    .btn-reject  { background: #e74c3c; }
+    .btn:hover   { filter: brightness(.9); }
+
+    .logs-table caption.log-title {
+      caption-side: top;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--primary);
+      padding-bottom: 12px;
+    }
+
+    .btn-toggle-logs {
+      background: var(--primary);
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 600;
+      padding: 8px 18px;
+      border: none;
+      cursor: pointer;
+      transition: filter .2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-toggle-logs:hover { filter: brightness(.9); }
+  </style>
+</head>
+
+<body>
+<div class="layout">
+  <div th:replace="admin/admin_header :: adminHeader"></div>
+  <div class="main-wrapper">
+    <div th:replace="admin/admin_aside :: adminAside"></div>
+
+    <main class="content">
+      <div class="detail-container">
+        <div class="detail-header">
+          <h1 class="title1"><i class="far fa-file-alt"></i> 결재 상세 보기</h1>
+          <button
+                  id="toggleLogsBtn"
+                  class="btn-toggle-logs"
+                  th:if="${logs != null && #lists.size(logs) > 0}">
+            <i class="fas fa-history"></i> 상태 변경 이력 보기
+          </button>
+        </div>
+
+        <div class="detail-content">
+          <div class="detail-left">
+            <table>
+              <tr><th>제목</th><td th:text="${approval.title}"></td></tr>
+              <tr><th>내용</th><td th:text="${approval.content}"></td></tr>
+              <tr th:if="${approval.fund != null}">
+                <th>펀드명</th>
+                <td>
+                  <a th:href="@{/admin/fund/view/{id}(id=${approval.fund.fundId})}"
+                     th:text="${approval.fund.fundName}"
+                     style="color:var(--primary); font-weight:600;">
+                  </a>
+                </td>
+              </tr>
+              <tr><th>작성자</th>
+                <td>
+                  <a th:if="${approval.writer != null}"
+                     th:href="@{'/admin/approval/writer/' + ${approval.writer.adminname}}"
+                     th:text="${approval.writer.adminname}"></a>
+                  <span th:if="${approval.writer == null}">알 수 없음</span>
+                </td>
+              </tr>
+              <tr><th>상태</th>
+                <td>
+                    <span class="badge"
+                          th:classappend="' badge-' + ${approval.status}"
+                          th:text="${approval.status}"></span>
+                </td>
+              </tr>
+              <tr th:if="${approval.rejectReason != null}">
+                <th>반려 사유</th><td th:text="${approval.rejectReason}"></td>
+              </tr>
+              <tr><th>작성일</th>
+                <td th:text="${#temporals.format(approval.regDate,'yyyy-MM-dd HH:mm')}"></td>
+              </tr>
+            </table>
+
+            <div
+                    class="action-box"
+                    th:if="${admin != null && (admin.role=='approver'||admin.role=='super') && approval.status=='결재대기'}">
+              <form th:action="@{'/admin/approval/approve/' + ${approval.approvalId}}" method="post">
+                <textarea name="reason" rows="3" placeholder="승인 사유(선택)"></textarea>
+                <button type="submit"
+                        class="btn btn-approve btn-confirm-approve">
+                  <i class="fas fa-check"></i> 승인 (배포대기)
+                </button>
+              </form>
+              <form th:action="@{'/admin/approval/reject/' + ${approval.approvalId}}" method="post">
+                <textarea name="reason" rows="3" placeholder="반려 사유" required></textarea>
+                <button type="submit"
+                        class="btn btn-reject btn-confirm-reject">
+                  <i class="fas fa-times"></i> 반려
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div
+                  class="detail-right"
+                  th:if="${logs != null && #lists.size(logs) > 0}"
+                  style="display:none;">
+            <table class="logs-table">
+              <caption class="log-title">결재 상태 변경 이력</caption>
+              <thead>
+              <tr><th>변경자</th><th>상태</th><th>사유</th><th>일시</th></tr>
+              </thead>
+              <tbody>
+              <tr th:each="log : ${logs}">
+                <td th:text="${log.changerId}"></td>
+                <td th:text="${log.status}"></td>
+                <td th:text="${log.reason}"></td>
+                <td th:text="${#temporals.format(log.changedAt,'yyyy-MM-dd HH:mm')}"></td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;">
+          <a th:if="${admin.role=='super' or admin.role=='approver'}"
+             th:href="@{/admin/approval/manage}"
+             style="color:var(--primary); font-weight:600; text-decoration:none;">
+            ← 관리 목록으로
+          </a>
+          <a th:if="${admin.role=='planner'}"
+             th:href="@{/admin/approval/my-list}"
+             style="color:var(--primary); font-weight:600; text-decoration:none;">
+            ← 내 요청 목록으로
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 로그 토글
+    const toggleBtn = document.getElementById('toggleLogsBtn');
+    const logs = document.querySelector('.detail-right');
+    if (toggleBtn && logs) {
+      toggleBtn.addEventListener('click', function() {
+        if (logs.style.display === 'none' || logs.style.display === '') {
+          logs.style.display = 'block';
+          toggleBtn.innerHTML = '<i class="fas fa-history"></i> 상태 변경 이력 숨기기';
+        } else {
+          logs.style.display = 'none';
+          toggleBtn.innerHTML = '<i class="fas fa-history"></i> 상태 변경 이력 보기';
+        }
+      });
+    }
+
+    // 승인 확인 모달
+    document.querySelectorAll('.btn-confirm-approve').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const form = this.closest('form');
+        Swal.fire({
+          title: '승인하시겠습니까?',
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: '예',
+          cancelButtonText: '아니오'
+        }).then(result => {
+          if (result.isConfirmed) form.submit();
+        });
+      });
+    });
+
+    // 반려 확인 모달
+    document.querySelectorAll('.btn-confirm-reject').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const form = this.closest('form');
+        Swal.fire({
+          title: '반려하시겠습니까?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: '예',
+          cancelButtonText: '아니오'
+        }).then(result => {
+          if (result.isConfirmed) form.submit();
+        });
+      });
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>공지 상세</title>
+    <link rel="stylesheet" href="/css/admin/admin_layout.css"/>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --primary: #337D89;
+            --border: #ddd;
+            --shadow: rgba(0,0,0,.06);
+        }
+        .detail-container {
+            position: relative;           /* back-btn 절대 위치를 위해 추가 */
+            max-width: 800px;
+            margin: 40px auto;
+            background: #fff;
+            padding: 30px;
+            padding-bottom: 80px;        /* 하단 버튼 공간 확보 */
+            border-radius: 12px;
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+        .detail-header {
+            margin-bottom: 20px;
+        }
+        .detail-title {
+            font-size: 24px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        th {
+            width: 120px;
+            background: var(--primary);
+            color: #fff;
+            font-weight: 600;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .action-buttons .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: filter .2s;
+        }
+        .action-buttons .btn:hover {
+            filter: brightness(.9);
+        }
+        /* back 버튼: 왼쪽 하단 고정 */
+        .back-btn {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: filter .2s;
+        }
+        .back-btn:hover {
+            filter: brightness(.9);
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div th:replace="admin/admin_header :: adminHeader"></div>
+    <div class="main-wrapper">
+        <div th:replace="admin/admin_aside :: adminAside"></div>
+        <main class="content">
+            <div class="detail-container">
+                <div class="detail-header">
+                    <h1 class="detail-title">
+                        <i class="fas fa-bullhorn"></i> 공지 상세
+                    </h1>
+                </div>
+
+                <table>
+                    <tr><th>ID</th><td th:text="${notice.id}">1</td></tr>
+                    <tr><th>제목</th><td th:text="${notice.title}">공지 제목</td></tr>
+                    <tr>
+                        <th>작성일</th>
+                        <td th:text="${#temporals.format(notice.createdAt,'yyyy-MM-dd HH:mm')}">
+                            2025-07-20 14:00
+                        </td>
+                    </tr>
+                    <tr><th>내용</th><td th:text="${notice.content}">공지 내용</td></tr>
+                </table>
+
+                <!-- super 권한일 때만 보이는 수정/삭제 버튼 -->
+                <div class="action-buttons" th:if="${role == 'super'}">
+                    <button id="btnEdit" class="btn">
+                        <i class="fas fa-edit"></i> 수정
+                    </button>
+                    <button id="btnDelete" class="btn">
+                        <i class="fas fa-trash"></i> 삭제
+                    </button>
+                </div>
+
+                <!-- 목록으로 버튼 (아이콘 없이, 왼쪽 하단) -->
+                <a th:href="@{/admin/notice/list}" class="back-btn"> << 목록으로</a>
+            </div>
+
+            <!-- super 전용 삭제 폼 (숨김) -->
+            <form id="deleteForm"
+                  th:action="@{/admin/notice/delete/{id}(id=${notice.id})}"
+                  method="post"
+                  style="display:none;">
+                <!-- CSRF 토큰 필요 시 추가 -->
+            </form>
+        </main>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+      const noticeId = /*[[${notice.id}]]*/ 0;
+
+      document.getElementById('btnEdit')?.addEventListener('click', () => {
+        location.href = `/admin/notice/edit/${noticeId}`;
+      });
+
+      document.getElementById('btnDelete')?.addEventListener('click', () => {
+        Swal.fire({
+          title: '정말 삭제하시겠습니까?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: '예',
+          cancelButtonText: '아니오'
+        }).then(result => {
+          if (result.isConfirmed) {
+            document.getElementById('deleteForm').submit();
+          }
+        });
+      });
+    /*]]>*/
+</script>
+</body>
+</html>

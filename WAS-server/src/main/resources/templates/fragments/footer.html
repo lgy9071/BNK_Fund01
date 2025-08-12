@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- Thymeleaf fragment -->
+    <div th:fragment="siteFooter">
+      <footer class="site-footer">
+        <!-- 상단: 링크 / 고객센터 / 셀렉트 -->
+        <div class="site-footer__top">
+          <!-- 1) 정책/약관 링크 -->
+          <ul class="footer-nav">
+            <li><a>개인정보처리방침</a></li>
+            <li><a>경영공시</a></li>
+            <li><a>고객정보취급방침</a></li>
+            <li><a>보호금융상품등록부</a></li>
+            <li><a>상품공시실</a></li>
+            <li><a>전자민원접수</a></li>
+            <li>
+              <a>전자금융이용자보호수칙</a>
+            </li>
+            <li>
+              <a>전자금융사기피해공제제도</a>
+            </li>
+            <li>
+              <a>위치기반서비스 이용약관</a>
+            </li>
+          </ul>
+
+          <!-- 2) 고객센터 -->
+          <div class="footer-contact">
+            <span
+              >고객상담 <strong>1588-6200</strong>,
+              <strong>1544-6200</strong> 해외
+              <strong>82-2-1588-6200</strong></span
+            >
+          </div>
+
+          <!-- 3) 셀렉트 박스 -->
+          <div class="footer-selects">
+            <select>
+              <option hidden>BNK금융네트워크 ▼</option>
+              <option>BNK금융지주</option>
+              <option>경남은행</option>
+              <option>BNK캐피탈</option>
+              <option>BNK투자증권</option>
+              <option>BNK저축은행</option>
+              <option>BNK자산운용</option>
+              <option>BNK신용정보</option>
+              <option>BNK시스템</option>
+            </select>
+            <select>
+              <option hidden>FAMILY SITE ▼</option>
+              <option>부은동우회</option>
+              <option>BNK부산은행 조은극장</option>
+              <option>BNK부산은행갤러리</option>
+              <option>부산은행금융역사관</option>
+              <option>행복한 BNK</option>
+            </select>
+          </div>
+        </div>
+        <!-- /.site-footer__top -->
+
+        <!-- 하단: 카피라이트 -->
+        <div class="site-footer__bottom">
+          COPYRIGHT © 2014 BUSANBANK. ALL RIGHTS RESERVED.
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
