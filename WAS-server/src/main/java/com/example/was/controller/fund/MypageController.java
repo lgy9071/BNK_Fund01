@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.example.ap.service.fund.QnaService;
+import com.example.ap.service.fund.UserService;
 import com.example.common.dto.fund.UserUpdateRequest;
 import com.example.common.entity.fund.User;
-import com.example.fund.auth.service.UserService;
-import com.example.fund.qna.service.QnaService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;

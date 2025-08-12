@@ -12,7 +12,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.example.common.dto.fund.JoinRequest;
 import com.example.common.dto.fund.LoginRequest;
 import com.example.common.entity.fund.User;
-import com.example.fund.auth.service.UserService;
+import com.example.ap.service.fund.UserService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;

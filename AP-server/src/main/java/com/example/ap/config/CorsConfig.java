@@ -13,7 +13,7 @@ public class CorsConfig {
       @Override
       public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-          .allowedOrigins("http://localhost:8080") // WAS(브라우저가 열어주는 페이지)
+          .allowedOrigins("http://localhost:8090") // WAS(브라우저가 열어주는 페이지)
           .allowedMethods("GET","POST","PUT","DELETE","PATCH","OPTIONS")
           .allowedHeaders("*")                     // Authorization, Content-Type 등
           .exposedHeaders("Location")              // 필요시

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.ap.repository.fund.FundFavoriteRepository;
+import com.example.ap.repository.fund.FundRepository;
 import com.example.ap.repository.fund.UserRepository;
 import com.example.common.entity.fund.Fund;
 import com.example.common.entity.fund.FundFavorite;
