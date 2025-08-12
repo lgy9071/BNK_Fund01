@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/core/actions/auth_actions.dart';
+import 'package:mobile_front/core/constants/colors.dart';
 
 const tossBlue = Color(0xFF0064FF);
 Color pastel(Color c) => c.withOpacity(.12); // 파스텔 톤
@@ -164,22 +166,92 @@ class _ProfileCard extends StatelessWidget {
                     onPressed: () async {
                       final ok = await showDialog<bool>(
                         context: context,
+                        barrierDismissible: true,
+                        barrierLabel: '닫기',
                         builder: (ctx) => AlertDialog(
-                          title: const Text('로그아웃'),
-                          content: const Text('정말 로그아웃 하시겠어요?'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-                            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('로그아웃')),
-                          ],
+                          backgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+                          content: Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  '로그아웃',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 23,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF383E56),
+                                  ),
+                                ),
+                                const SizedBox(height: 15),
+                                const Text(
+                                  '정말 로그아웃 하시겠어요?',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    height: 1.4,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                                const SizedBox(height: 25),
+                                Row(
+                                  children: [
+                                    // 취소 버튼(왼쪽) - 디자인 동일
+                                    Expanded(
+                                      child: TextButton(
+                                        onPressed: () => Navigator.of(ctx, rootNavigator: true).pop(false),
+                                        style: TextButton.styleFrom(
+                                          backgroundColor: const Color(0xFFF0F1F5),
+                                          foregroundColor: const Color(0xFF383E56),
+                                          shape: const StadiumBorder(),
+                                          minimumSize: const Size.fromHeight(48),
+                                        ),
+                                        child: const Text(
+                                          '취소',
+                                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // 로그아웃 버튼(오른쪽) - 메인 컬러
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: () => Navigator.of(ctx, rootNavigator: true).pop(true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.primaryBlue,
+                                          foregroundColor: Colors.white,
+                                          elevation: 0,
+                                          shape: const StadiumBorder(),
+                                          minimumSize: const Size.fromHeight(48),
+                                        ),
+                                        child: const Text(
+                                          '로그아웃',
+                                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       );
-                      if (ok == true) onLogout();
+
+                      if (ok == true) {
+                        await AuthActions.logout(context, callServer: true);
+                      }
                     },
                     child: const Text(
                       '로그아웃',
                       style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700),
                     ),
-                  ),
+                  )
+
                 ],
               ),
               const SizedBox(height: 12),
