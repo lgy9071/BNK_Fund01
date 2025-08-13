@@ -27,6 +27,16 @@
       "args": "",
       "envFile": "${workspaceFolder}/.env",
       "vmArgs": "-Dcom.sun.management.jmxremote=false -Dspring.jmx.enabled=false"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-BnkProject02Application<server>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.fund.BnkProject02Application",
+      "projectName": "server",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
     }
   ]
 }
