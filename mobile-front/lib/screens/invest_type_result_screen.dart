@@ -1,61 +1,126 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 
-class InvestProfile {
-  final String investorName;
-  final String riskType;
-  final DateTime assessedAt;
-  final String investHorizon;
-  final String goal;
-  final String experience;
-  const InvestProfile({
-    required this.investorName,
-    required this.riskType,
-    required this.assessedAt,
-    required this.investHorizon,
-    required this.goal,
-    required this.experience,
+/// ===== 결과 모델 (백엔드 응답과 매핑) =====
+class InvestResultModel {
+  final String userId;
+  final DateTime analysisDate;
+  final int totalScore;
+  final int typeId;
+  final String typeName;
+  final String typeDescription;
+
+  // 선택(있으면 표시)
+  final String? investorName;
+  final String? investHorizon;
+  final String? goal;
+  final String? experience;
+
+  const InvestResultModel({
+    required this.userId,
+    required this.analysisDate,
+    required this.totalScore,
+    required this.typeId,
+    required this.typeName,
+    required this.typeDescription,
+    this.investorName,
+    this.investHorizon,
+    this.goal,
+    this.experience,
   });
+
+  factory InvestResultModel.fromJson(Map<String, dynamic> j) {
+    return InvestResultModel(
+      userId: j['userId'],
+      analysisDate: DateTime.parse(j['analysisDate']),
+      totalScore: j['totalScore'],
+      typeId: j['type']['id'],
+      typeName: j['type']['name'],
+      typeDescription: j['type']['description'],
+      investorName: j['investorName'],
+      investHorizon: j['investHorizon'],
+      goal: j['goal'],
+      experience: j['experience'],
+    );
+  }
 }
 
+/// ===== 스크린 =====
 class InvestTypeResultScreen extends StatefulWidget {
-  const InvestTypeResultScreen({super.key});
+  /// 최신 분석 결과 (없으면 null)
+  final InvestResultModel? result;
+
+  /// 마지막 재검사 시각 (하루 1회 제한 체크용)
+  final DateTime? lastRetestAt;
+
+  /// 분석/재분석 시작 콜백
+  final VoidCallback? onStartAssessment;
+
+  const InvestTypeResultScreen({
+    super.key,
+    this.result,
+    this.lastRetestAt,
+    this.onStartAssessment,
+  });
 
   @override
   State<InvestTypeResultScreen> createState() => _InvestTypeResultScreenState();
 }
 
 class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
-  // 고정 더미(공격투자형)
-  static final InvestProfile _dummy = InvestProfile(
-    investorName: '이뚜리',
-    riskType: '공격투자형',
-    assessedAt: DateTime(2025, 7, 7),
-    investHorizon: '1년 이상 ~ 2년 미만',
-    goal: '자본이득 추구',
-    experience: '3년 이상',
-  );
-
-  final _localPart = TextEditingController();
-  final _domainInput = TextEditingController();
-  String _domain = 'naver.com';
-  bool _manualDomain = false;
-  bool _agreeGuide = false;
-
-  @override
-  void dispose() {
-    _localPart.dispose();
-    _domainInput.dispose();
-    super.dispose();
-  }
+  bool _showRiskMap = false;   // 금융투자상품 투자위험지도
+  bool _showTypeGuide = false; // 투자유형안내
 
   String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  Future<void> _handleStartAssessment(BuildContext context) async {
+    final now = DateTime.now();
+    final alreadyToday =
+        widget.lastRetestAt != null && _isSameDay(widget.lastRetestAt!, now);
+    if (alreadyToday) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('오늘은 이미 재검사를 진행하셨습니다. 내일 다시 시도해주세요.')),
+      );
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('재검사 정책 확인'),
+        content: const Text(
+            '• 투자성향 검사는 1년마다 재실시해야 합니다.\n'
+                '• 재검사는 하루에 한 번만 가능합니다.\n\n'
+                '위 정책을 확인하셨다면 계속 진행을 눌러주세요.'
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              if (widget.onStartAssessment != null) {
+                widget.onStartAssessment!();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('재검사를 시작합니다. 라우팅을 연결해주세요.')),
+                );
+              }
+            },
+            child: const Text('계속 진행'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final base = AppColors.fontColor;
-    final p = _dummy;
+    final r = widget.result;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -73,97 +138,83 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
             children: [
               const _SectionTitle('투자자정보확인'),
               const SizedBox(height: 8),
-              _InfoCard(children: [
-                _pair('투자자(고객)명', p.investorName),
-                _pair('투자목표', p.goal),
-                _pair('등급결정일자', _ymd(p.assessedAt)),
-                _pair('투자기간', p.investHorizon),
-                _pair('투자경험', p.experience),
-                _pair('투자성향', p.riskType),
-              ]),
-              const SizedBox(height: 8),
 
-              // 성향 "위치 바" 그래프
-              _ResultGraphCard(riskType: p.riskType),
-
-              const SizedBox(height: 24),
-
-              const _SectionTitle('금융투자상품 투자위험지도'),
-              const SizedBox(height: 8),
-
-              // 가로 스크롤로 안 잘리게
-              const _RiskMatrixTable(),
-
-              const SizedBox(height: 24),
-
-              const _SectionTitle('투자유형안내'),
-              const SizedBox(height: 8),
-              const _TypeGuideTable(),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Checkbox(
-                    value: _agreeGuide,
-                    onChanged: (v) => setState(() => _agreeGuide = v ?? false),
-                  ),
-                  Expanded(
-                    child: Text('문답지, 투자유형안내서 확인',
-                        style: TextStyle(color: base)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              const _NoticeBox(
-                text:
-                '이전 투자성향분석에 대한 고객님의 투자 유형입니다.\n'
-                    '금융소비자보호법에 따라 고객님의 투자성향분석 실시 후, 적합성·적정성원칙에 부합하는 상품만 조회 및 가입이 가능합니다.',
-              ),
-
-              const SizedBox(height: 28),
-
-              const _SectionTitle('투자성향 결과표'),
-              const SizedBox(height: 8),
-              _EmailRow(
-                localPart: _localPart,
-                manualDomain: _manualDomain,
-                domainController: _domainInput,
-                domain: _domain,
-                onDomainChanged: (v) => setState(() => _domain = v),
-                onManualToggle: (v) => setState(() => _manualDomain = v),
-                onSend: () {
-                  final email = _manualDomain
-                      ? '${_localPart.text}@${_domainInput.text}'
-                      : '${_localPart.text}@$_domain';
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('결과를 $email 으로 전송했습니다.')),
-                  );
-                },
-              ),
-              const SizedBox(height: 14),
-              Center(
-                child: SizedBox(
-                  width: 200,
-                  height: 44,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFAD2E1B),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: _agreeGuide
-                        ? () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('분석을 시작합니다.')),
-                      );
-                    }
-                        : null,
-                    child: const Text('분석하기',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
+              // ===== 상단: 결과 유무에 따라 분기 =====
+              if (r == null) ...[
+                _EmptyDataCard(onStart: () => _handleStartAssessment(context)),
+              ] else ...[
+                _InfoCard(children: [
+                  _pair('사용자', r.investorName ?? r.userId),
+                  _pair('등급결정일자', _ymd(r.analysisDate)),
+                  _pair('총점', '${r.totalScore}점'),
+                  _pair('투자성향', r.typeName),
+                  if (r.investHorizon != null) _pair('투자기간', r.investHorizon!),
+                  if (r.goal != null) _pair('투자목표', r.goal!),
+                  if (r.experience != null) _pair('투자경험', r.experience!),
+                ]),
+                const SizedBox(height: 8),
+                _ResultGraphCard(riskType: r.typeName),
+                // 유형 설명 안내
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    r.typeDescription,
+                    style: TextStyle(color: AppColors.fontColor.withOpacity(.8)),
                   ),
                 ),
+              ],
+
+              const SizedBox(height: 16),
+              _PolicyNotice(assessedAt: r?.analysisDate, lastRetestAt: widget.lastRetestAt),
+
+              const SizedBox(height: 24),
+
+              // ===== 투자위험지도 (텍스트 전체 탭 + 화살표 아이콘) =====
+              _ExpandableHeader(
+                title: '금융투자상품 투자위험지도',
+                expanded: _showRiskMap,
+                onToggle: () => setState(() => _showRiskMap = !_showRiskMap),
               ),
+              if (_showRiskMap) ...[
+                const SizedBox(height: 8),
+                const _RiskMatrixTable(),
+              ],
+
+              const SizedBox(height: 24),
+
+              // ===== 투자유형안내 (텍스트 전체 탭 + 화살표 아이콘) =====
+              _ExpandableHeader(
+                title: '투자유형안내',
+                expanded: _showTypeGuide,
+                onToggle: () => setState(() => _showTypeGuide = !_showTypeGuide),
+              ),
+              if (_showTypeGuide) ...[
+                const SizedBox(height: 8),
+                const _TypeGuideTable(),
+              ],
+
+              const SizedBox(height: 32),
+
+              // ===== 하단 버튼: 결과가 있을 때만 재분석 시작 =====
+              if (r != null)
+                Center(
+                  child: SizedBox(
+                    width: 200,
+                    height: 44,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0064FF),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => _handleStartAssessment(context),
+                      child: const Text('재분석 시작',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ),
 
               const SizedBox(height: 40),
             ],
@@ -177,22 +228,20 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
     children: [
       SizedBox(
         width: 100,
-        child: Text(k,
-            style: TextStyle(color: AppColors.fontColor.withOpacity(.75))),
+        child: Text(k, style: TextStyle(color: AppColors.fontColor.withOpacity(.75))),
       ),
       Expanded(
         child: Text(
           v,
           textAlign: TextAlign.right,
-          style: const TextStyle(
-              fontWeight: FontWeight.w700, color: AppColors.fontColor),
+          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.fontColor),
         ),
       ),
     ],
   );
 }
 
-/* ---- 서브 위젯 ---- */
+/* ---------- 서브 위젯들 ---------- */
 
 class _SectionTitle extends StatelessWidget {
   final String text;
@@ -259,14 +308,12 @@ class _ResultGraphCard extends StatelessWidget {
         children: [
           Text(riskType,
               style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.fontColor)),
+                  fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.fontColor)),
           const SizedBox(height: 12),
           _RiskPositionBar(activeIndex: idx),
           const SizedBox(height: 8),
           Text(
-            '시장평균 대비 변동성 수용수준이 높고, 수익을 위해 위험을 감내하는 성향입니다.',
+            '시장평균 대비 변동성 수용수준과 손실 감내 정도를 바탕으로 산출된 결과입니다.',
             style: TextStyle(color: AppColors.fontColor.withOpacity(.8)),
           ),
         ],
@@ -293,9 +340,7 @@ class _RiskPositionBar extends StatelessWidget {
                 margin: EdgeInsets.only(right: i == 4 ? 0 : 6),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(6),
-                  color: isOn
-                      ? const Color(0xFF0064FF)
-                      : const Color(0xFFE7ECFF),
+                  color: isOn ? const Color(0xFF0064FF) : const Color(0xFFE7ECFF),
                 ),
               ),
             );
@@ -310,8 +355,7 @@ class _RiskPositionBar extends StatelessWidget {
               labels[i],
               style: TextStyle(
                 fontSize: 12,
-                fontWeight:
-                i == activeIndex ? FontWeight.w800 : FontWeight.w400,
+                fontWeight: i == activeIndex ? FontWeight.w800 : FontWeight.w400,
                 color: i == activeIndex
                     ? AppColors.fontColor
                     : AppColors.fontColor.withOpacity(.6),
@@ -327,53 +371,104 @@ class _RiskPositionBar extends StatelessWidget {
 class _RiskMatrixTable extends StatelessWidget {
   const _RiskMatrixTable();
 
-  DataRow row(String grade, List<String> cols, {Color? bg}) => DataRow(
-    color: bg != null ? MaterialStatePropertyAll(bg) : null,
-    cells: [
-      DataCell(Text(grade)),
-      for (final c in cols) DataCell(Text(c, textAlign: TextAlign.center)),
-    ],
-  );
+  Widget row(String grade, List<String> cols, {Color? bg}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg ?? Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF0064FF).withOpacity(.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            grade,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: AppColors.fontColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (int i = 0; i < cols.length; i++)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+              decoration: BoxDecoration(
+                color: i.isEven ? const Color(0xFFF8FAFF) : Colors.white,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 64,
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0064FF).withOpacity(.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${i + 1}등급',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        color: AppColors.fontColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      cols[i],
+                      style: const TextStyle(fontSize: 14, color: AppColors.fontColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    const headStyle = TextStyle(fontWeight: FontWeight.w700);
-
-    final table = DataTable(
-      headingRowColor:
-      MaterialStatePropertyAll(Colors.black.withOpacity(.03)),
-      headingTextStyle: headStyle,
-      columns: const [
-        DataColumn(label: Text('구분')),
-        DataColumn(label: Text('1등급')),
-        DataColumn(label: Text('2등급')),
-        DataColumn(label: Text('3등급')),
-        DataColumn(label: Text('4등급')),
-        DataColumn(label: Text('5등급')),
-        DataColumn(label: Text('6등급')),
+    return Column(
+      children: [
+        row('선정지표', [
+          'VaR 97.5%',
+          'VaR 50% 초과',
+          'VaR 30% 이하',
+          'VaR 20% 이하',
+          'VaR 10% 이하',
+          'VaR 1% 이하'
+        ]),
+        row('펀드/ETF', [
+          '레버리지·고위험',
+          '수익률 변동성↑',
+          '고위험채권 80%↑',
+          '채권형 50% 미만',
+          '저위험채(주로) 60%↑',
+          '단기금융 중심'
+        ]),
+        row('채권/예금', [
+          'B이하',
+          'BB~BB-',
+          'BBB+~BBB-',
+          'A-~A+',
+          'AA-~A+',
+          '국공채·보증채'
+        ]),
       ],
-      rows: [
-        row('선정지표',
-            ['VaR 97.5%', 'VaR 50% 초과', 'VaR 30% 이하', 'VaR 20% 이하', 'VaR 10% 이하', 'VaR 1% 이하']),
-        row('펀드/ETF',
-            ['레버리지·고위험', '수익률 변동성↑', '고위험채권 80%↑', '채권형 50% 미만', '저위험채(주로) 60%↑', '단기금융 중심'],
-            bg: const Color(0xFFFFF8E7)),
-        row('채권/예금',
-            ['B이하', 'BB~BB-', 'BBB+~BBB-', 'A-~A+', 'AA-~A+', '국공채·보증채']),
-      ],
-    );
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF0064FF).withOpacity(.12)),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(8),
-        child: table,
-      ),
     );
   }
 }
@@ -427,89 +522,99 @@ class _NoticeBox extends StatelessWidget {
   }
 }
 
-class _EmailRow extends StatelessWidget {
-  final TextEditingController localPart;
-  final bool manualDomain;
-  final TextEditingController domainController;
-  final String domain;
-  final ValueChanged<String> onDomainChanged;
-  final ValueChanged<bool> onManualToggle;
-  final VoidCallback onSend;
-
-  const _EmailRow({
-    required this.localPart,
-    required this.manualDomain,
-    required this.domainController,
-    required this.domain,
-    required this.onDomainChanged,
-    required this.onManualToggle,
-    required this.onSend,
+/// 텍스트 전체 탭 + 우측 화살표 아이콘
+class _ExpandableHeader extends StatelessWidget {
+  final String title;
+  final bool expanded;
+  final VoidCallback onToggle;
+  const _ExpandableHeader({
+    required this.title,
+    required this.expanded,
+    required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
-    final base = AppColors.fontColor;
+    return InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Expanded(child: _SectionTitle(title)),
+            Icon(expanded ? Icons.expand_less : Icons.expand_more),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
+/// 정책 안내 + 다음 정기 재검사일/오늘 가능 여부 표시
+class _PolicyNotice extends StatelessWidget {
+  final DateTime? assessedAt;
+  final DateTime? lastRetestAt;
+  const _PolicyNotice({required this.assessedAt, required this.lastRetestAt});
+
+  String _ymd(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final nextAnnual = assessedAt != null
+        ? DateTime(assessedAt!.year + 1, assessedAt!.month, assessedAt!.day)
+        : null;
+    final todayBlocked = lastRetestAt != null && _isSameDay(lastRetestAt!, now);
+
+    final lines = <String>[
+      '정책 안내',
+      '• 투자성향 검사는 1년마다 재실시해야 합니다.'
+          '${nextAnnual != null ? ' (다음 정기 재검사일: ${_ymd(nextAnnual)})' : ''}',
+      '• 재검사는 하루에 한 번만 가능합니다.'
+          '${todayBlocked ? ' (오늘 재검사 불가: 이미 실시)' : ''}',
+    ];
+
+    return _NoticeBox(text: lines.join('\n'));
+  }
+}
+
+/// 결과가 없을 때: 상단에만 "분석 시작" 버튼
+class _EmptyDataCard extends StatelessWidget {
+  final VoidCallback onStart;
+  const _EmptyDataCard({required this.onStart});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFF),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF0064FF).withOpacity(.12)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: localPart,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    hintText: 'your.id',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text('@'),
-              const SizedBox(width: 8),
-              if (!manualDomain)
-                DropdownButton<String>(
-                  value: domain,
-                  onChanged: (v) => v != null ? onDomainChanged(v) : null,
-                  items: const [
-                    DropdownMenuItem(value: 'naver.com', child: Text('naver.com')),
-                    DropdownMenuItem(value: 'gmail.com', child: Text('gmail.com')),
-                    DropdownMenuItem(value: 'daum.net', child: Text('daum.net')),
-                    DropdownMenuItem(value: 'kakao.com', child: Text('kakao.com')),
-                  ],
-                )
-              else
-                Expanded(
-                  child: TextField(
-                    controller: domainController,
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      hintText: 'example.com',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 8),
-              OutlinedButton(onPressed: onSend, child: const Text('결과받기')),
-            ],
-          ),
+          const Text('투자성향 데이터가 없습니다.',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.fontColor)),
           const SizedBox(height: 8),
+          Text(
+            '분석을 먼저 진행해주세요. 분석 완료 후 개인별 결과(그래프/정보)가 표시됩니다.\n'
+                '아래의 “투자위험지도/투자유형안내”는 가이드로 언제든 확인할 수 있습니다.',
+            style: TextStyle(color: AppColors.fontColor.withOpacity(.85)),
+          ),
+          const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => onManualToggle(!manualDomain),
-              icon: const Icon(Icons.edit, size: 16),
-              label: Text(
-                manualDomain ? '도메인 목록 사용' : '도메인 직접입력',
-                style: TextStyle(color: base),
-              ),
+            child: FilledButton.icon(
+              onPressed: onStart,
+              icon: const Icon(Icons.play_arrow, size: 18),
+              label: const Text('분석 시작'),
             ),
           ),
         ],

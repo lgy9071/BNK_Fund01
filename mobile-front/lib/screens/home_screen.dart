@@ -5,6 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import '../core/routes/routes.dart';
 import '../models/fund.dart';
+import 'package:mobile_front/core/services/invest_result_service.dart';
+import 'package:mobile_front/screens/invest_type_result_loader.dart';
+import 'package:mobile_front/core/constants/api.dart';
 
 const tossBlue = Color(0xFF0064FF);
 Color pastel(Color c) => Color.lerp(Colors.white, c, 0.12)!;

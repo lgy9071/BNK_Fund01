@@ -10,6 +10,9 @@ import 'package:mobile_front/screens/qna_list_screen.dart';
 import 'package:mobile_front/screens/splash_screen.dart';
 import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/screens/main_scaffold.dart';
+import 'package:mobile_front/core/services/invest_result_service.dart';
+import 'package:mobile_front/screens/invest_type_result_loader.dart';
+import 'package:mobile_front/core/constants/api.dart';
 
 // 추가: 전역 세션 매니저/키 & API 경로
 import 'package:mobile_front/core/constants/api.dart';
@@ -72,6 +75,7 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
 
+      navigatorKey: navigatorKey,
       routes: {
         AppRoutes.login: (_) => const LoginScreen(),
         AppRoutes.home: (_) => const MainScaffold(),
@@ -79,7 +83,12 @@ class _MyAppState extends State<MyApp> {
         AppRoutes.qnaCompose: (_) => const QnaComposeScreen(),
         AppRoutes.qnaList: (_) => const QnaListScreen(),
         AppRoutes.faq: (_) => const FaqScreen(),
-        AppRoutes.guide: (_) => const FundGuideScreen()
+        AppRoutes.guide: (_) => const FundGuideScreen(),
+        AppRoutes.investType: (_) => InvestTypeResultLoader(
+          userId: 1, // 본인의 USER_ID로 교체 (테스트는 1 같은 실제 존재 id)
+          service: InvestResultService(baseUrl: ApiConfig.baseUrl),
+          lastRetestAt: null, // 필요하면 상태에서 넣기
+        ),
       },
       onGenerateRoute: AppRouter.onGenerateRoute,
       initialRoute: AppRoutes.splash,
