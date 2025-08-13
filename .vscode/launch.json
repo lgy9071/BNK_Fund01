@@ -2,6 +2,12 @@
   "configurations": [
     {
       "type": "java",
+      "name": "BnkProject02Application",
+      "request": "launch",
+      "mainClass": "com.example.fund.BnkProject02Application"
+    },
+    {
+      "type": "java",
       "name": "Spring Boot-ApApplication<AP-server>",
       "request": "launch",
       "cwd": "${workspaceFolder}",
