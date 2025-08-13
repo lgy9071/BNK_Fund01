@@ -22,6 +22,6 @@ public class FundGuide {
     @Column(nullable = false, length = 100)
     private String term; // 펀드 용어
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "CLOB")
     private String definition; // 용어 해설
 }
