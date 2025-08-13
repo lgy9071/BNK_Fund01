@@ -36,7 +36,7 @@ public class InvestProfileHistory {
     private User user;
 
     @Lob
-    @Column(nullable = false, columnDefinition = "CLOB")
+    @Column(name = "answer_snapshot", nullable = false, columnDefinition = "CLOB")
     private String answerSnapshot;
 
     @Column(nullable = false)
