@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../screens/fund_join_screen.dart' show JoinFund;
+import 'package:mobile_front/utils/badge_colors.dart';
 
 /// ───────────────── colors
 const tossBlue = Color(0xFF0064FF);
