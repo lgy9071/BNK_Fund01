@@ -3,7 +3,7 @@ import 'package:mobile_front/utils/exit_popup.dart';
 import '../models/fund.dart';
 import '../screens/home_screen.dart';
 import '../screens/my_finance_screen.dart';
-import '../screens/fund_join_screen.dart';
+import '../screens/fund_list_screen.dart';
 import '../widgets/full_menu_overlay.dart';
 import '../widgets/circle_nav_bar.dart';
 
@@ -31,7 +31,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     _pages = [
       HomeScreen(myFunds: _myFunds, investType: '공격 투자형', userName: '@@'),
       const MyFinanceScreen(),
-      const FundJoinScreen(),
+      const FundListScreen(),
       const SizedBox.shrink(), // 전체 메뉴 자리
     ];
   }
