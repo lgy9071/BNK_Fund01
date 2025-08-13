@@ -24,7 +24,8 @@ public class ApprovalLog {
 
     private String status;
 
-    @Column(columnDefinition = "TEXT")
+    @Lob
+    @Column(columnDefinition = "CLOB")
     private String reason;
 
     private LocalDateTime changedAt = LocalDateTime.now();
