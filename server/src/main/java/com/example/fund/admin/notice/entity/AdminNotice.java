@@ -19,7 +19,8 @@ public class AdminNotice {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Lob
+    @Column(nullable = false, columnDefinition = "CLOB")
     private String content;
 
     @Column(name = "created_at", nullable = false)
