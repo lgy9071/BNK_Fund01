@@ -9,5 +9,5 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 @Documented
 @AuthenticationPrincipal(expression = "claims['uid']") // 토큰에서 uid 클레임 추출
 public @interface CurrentUid {
-
+    
 }
