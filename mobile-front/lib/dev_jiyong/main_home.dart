@@ -11,7 +11,7 @@ import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/models/fund.dart';
 import 'package:mobile_front/screens/home_screen.dart';
 import 'package:mobile_front/screens/my_finance_screen.dart';
-import 'package:mobile_front/screens/fund_join_screen.dart';
+import 'package:mobile_front/screens/fund_list_screen.dart';
 import 'package:mobile_front/widgets/full_menu_overlay.dart';
 import 'package:mobile_front/widgets/circle_nav_bar.dart';
 import 'package:mobile_front/utils/exit_popup.dart';

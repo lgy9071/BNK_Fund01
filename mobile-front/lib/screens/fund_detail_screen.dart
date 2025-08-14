@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../screens/fund_list_screen.dart' show JoinFund;
-import '../screens/fund_join_screen.dart' show JoinFund;
 import 'package:mobile_front/utils/badge_colors.dart';
 
 /// ───────────────── colors
