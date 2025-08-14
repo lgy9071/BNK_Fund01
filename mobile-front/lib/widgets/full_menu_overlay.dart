@@ -116,19 +116,45 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                     const _SectionTitle(title: '펀드 메뉴'),
                     const SizedBox(height: 8),
                     _MenuList(items: [
-                      _MenuItemData(icon: Icons.home_outlined, title: '펀드 메인', onTap: widget.onGoFundMain),
-                      _MenuItemData(icon: Icons.playlist_add,  title: '펀드 가입', onTap: widget.onGoFundJoin),
-                      _MenuItemData(icon: Icons.analytics,     title: '투자성향분석', onTap: widget.onGoInvestAnalysis),
+                      _MenuItemData(
+                        title: '펀드 메인',
+                        onTap: widget.onGoFundMain,
+                        assetPath: 'assets/icons/ic_home.png',
+                      ),
+                      _MenuItemData(
+                        title: '펀드 가입',
+                        onTap: widget.onGoFundJoin,
+                        assetPath: 'assets/icons/ic_join.png',
+                      ),
+                      _MenuItemData(
+                        title: '투자성향분석',
+                        onTap: widget.onGoInvestAnalysis,
+                        assetPath: 'assets/icons/ic_analytics.png',
+                      ),
                     ]),
                     const SizedBox(height: 20),
 
-                    const _SectionTitle(title: '자료실'),
-                    const SizedBox(height: 8),
                     _MenuList(items: [
-                      _MenuItemData(icon: Icons.help_outline,   title: 'FAQ',            onTap: widget.onGoFAQ),
-                      _MenuItemData(icon: Icons.menu_book,      title: '펀드 이용 가이드',  onTap: widget.onGoGuide),
-                      _MenuItemData(icon: Icons.psychology_alt, title: '펀드 MBTI',       onTap: widget.onGoMbti),
-                      _MenuItemData(icon: Icons.forum_outlined, title: '펀토방',           onTap: widget.onGoForum),
+                      _MenuItemData(
+                        title: 'FAQ',
+                        onTap: widget.onGoFAQ,
+                        assetPath: 'assets/icons/ic_faq.png',
+                      ),
+                      _MenuItemData(
+                        title: '펀드 이용 가이드',
+                        onTap: widget.onGoGuide,
+                        assetPath: 'assets/icons/ic_guide.png',
+                      ),
+                      _MenuItemData(
+                        title: '펀드 MBTI',
+                        onTap: widget.onGoMbti,
+                        assetPath: 'assets/icons/ic_mbti.png',
+                      ),
+                      _MenuItemData(
+                        title: '펀토방',
+                        onTap: widget.onGoForum,
+                        assetPath: 'assets/icons/ic_forum.png',
+                      ),
                     ]),
                   ],
                 ),
@@ -169,8 +195,12 @@ class _ProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: pastel(tossBlue),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all( // 테두리 라인 추가
+          color: Colors.grey.withOpacity(.3),
+          width: 1,
+        ),
       ),
       child: Card(
         color: Colors.white,
@@ -347,10 +377,15 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _MenuItemData {
-  final IconData icon;
   final String title;
   final VoidCallback onTap;
-  _MenuItemData({required this.icon, required this.title, required this.onTap});
+  final String assetPath;
+
+  _MenuItemData({
+    required this.title,
+    required this.onTap,
+    required this.assetPath
+  });
 }
 
 class _MenuList extends StatelessWidget {
@@ -361,31 +396,27 @@ class _MenuList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: pastel(tossBlue),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Card(
         color: Colors.white,
-        elevation: 0,
-        margin: const EdgeInsets.all(6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.withOpacity(.3), width: 1),
+      ),
+      //
+      child: Padding(
+        padding: const EdgeInsets.all(6),
         child: Column(
           children: [
             for (int i = 0; i < items.length; i++) ...[
               ListTile(
-                leading: Icon(items[i].icon,
-                    color: AppColors.fontColor.withOpacity(.87)),
+                leading: Image.asset(
+                  items[i].assetPath,
+                  width: 26, height: 26, fit: BoxFit.contain,
+                ),
                 title: Text(
                   items[i].title,
-                  style: const TextStyle(
-                    color: AppColors.fontColor,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: AppColors.fontColor, fontSize: 16),
                 ),
-                trailing: Icon(
-                  Icons.chevron_right,
-                  color: AppColors.fontColor.withOpacity(.54),
-                ),
+                trailing: Icon(Icons.chevron_right,
+                    color: AppColors.fontColor.withOpacity(.54)),
                 onTap: items[i].onTap,
                 contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
@@ -393,11 +424,8 @@ class _MenuList extends StatelessWidget {
               if (i != items.length - 1)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: Colors.grey.withOpacity(.25),
-                  ),
+                  child: Divider(height: 1, thickness: 1,
+                      color: Colors.grey.withOpacity(.25)),
                 ),
             ],
           ],

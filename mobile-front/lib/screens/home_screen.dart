@@ -182,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               /* 투자성향 카드 (이름/성향 + 화살표) */
               InkWell(
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.investType), // ✅ 수정
+                onTap: () => Navigator.of(context).pushNamed(AppRoutes.investType),
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
                   height: 72,

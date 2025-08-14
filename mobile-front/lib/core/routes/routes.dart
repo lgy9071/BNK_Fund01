@@ -6,7 +6,10 @@ import 'package:mobile_front/screens/qna_compose_screen.dart';
 import 'package:mobile_front/screens/qna_list_screen.dart';
 import 'package:mobile_front/screens/faq_screen.dart';
 import 'package:mobile_front/screens/fund_guide_screen.dart';
-import 'package:mobile_front/screens/invest_type_result_screen.dart';
+import 'package:mobile_front/screens/invest_type_result_loader.dart';
+import 'package:mobile_front/core/services/invest_result_service.dart';
+import 'package:mobile_front/core/constants/api.dart';
+import 'package:mobile_front/screens/fund_mbti_flow.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -17,6 +20,7 @@ class AppRoutes {
   static const String faq = '/faq';
   static const String guide = '/guide';
   static const String investType = '/invest-type';
+  static const String fundMbti = '/fund-mbti';
 }
 
 class AppRouter {
@@ -43,8 +47,18 @@ class AppRouter {
       case AppRoutes.guide:
         return _page(const FundGuideScreen());
 
-      case AppRoutes.investType:
-        return _page(const InvestTypeResultScreen());
+    // 투자성향 결과: Loader를 통해 최신 결과 호출
+      case AppRoutes.investType: {
+        final uid = (s.arguments as int?) ?? 1; // 전달 없으면 임시 1
+        return _page(InvestTypeResultLoader(
+          userId: uid,
+          service: InvestResultService(baseUrl: ApiConfig.baseUrl),
+          lastRetestAt: null,
+        ));
+      }
+
+      case AppRoutes.fundMbti:
+        return _page(const FundMbtiFlowScreen());
 
       default:
         return _page(const Scaffold(

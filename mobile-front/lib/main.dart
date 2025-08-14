@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/screens/faq_screen.dart';
 import 'package:mobile_front/screens/fund_guide_screen.dart';
-import 'package:mobile_front/screens/home_screen.dart';
 import 'package:mobile_front/screens/login_screen.dart';
 import 'package:mobile_front/screens/qna_compose_screen.dart';
 import 'package:mobile_front/screens/qna_list_screen.dart';
@@ -15,7 +14,6 @@ import 'package:mobile_front/screens/invest_type_result_loader.dart';
 import 'package:mobile_front/core/constants/api.dart';
 
 // 추가: 전역 세션 매니저/키 & API 경로
-import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/utils/session_manager.dart';
 
 // 전역 내비게이터 키 (다이얼로그/스낵바, 라우팅에 사용)
@@ -76,20 +74,7 @@ class _MyAppState extends State<MyApp> {
       ),
 
       navigatorKey: navigatorKey,
-      routes: {
-        AppRoutes.login: (_) => const LoginScreen(),
-        AppRoutes.home: (_) => const MainScaffold(),
-        AppRoutes.splash: (_) => const SplashScreen(),
-        AppRoutes.qnaCompose: (_) => const QnaComposeScreen(),
-        AppRoutes.qnaList: (_) => const QnaListScreen(),
-        AppRoutes.faq: (_) => const FaqScreen(),
-        AppRoutes.guide: (_) => const FundGuideScreen(),
-        AppRoutes.investType: (_) => InvestTypeResultLoader(
-          userId: 1, // 본인의 USER_ID로 교체 (테스트는 1 같은 실제 존재 id)
-          service: InvestResultService(baseUrl: ApiConfig.baseUrl),
-          lastRetestAt: null, // 필요하면 상태에서 넣기
-        ),
-      },
+
       onGenerateRoute: AppRouter.onGenerateRoute,
       initialRoute: AppRoutes.splash,
     );
