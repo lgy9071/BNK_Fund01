@@ -2,19 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/screens/login_screen.dart';
 import 'package:mobile_front/screens/signup/signup_screen.dart';
+import 'package:mobile_front/utils/exit_guard.dart';
 import 'package:mobile_front/utils/exit_popup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, result) async {
-          if (!didPop) {
-            await showExitPopup(context);
-          }
-        },
+    return ExitGuard(
       child: Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
