@@ -42,11 +42,13 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   Future<void> _openFullMenu() async {
     // 열릴 때 시스템바 컬러/아이콘 강제
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: AppColors.bg,
-      statusBarIconBrightness: Brightness.dark,
-      statusBarBrightness: Brightness.light,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: AppColors.bg,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+    );
     await showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -56,14 +58,15 @@ class _MainScaffoldState extends State<MainScaffold> {
       pageBuilder: (_, __, ___) => const SizedBox.shrink(),
       transitionBuilder: (ctx, anim, __, ___) {
         return SlideTransition(
-          position: Tween(begin: const Offset(1, 0), end: Offset.zero).animate(
-            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
-          ),
+          position: Tween(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
           child: AnnotatedRegion<SystemUiOverlayStyle>(
             value: const SystemUiOverlayStyle(
-              statusBarColor: AppColors.bg,              // 상태바 배경
-              statusBarIconBrightness: Brightness.dark,  // 안드로이드 아이콘
-              statusBarBrightness: Brightness.light,     // iOS
+              statusBarColor: AppColors.bg, // 상태바 배경
+              statusBarIconBrightness: Brightness.dark, // 안드로이드 아이콘
+              statusBarBrightness: Brightness.light, // iOS
             ),
             child: Material(
               color: AppColors.bg, // 오버레이 뒷배경도 동일 톤
@@ -81,7 +84,8 @@ class _MainScaffoldState extends State<MainScaffold> {
                   },
                   onGoInvestAnalysis: () {
                     Navigator.of(context, rootNavigator: true).pop(); // 오버레이 닫기
-                    navigatorKey.currentState?.pushNamed(             // 전역 push
+                    navigatorKey.currentState?.pushNamed(
+                      // 전역 push
                       AppRoutes.investType,
                       arguments: 1, // 여기 로그인 세션의 USER_ID로 교체. 임시 1
                     );
@@ -126,9 +130,8 @@ class _MainScaffoldState extends State<MainScaffold> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
-        if (!didPop) {
-          await showExitPopup(context);
-        }
+        if (didPop) return; // 이미 pop 처리된 경우 무시
+        await showExitPopup(context);
       },
       child: Scaffold(
         body: IndexedStack(index: _index, children: _pages),

@@ -22,7 +22,6 @@ final navigatorKey = GlobalKey<NavigatorState>();
 // 전역 세션 매니저 (10분 무동작 타이머 + 30초 경고/연장 + 자동복구)
 final sessionManager = SessionManager(
   extendUrl: ApiConfig.extend,
-  refreshUrl: ApiConfig.refresh,
   navigatorKey: navigatorKey,
 );
 

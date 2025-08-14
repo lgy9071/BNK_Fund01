@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/utils/exit_popup.dart';
 import '../core/routes/routes.dart';
 import '../models/fund.dart';
 import 'package:mobile_front/core/services/invest_result_service.dart';
@@ -151,108 +152,166 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<Fund> firstTwo = funds.take(baseCount).toList();
     final List<Fund> rest = _expandFunds ? funds.skip(baseCount).toList() : const [];
 
-    return Scaffold(
-      backgroundColor: Colors.white, // 메인 뒷배경 흰색
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              /* 헤더 */
-              Row(children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return; // 이미 pop 처리된 경우 무시
+        await showExitPopup(context);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white, // 메인 뒷배경 흰색
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /* 헤더 */
+                Row(children: [
+                  InkWell(
+                    onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      'assets/images/splash_logo.png',
+                      height: 33,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) =>
+                          Icon(Icons.account_balance, color: baseText),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(Icons.notifications_none, color: baseDim),
+                    onPressed: () {},
+                  ),
+                ]),
+                const SizedBox(height: 12),
+
+                /* 투자성향 카드 (이름/성향 + 화살표) */
                 InkWell(
-                  onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/images/splash_logo.png',
-                    height: 33,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) =>
-                        Icon(Icons.account_balance, color: baseText),
+                  onTap: () => Navigator.of(context).pushNamed(AppRoutes.investType),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    height: 72,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: tossBlue.withOpacity(0.16), width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        Text('${widget.userName}님의 투자성향',
+                            style: TextStyle(fontSize: 15, color: baseText)),
+                        const Spacer(),
+                        Text(widget.investType,
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.w800, color: baseText)),
+                        const SizedBox(width: 8),
+                        Icon(Icons.chevron_right, color: baseDim),
+                      ],
+                    ),
                   ),
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: Icon(Icons.notifications_none, color: baseDim),
-                  onPressed: () {},
-                ),
-              ]),
-              const SizedBox(height: 12),
+                const SizedBox(height: 28),
 
-              /* 투자성향 카드 (이름/성향 + 화살표) */
-              InkWell(
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.investType),
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  height: 72,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                /* 총 평가금액 카드 */
+                Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: tossBlue.withOpacity(0.16), width: 1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
                   ),
-                  child: Row(
-                    children: [
-                      Text('${widget.userName}님의 투자성향',
-                          style: TextStyle(fontSize: 15, color: baseText)),
-                      const Spacer(),
-                      Text(widget.investType,
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w800, color: baseText)),
-                      const SizedBox(width: 8),
-                      Icon(Icons.chevron_right, color: baseDim),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 28),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          constraints: const BoxConstraints(minHeight: 100),
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                          decoration: BoxDecoration(
+                            image: _bg.isImage && _bgImageFile != null
+                                ? DecorationImage(image: FileImage(_bgImageFile!), fit: BoxFit.cover)
+                                : null,
+                            color: (!_bg.isImage && !_bg.isGradient) ? _bg.c1 : null,
+                            gradient: _bg.isGradient
+                                ? LinearGradient(
+                                colors: [_bg.c1!, _bg.c2!],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight)
+                                : null,
+                          ),
+                          child: Stack(
+                            children: [
+                              if (_bg.isImage)
+                                Positioned.fill(
+                                  child: Container(color: Colors.black.withOpacity(.28)),
+                                ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      InkWell(
+                                        onTap: _toMyFinance,
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Text(
+                                          '총 평가금액',
+                                          style: TextStyle(
+                                            fontSize: 19,
+                                            fontWeight: FontWeight.w700,
+                                            color: onColor,
+                                            shadows: _bg.isImage
+                                                ? [
+                                              Shadow(
+                                                  color: Colors.black.withOpacity(.55),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 1.5))
+                                            ]
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      IconButton(
+                                        icon: Icon(Icons.more_horiz,
+                                            color: _bg.isImage ? Colors.white : onColor.withOpacity(.6)),
+                                        onPressed: _openSettingsSheet,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
 
-              /* 총 평가금액 카드 */
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(
-                        constraints: const BoxConstraints(minHeight: 100),
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                        decoration: BoxDecoration(
-                          image: _bg.isImage && _bgImageFile != null
-                              ? DecorationImage(image: FileImage(_bgImageFile!), fit: BoxFit.cover)
-                              : null,
-                          color: (!_bg.isImage && !_bg.isGradient) ? _bg.c1 : null,
-                          gradient: _bg.isGradient
-                              ? LinearGradient(
-                              colors: [_bg.c1!, _bg.c2!],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight)
-                              : null,
-                        ),
-                        child: Stack(
-                          children: [
-                            if (_bg.isImage)
-                              Positioned.fill(
-                                child: Container(color: Colors.black.withOpacity(.28)),
-                              ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Row(
-                                  children: [
-                                    InkWell(
-                                      onTap: _toMyFinance,
-                                      borderRadius: BorderRadius.circular(8),
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 220),
+                                    child: _obscure
+                                        ? Align(
+                                      key: const ValueKey('hidden'),
+                                      alignment: Alignment.centerRight,
+                                      child: GestureDetector(
+                                        onTap: () => setState(() => _obscure = false),
+                                        child: Text(
+                                          '잔액 보기',
+                                          style: TextStyle(
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.bold,
+                                            color: onColor,
+                                            decoration: TextDecoration.underline,
+                                            decorationColor: (_bg.isImage
+                                                ? Colors.white70
+                                                : onColor.withOpacity(.45)),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                        : Align(
+                                      key: const ValueKey('shown'),
+                                      alignment: Alignment.centerRight,
                                       child: Text(
-                                        '총 평가금액',
+                                        _won(_totalBal),
                                         style: TextStyle(
-                                          fontSize: 19,
-                                          fontWeight: FontWeight.w700,
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.bold,
                                           color: onColor,
                                           shadows: _bg.isImage
                                               ? [
@@ -265,225 +324,174 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       ),
                                     ),
-                                    const Spacer(),
-                                    IconButton(
-                                      icon: Icon(Icons.more_horiz,
-                                          color: _bg.isImage ? Colors.white : onColor.withOpacity(.6)),
-                                      onPressed: _openSettingsSheet,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 220),
-                                  child: _obscure
-                                      ? Align(
-                                    key: const ValueKey('hidden'),
-                                    alignment: Alignment.centerRight,
-                                    child: GestureDetector(
-                                      onTap: () => setState(() => _obscure = false),
-                                      child: Text(
-                                        '잔액 보기',
-                                        style: TextStyle(
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.bold,
-                                          color: onColor,
-                                          decoration: TextDecoration.underline,
-                                          decorationColor: (_bg.isImage
-                                              ? Colors.white70
-                                              : onColor.withOpacity(.45)),
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                      : Align(
-                                    key: const ValueKey('shown'),
-                                    alignment: Alignment.centerRight,
-                                    child: Text(
-                                      _won(_totalBal),
-                                      style: TextStyle(
-                                        fontSize: 26,
-                                        fontWeight: FontWeight.bold,
-                                        color: onColor,
-                                        shadows: _bg.isImage
-                                            ? [
-                                          Shadow(
-                                              color: Colors.black.withOpacity(.55),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 1.5))
-                                        ]
-                                            : null,
-                                      ),
-                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeInOut,
+                          child: _obscure
+                              ? const SizedBox.shrink()
+                              : Container(
+                            color: Colors.white,
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                            child: Builder(builder: (_) {
+                              final up = _pnl >= 0;
+                              final sign = up ? '+' : '−';
+                              final c = up ? Colors.red : Colors.blue;
+                              return Row(
+                                children: [
+                                  const Spacer(),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text('평가손익',
+                                              style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: baseText.withOpacity(.54))),
+                                          const SizedBox(width: 10),
+                                          Text('$sign ${_won(_pnl.abs())}',
+                                              style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: c)),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text('수익률',
+                                              style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: baseText.withOpacity(.54))),
+                                          const SizedBox(width: 10),
+                                          Text('$sign ${_returnPct.abs().toStringAsFixed(2)}%',
+                                              style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: c)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            }),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                /* 보유 펀드 */
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4))
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(children: [
+                        InkWell(
+                          onTap: _toMyFinance,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Text('보유 펀드',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.w600, color: baseText)),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.more_horiz, color: baseDim),
+                          onPressed: _openFundsOptionsSheet,
+                        ),
+                      ]),
+                      const SizedBox(height: 10),
+
+                      for (int i = 0; i < firstTwo.length; i++) ...[
+                        _FundMiniTile(
+                          fund: firstTwo[i],
+                          obscure: _obscure,
+                          onTap: () => Navigator.of(context).pushNamed(
+                            '/fund/transactions',
+                            arguments: firstTwo[i].id,
+                          ),
+                        ),
+                        if (i != firstTwo.length - 1) const SizedBox(height: 10),
+                      ],
 
                       AnimatedSize(
                         duration: const Duration(milliseconds: 220),
                         curve: Curves.easeInOut,
-                        child: _obscure
-                            ? const SizedBox.shrink()
-                            : Container(
-                          color: Colors.white,
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                          child: Builder(builder: (_) {
-                            final up = _pnl >= 0;
-                            final sign = up ? '+' : '−';
-                            final c = up ? Colors.red : Colors.blue;
-                            return Row(
-                              children: [
-                                const Spacer(),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text('평가손익',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                color: baseText.withOpacity(.54))),
-                                        const SizedBox(width: 10),
-                                        Text('$sign ${_won(_pnl.abs())}',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                                color: c)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text('수익률',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                color: baseText.withOpacity(.54))),
-                                        const SizedBox(width: 10),
-                                        Text('$sign ${_returnPct.abs().toStringAsFixed(2)}%',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                                color: c)),
-                                      ],
-                                    ),
-                                  ],
+                        child: Column(
+                          children: [
+                            for (int i = 0; i < rest.length; i++) ...[
+                              const SizedBox(height: 10),
+                              _FundMiniTile(
+                                fund: rest[i],
+                                obscure: _obscure,
+                                onTap: () => Navigator.of(context).pushNamed(
+                                  '/fund/transactions',
+                                  arguments: rest[i].id,
                                 ),
-                              ],
-                            );
-                          }),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
+
+                      if (funds.length > 2) const SizedBox(height: 14),
+                      if (funds.length > 2)
+                        GestureDetector(
+                          onTap: () => setState(() => _expandFunds = !_expandFunds),
+                          child: Container(
+                            height: 44,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: tossBlue,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              child: Text(
+                                _expandFunds ? '접기' : '더보기',
+                                key: ValueKey(_expandFunds),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 30),
 
-              /* 보유 펀드 */
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4))
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(children: [
-                      InkWell(
-                        onTap: _toMyFinance,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Text('보유 펀드',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w600, color: baseText)),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: Icon(Icons.more_horiz, color: baseDim),
-                        onPressed: _openFundsOptionsSheet,
-                      ),
-                    ]),
-                    const SizedBox(height: 10),
-
-                    for (int i = 0; i < firstTwo.length; i++) ...[
-                      _FundMiniTile(
-                        fund: firstTwo[i],
-                        obscure: _obscure,
-                        onTap: () => Navigator.of(context).pushNamed(
-                          '/fund/transactions',
-                          arguments: firstTwo[i].id,
-                        ),
-                      ),
-                      if (i != firstTwo.length - 1) const SizedBox(height: 10),
-                    ],
-
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeInOut,
-                      child: Column(
-                        children: [
-                          for (int i = 0; i < rest.length; i++) ...[
-                            const SizedBox(height: 10),
-                            _FundMiniTile(
-                              fund: rest[i],
-                              obscure: _obscure,
-                              onTap: () => Navigator.of(context).pushNamed(
-                                '/fund/transactions',
-                                arguments: rest[i].id,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    if (funds.length > 2) const SizedBox(height: 14),
-                    if (funds.length > 2)
-                      GestureDetector(
-                        onTap: () => setState(() => _expandFunds = !_expandFunds),
-                        child: Container(
-                          height: 44,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: tossBlue,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 180),
-                            child: Text(
-                              _expandFunds ? '접기' : '더보기',
-                              key: ValueKey(_expandFunds),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-              Text('추천/공지 섹션 자리',
-                  style: TextStyle(color: baseText.withOpacity(.6))),
-            ],
+                const SizedBox(height: 12),
+                Text('추천/공지 섹션 자리',
+                    style: TextStyle(color: baseText.withOpacity(.6))),
+              ],
+            ),
           ),
         ),
       ),

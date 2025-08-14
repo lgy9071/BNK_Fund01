@@ -25,12 +25,31 @@ public class AuthApiController {
         return ResponseEntity.ok(res);
     }
 
-    /** 액세스 연장(항상 사용): 현재 Access 유효해야 함 */
     @PostMapping("/extend")
-    public ResponseEntity<TokenResponse> extend(@RequestHeader(HttpHeaders.AUTHORIZATION) String authz) {
-        String access = extractBearer(authz);
-        var res = userApiService.extendAccess(access);
+    public ResponseEntity<TokenResponse> extend(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authz) {
+
+        String access = extractBearerRelaxed(authz); // 헤더 없는 경우/형식 이상 처리 포함
+        TokenResponse res = userApiService.extendAccessAllowExpired(access);
         return ResponseEntity.ok(res);
+    }
+
+    /** "Bearer <token>" 에서 token만 안전하게 추출 (제로폭/nbsp/공백 제거) */
+    private String extractBearerRelaxed(String authz) {
+        if (authz == null || authz.isBlank()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing token");
+        }
+        String v = authz.replaceAll("[\\u200B-\\u200D\\uFEFF\\u00A0]", "").trim();
+        if (v.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            v = v.substring(7);
+        }
+        v = v.replaceAll("\\s+", "").trim();
+        if (v.isEmpty()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Invalid token");
+        }
+        return v;
     }
 
     /** 리프레시(자동로그인 ON일 때만): 회전 + 새 Access/Refresh */

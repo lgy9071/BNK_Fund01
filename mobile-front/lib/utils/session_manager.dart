@@ -1,23 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
 import 'package:mobile_front/core/constants/colors.dart';
 
 class SessionManager extends ChangeNotifier {
   SessionManager({
     required this.extendUrl,
-    required this.refreshUrl,
     required this.navigatorKey,
-  });
+  }) {
+    _initDio();
+  }
 
   final String extendUrl;
-  final String refreshUrl;
   final GlobalKey<NavigatorState> navigatorKey;
-
   final _secure = const FlutterSecureStorage();
+  late Dio dio;
 
   // 설정
   bool _autoLogin = false;
@@ -70,6 +70,36 @@ class SessionManager extends ChangeNotifier {
     });
   }
 
+  // Dio 초기화 + 인터셉터 등록
+  void _initDio() {
+    dio = Dio();
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final at = await _secure.read(key: 'accessToken');
+          if (at != null) {
+            options.headers['Authorization'] = 'Bearer $at';
+          }
+          return handler.next(options);
+        },
+        onError: (DioException e, handler) async {
+          if (e.response?.statusCode == 401) {
+            // access 토큰 연장 시도
+            final success = await _extendSession();
+            if (success) {
+              final retryRequest = e.requestOptions;
+              final newAt = await _secure.read(key: 'accessToken');
+              retryRequest.headers['Authorization'] = 'Bearer $newAt';
+              final cloned = await dio.fetch(retryRequest);
+              return handler.resolve(cloned);
+            }
+          }
+          return handler.next(e);
+        },
+      ),
+    );
+  }
+
   Future<void> _showWarnDialog() async {
     if (_dialogOpen) return;
     _dialogOpen = true;
@@ -78,7 +108,6 @@ class SessionManager extends ChangeNotifier {
       _dialogOpen = false;
       return;
     }
-
     final ok = await showDialog<bool>(
       context: ctx,
       barrierDismissible: false,
@@ -159,9 +188,7 @@ class SessionManager extends ChangeNotifier {
         ),
       ),
     );
-
     _dialogOpen = false;
-
     if (ok == true) {
       final success = await _extendSession();
       if (!success) {
@@ -192,51 +219,22 @@ class SessionManager extends ChangeNotifier {
   Future<bool> _extendSession() async {
     final at = await _secure.read(key: 'accessToken');
     if (at == null) return false;
-
-    final resp = await http.post(
-      Uri.parse(extendUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $at',
-      },
-    );
-
-    if (resp.statusCode == 200) {
-      final m = jsonDecode(resp.body) as Map<String, dynamic>;
-      final newAt = m['accessToken'] as String?;
-      if (newAt != null) {
-        await _secure.write(key: 'accessToken', value: newAt);
-        _reset();
-        return true;
+    try {
+      final resp = await Dio().post(
+        extendUrl,
+        options: Options(
+          headers: {'Authorization': 'Bearer $at'},
+        ),
+      );
+      if (resp.statusCode == 200) {
+        final newAt = resp.data['accessToken'] as String?;
+        if (newAt != null) {
+          await _secure.write(key: 'accessToken', value: newAt);
+          _reset();
+          return true;
+        }
       }
-    }
-    return false;
-  }
-
-  // 현재는 자동복구를 사용하지 않지만, 필요 시 재활용 가능
-  Future<bool> _refreshTokens() async {
-    final rt = await _secure.read(key: 'refreshToken');
-    if (rt == null) return false;
-
-    final resp = await http.post(
-      Uri.parse(refreshUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'refreshToken': rt}),
-    );
-
-    if (resp.statusCode == 200) {
-      final m = jsonDecode(resp.body) as Map<String, dynamic>;
-      final newAt = m['accessToken'] as String?;
-      final newRt = m['refreshToken'] as String?;
-      if (newAt != null && newRt != null) {
-        await _secure.write(key: 'accessToken', value: newAt);
-        await _secure.write(key: 'refreshToken', value: newRt);
-        return true;
-      }
-    } else {
-      await _secure.delete(key: 'refreshToken');
-      await _secure.delete(key: 'accessToken');
-    }
+    } catch (_) {}
     return false;
   }
 
