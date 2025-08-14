@@ -33,7 +33,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   void initState() {
     super.initState();
     _pages = [
-      HomeScreen(myFunds: _myFunds, investType: '공격 투자형', userName: '@@'),
+      HomeScreen(myFunds: _myFunds, investType: '공격 투자형', userName: '뚜리'),
       const MyFinanceScreen(),
       const FundJoinScreen(),
       const SizedBox.shrink(), // 전체 메뉴 자리
@@ -66,7 +66,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               statusBarBrightness: Brightness.light,     // iOS
             ),
             child: Material(
-              color: AppColors.bg, // ✅ 오버레이 뒷배경도 동일 톤
+              color: AppColors.bg, // 오버레이 뒷배경도 동일 톤
               child: SafeArea(
                 child: FullMenuOverlay(
                   userName: '이유저',
@@ -80,18 +80,23 @@ class _MainScaffoldState extends State<MainScaffold> {
                     setState(() => _index = 2);
                   },
                   onGoInvestAnalysis: () {
-                    Navigator.of(context, rootNavigator: true).pop();
+                    Navigator.of(context, rootNavigator: true).pop(); // 오버레이 닫기
+                    navigatorKey.currentState?.pushNamed(             // 전역 push
+                      AppRoutes.investType,
+                      arguments: 1, // 여기 로그인 세션의 USER_ID로 교체. 임시 1
+                    );
                   },
                   onGoFAQ: () {
                     Navigator.of(context, rootNavigator: true).pop();
-                    navigatorKey.currentState?.pushNamed(AppRoutes.faq);     // ✅ 전역 네비
+                    navigatorKey.currentState?.pushNamed(AppRoutes.faq);
                   },
                   onGoGuide: () {
                     Navigator.of(context, rootNavigator: true).pop();
-                    navigatorKey.currentState?.pushNamed(AppRoutes.guide);   // ✅ 전역 네비
+                    navigatorKey.currentState?.pushNamed(AppRoutes.guide);
                   },
                   onGoMbti: () {
                     Navigator.of(context, rootNavigator: true).pop();
+                    navigatorKey.currentState?.pushNamed(AppRoutes.fundMbti);
                   },
                   onGoForum: () {
                     Navigator.of(context, rootNavigator: true).pop();
