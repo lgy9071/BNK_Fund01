@@ -71,7 +71,7 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
     ));
   }
 
-  // 필요 없으면 이 복원 로직은 제거해도 됩니다(앱 전역에서 관리 시)
+  // 필요 없으면 이 복원 로직은 제거(앱 전역에서 관리 시)
   void _restoreSystemBars() {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -117,11 +117,6 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                     const SizedBox(height: 8),
                     _MenuList(items: [
                       _MenuItemData(
-                        title: '펀드 메인',
-                        onTap: widget.onGoFundMain,
-                        assetPath: 'assets/icons/ic_home.png',
-                      ),
-                      _MenuItemData(
                         title: '펀드 가입',
                         onTap: widget.onGoFundJoin,
                         assetPath: 'assets/icons/ic_join.png',
@@ -134,6 +129,8 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                     ]),
                     const SizedBox(height: 20),
 
+                    const _SectionTitle(title: '고객 지원 메뉴'),
+                    const SizedBox(height: 8),
                     _MenuList(items: [
                       _MenuItemData(
                         title: 'FAQ',
@@ -162,14 +159,26 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
             ),
           ),
 
-          // 닫기 버튼
           Positioned(
-            right: 8,
             top: 8,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: AppColors.fontColor),
-              onPressed: _maybePop,
-              tooltip: '닫기',
+            left: 8,
+            right: 8,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // 홈 버튼
+                IconButton(
+                  icon: const Icon(Icons.home_outlined, color: AppColors.fontColor),
+                  tooltip: '홈',
+                  onPressed: widget.onGoFundMain,
+                ),
+                // 닫기 버튼
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.fontColor),
+                  tooltip: '닫기',
+                  onPressed: _maybePop,
+                ),
+              ],
             ),
           ),
         ],

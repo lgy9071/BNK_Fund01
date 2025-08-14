@@ -621,11 +621,14 @@ class _DesignSheetState extends State<_DesignSheet> {
     );
 
     final presets = <BgChoice>[
-      BgChoice.solid(pastel(const Color(0xFF7FA7FF))),
-      BgChoice.gradient(const Color(0xFF6FA8FF), const Color(0xFFFFA8D0)),
-      BgChoice.gradient(const Color(0xFF59E5FF), const Color(0xFF8FFF9F)),
-      BgChoice.gradient(const Color(0xFFFFC371), const Color(0xFFFF5F6D)),
-      BgChoice.solid(const Color(0xFFF5F7FF)),
+      BgChoice.solid(const Color(0xFF7FA7FF)), // 파란 계열
+      BgChoice.solid(const Color(0xFFFFA8D0)), // 핑크 계열
+      BgChoice.solid(const Color(0xFF8FFF9F)), // 초록 계열
+      BgChoice.solid(const Color(0xFFFFC371)), // 주황 계열
+      BgChoice.solid(const Color(0xFFF5F7FF)), // 연회색
+      BgChoice.solid(const Color(0xFFE0BBFF)), // 라일락
+      BgChoice.solid(const Color(0xFFB2EBF2)), // 민트
+      BgChoice.solid(const Color(0xFFFFE082)), // 연노랑
     ];
 
     return Padding(
