@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_front/core/constants/api.dart';
-import 'package:mobile_front/core/routes/routes.dart';
+import 'package:mobile_front/dev_jiyong/main_home.dart';
 import 'package:mobile_front/widgets/dismiss_keyboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -34,6 +34,16 @@ class _LoginScreenState extends State<LoginScreen> {
     _idController.dispose();
     _pwController.dispose();
     super.dispose();
+  }
+
+  String cleanToken(String? t) {
+    if (t == null) return '';
+    // zero-width, BOM, NBSP 포함 모든 공백류 제거 + trim
+    final cleaned = t
+        .replaceAll(RegExp(r'[\u200B-\u200D\uFEFF\u00A0]'), '')
+        .replaceAll(RegExp(r'\s+'), '')
+        .trim();
+    return cleaned;
   }
 
   Future<void> _login() async {
@@ -67,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
-        await _secure.write(key: 'accessToken', value: access);
+        await _secure.write(key: 'accessToken', value: cleanToken(access));
         if (_autoLogin && refresh != null) {
           await _secure.write(key: 'refreshToken', value: refresh);
         } else {
@@ -82,11 +92,10 @@ class _LoginScreenState extends State<LoginScreen> {
         sessionManager.start();
 
         if (!mounted) return;
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.home,
-              (_) => false,
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainScaffold()),
+              (route) => false,
         );
-        //Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
 
       } else if (res.statusCode == 401) {
         _toast('아이디 또는 비밀번호가 올바르지 않습니다.');
@@ -126,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Image.asset('assets/images/splash_logo.png', width: 300, height: 60, fit: BoxFit.contain),
                     const SizedBox(height: 40),
-      
+
                     TextFormField(
                       cursorColor: AppColors.primaryBlue,
                       controller: _idController,
@@ -143,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-      
+
                     TextFormField(
                       controller: _pwController,
                       obscureText: true,
@@ -161,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-      
+
                     Row(
                       children: [
                         Checkbox(
@@ -183,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                     const SizedBox(height: 40),
-      
+
                     SizedBox(
                       width: double.infinity, height: 48,
                       child: ElevatedButton(
@@ -199,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-      
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

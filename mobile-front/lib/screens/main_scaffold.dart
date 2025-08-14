@@ -78,9 +78,8 @@ class _MainScaffoldState extends State<MainScaffold> {
     return PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) async {
-          if (!didPop) {
-            await showExitPopup(context);
-          }
+          if (didPop) return; // 이미 pop 처리된 경우 무시
+          await showExitPopup(context);
         },
       child:  Scaffold(
       body: IndexedStack(index: _index, children: _pages),
