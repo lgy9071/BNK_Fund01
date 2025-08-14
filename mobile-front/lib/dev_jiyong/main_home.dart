@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import '../widgets/circle_nav_bar.dart';        // 동그라미 네브바
+import '../models/fund.dart';
+import '../screens/home_screen.dart';
+import '../screens/my_finance_screen.dart';
+import '../screens/fund_list_screen.dart';
+import '../widgets/full_menu_overlay.dart';    // 전체 메뉴 오버레이(있다면)
 import 'package:flutter/services.dart';
 import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/models/fund.dart';
 import 'package:mobile_front/screens/home_screen.dart';
 import 'package:mobile_front/screens/my_finance_screen.dart';
-import 'package:mobile_front/screens/fund_join_screen.dart';
+import 'package:mobile_front/screens/fund_list_screen.dart';
 import 'package:mobile_front/widgets/full_menu_overlay.dart';
 import 'package:mobile_front/widgets/circle_nav_bar.dart';
 import 'package:mobile_front/utils/exit_popup.dart';
@@ -37,7 +43,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     _pages = [
       HomeScreen(myFunds: _myFunds, investType: '공격 투자형', userName: '@@'),
       const MyFinanceScreen(),
-      const FundJoinScreen(),          // ← main_join 기능을 여기로 흡수
+      const FundListScreen(),          // ← main_join 기능을 여기로 흡수
       const SizedBox.shrink(),         // 전체(오버레이용 자리만 차지)
     ];
   }

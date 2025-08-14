@@ -41,13 +41,13 @@ class _Debouncer {
   void dispose() => _t?.cancel();
 }
 
-class FundJoinScreen extends StatefulWidget {
-  const FundJoinScreen({super.key});
+class FundListScreen extends StatefulWidget {
+  const FundListScreen({super.key});
   @override
-  State<FundJoinScreen> createState() => _FundJoinScreenState();
+  State<FundListScreen> createState() => _FundJoinScreenState();
 }
 
-class _FundJoinScreenState extends State<FundJoinScreen> {
+class _FundJoinScreenState extends State<FundListScreen> {
   final _searchCtrl = TextEditingController();
   final _debouncer  = _Debouncer(const Duration(milliseconds: 300));
   final Set<int> _compare = {};
