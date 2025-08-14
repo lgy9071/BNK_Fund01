@@ -221,8 +221,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
                   ),
+                  clipBehavior: Clip.antiAlias,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
+
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -621,14 +623,15 @@ class _DesignSheetState extends State<_DesignSheet> {
     );
 
     final presets = <BgChoice>[
-      BgChoice.solid(const Color(0xFF7FA7FF)), // 파란 계열
-      BgChoice.solid(const Color(0xFFFFA8D0)), // 핑크 계열
-      BgChoice.solid(const Color(0xFF8FFF9F)), // 초록 계열
-      BgChoice.solid(const Color(0xFFFFC371)), // 주황 계열
-      BgChoice.solid(const Color(0xFFF5F7FF)), // 연회색
-      BgChoice.solid(const Color(0xFFE0BBFF)), // 라일락
-      BgChoice.solid(const Color(0xFFB2EBF2)), // 민트
-      BgChoice.solid(const Color(0xFFFFE082)), // 연노랑
+      BgChoice.solid(pastel(const Color(0xFFA8E6CF))), // 민트
+      BgChoice.solid(pastel(const Color(0xFFE0BBE4))), // 라벤더
+      BgChoice.solid(pastel(const Color(0xFFC9E4FF))), // 하늘
+      // BgChoice.solid(pastel(const Color(0xFFFDCEDF))), // 베이비핑크
+      BgChoice.solid(const Color(0xFFFF595E)), // 비비드 레드
+      BgChoice.solid(const Color(0xFFFFCA3A)), // 옐로우
+      BgChoice.solid(const Color(0xFF0064FF)), // 블루
+      BgChoice.solid(const Color(0xFF2ECC71)), // 에메랄드
+      // BgChoice.solid(const Color(0xFF1F3A93)), // 로얄블루
     ];
 
     return Padding(

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 
 import '../core/actions/auth_actions.dart';
+import '../screens/fund_mbti_flow.dart';
 
 const tossBlue = Color(0xFF0064FF);
 Color pastel(Color c) => c.withOpacity(.12);
@@ -144,7 +145,20 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                       ),
                       _MenuItemData(
                         title: '펀드 MBTI',
-                        onTap: widget.onGoMbti,
+                        onTap: () {
+                          // root 네비게이터를 먼저 잡아두고
+                          final nav = Navigator.of(context, rootNavigator: true);
+
+                          // 오버레이 닫기
+                          nav.pop();
+
+                          // 다음 프레임에 MBTI 화면으로 이동
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            nav.push(
+                              MaterialPageRoute(builder: (_) => const FundMbtiFlowScreen()),
+                            );
+                          });
+                        },
                         assetPath: 'assets/icons/ic_mbti.png',
                       ),
                       _MenuItemData(
