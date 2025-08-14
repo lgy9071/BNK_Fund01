@@ -1,7 +1,8 @@
-package com.example.fund.fund.entity;
+package com.example.fund.api.entity;
 
 import java.time.LocalDateTime;
 
+import com.example.fund.fund.entity.FundDocument;
 import com.example.fund.user.entity.User;
 
 import jakarta.persistence.Column;
