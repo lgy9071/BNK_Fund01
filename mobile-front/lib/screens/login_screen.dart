@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_front/core/constants/api.dart';
-import 'package:mobile_front/core/routes/routes.dart';
+import 'package:mobile_front/dev_jiyong/main_home.dart';
+import 'package:mobile_front/widgets/dismiss_keyboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mobile_front/core/constants/colors.dart';
@@ -33,6 +34,16 @@ class _LoginScreenState extends State<LoginScreen> {
     _idController.dispose();
     _pwController.dispose();
     super.dispose();
+  }
+
+  String cleanToken(String? t) {
+    if (t == null) return '';
+    // zero-width, BOM, NBSP 포함 모든 공백류 제거 + trim
+    final cleaned = t
+        .replaceAll(RegExp(r'[\u200B-\u200D\uFEFF\u00A0]'), '')
+        .replaceAll(RegExp(r'\s+'), '')
+        .trim();
+    return cleaned;
   }
 
   Future<void> _login() async {
@@ -66,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
-        await _secure.write(key: 'accessToken', value: access);
+        await _secure.write(key: 'accessToken', value: cleanToken(access));
         if (_autoLogin && refresh != null) {
           await _secure.write(key: 'refreshToken', value: refresh);
         } else {
@@ -81,11 +92,10 @@ class _LoginScreenState extends State<LoginScreen> {
         sessionManager.start();
 
         if (!mounted) return;
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.home,
-              (_) => false,
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainScaffold()),
+              (route) => false,
         );
-        //Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
 
       } else if (res.statusCode == 401) {
         _toast('아이디 또는 비밀번호가 올바르지 않습니다.');
@@ -106,115 +116,117 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (!didPop) {
-          await showExitPopup(context);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset('assets/images/splash_logo.png', width: 300, height: 60, fit: BoxFit.contain),
-                  const SizedBox(height: 40),
+    return DismissKeyboard(
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (!didPop) {
+            await showExitPopup(context);
+          }
+        },
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset('assets/images/splash_logo.png', width: 300, height: 60, fit: BoxFit.contain),
+                    const SizedBox(height: 40),
 
-                  TextFormField(
-                    cursorColor: AppColors.primaryBlue,
-                    controller: _idController,
-                    textInputAction: TextInputAction.next,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.person),
-                      hintText: '아이디',
-                      filled: true,
-                      fillColor: Colors.grey[200],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  TextFormField(
-                    controller: _pwController,
-                    obscureText: true,
-                    cursorColor: AppColors.primaryBlue,
-                    onFieldSubmitted: (_) => _loading ? null : _login(),
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.lock),
-                      hintText: '비밀번호',
-                      filled: true,
-                      fillColor: Colors.grey[200],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: _autoLogin,
-                        activeColor: AppColors.primaryBlue,
-                        checkColor: Colors.white,
-                        onChanged: (v) => setState(() => _autoLogin = v ?? false),
-                      ),
-                      GestureDetector(
-                        onTap: () => setState(() => _autoLogin = !_autoLogin),
-                        child: const Text('자동 로그인'),
-                      ),
-                      const Spacer(),
-                      if (_loading)
-                        const SizedBox(
-                          width: 18, height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue),
+                    TextFormField(
+                      cursorColor: AppColors.primaryBlue,
+                      controller: _idController,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.person),
+                        hintText: '아이디',
+                        filled: true,
+                        fillColor: Colors.grey[200],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 40),
-
-                  SizedBox(
-                    width: double.infinity, height: 48,
-                    child: ElevatedButton(
-                      onPressed: _loading ? null : (){
-                        FocusScope.of(context).unfocus();
-                        _login();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('로그인', style: TextStyle(fontSize: 16, color: Colors.white)),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('회원이 아니라면?'),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => SignupScreen()));
+                    TextFormField(
+                      controller: _pwController,
+                      obscureText: true,
+                      cursorColor: AppColors.primaryBlue,
+                      onFieldSubmitted: (_) => _loading ? null : _login(),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.lock),
+                        hintText: '비밀번호',
+                        filled: true,
+                        fillColor: Colors.grey[200],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _autoLogin,
+                          activeColor: AppColors.primaryBlue,
+                          checkColor: Colors.white,
+                          onChanged: (v) => setState(() => _autoLogin = v ?? false),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => _autoLogin = !_autoLogin),
+                          child: const Text('자동 로그인'),
+                        ),
+                        const Spacer(),
+                        if (_loading)
+                          const SizedBox(
+                            width: 18, height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
+
+                    SizedBox(
+                      width: double.infinity, height: 48,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : (){
+                          FocusScope.of(context).unfocus();
+                          _login();
                         },
-                        child: const Text(
-                          '회원가입',
-                          style: TextStyle(fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                      )
-                    ],
-                  ),
-                ],
+                        child: const Text('로그인', style: TextStyle(fontSize: 16, color: Colors.white)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('회원이 아니라면?'),
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => SignupScreen()));
+                          },
+                          child: const Text(
+                            '회원가입',
+                            style: TextStyle(fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                          ),
+                        )
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

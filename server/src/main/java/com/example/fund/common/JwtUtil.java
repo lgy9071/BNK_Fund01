@@ -17,6 +17,10 @@ public class JwtUtil {
     private final SecretKey accessKey;
     private final long accessExpMillis;
 
+    public SecretKey getAccessKey() {
+        return accessKey;
+    }
+
     public JwtUtil(
             @Value("${jwt.access-secret}") String accessSecret,
             @Value("${jwt.access-expiration-millis}") long accessExpMillis) {
@@ -42,5 +46,18 @@ public class JwtUtil {
                 .verifyWith(accessKey).build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    // 새로 추가 (extend에서만 사용)
+    public Claims parseAccessAllowExpired(String token) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(accessKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return e.getClaims(); // 만료여도 uid 추출 가능
+        }
     }
 }

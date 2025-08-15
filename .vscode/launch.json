@@ -1,25 +1,42 @@
 {
-    "configurations": [
-        {
-            "type": "java",
-            "name": "Spring Boot-ApApplication<AP-server>",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "mainClass": "com.example.ap.ApApplication",
-            "projectName": "AP-server",
-            "args": "",
-            "envFile": "${workspaceFolder}/.env",
-            "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=63760 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=AP-server"
-        },
-        {
-            "type": "java",
-            "name": "Spring Boot-WasServerApplication<WAS-server>",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "mainClass": "com.example.was.WasServerApplication",
-            "projectName": "WAS-server",
-            "args": "",
-            "envFile": "${workspaceFolder}/.env"
-        }
-    ]
+  "configurations": [
+    {
+      "type": "java",
+      "name": "BnkProject02Application",
+      "request": "launch",
+      "mainClass": "com.example.fund.BnkProject02Application"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-ApApplication<AP-server>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.ap.ApApplication",
+      "projectName": "AP-server",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env",
+      "vmArgs": "-Dcom.sun.management.jmxremote=false -Dspring.jmx.enabled=false"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-WasServerApplication<WAS-server>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.was.WasServerApplication",
+      "projectName": "WAS-server",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env",
+      "vmArgs": "-Dcom.sun.management.jmxremote=false -Dspring.jmx.enabled=false"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-BnkProject02Application<server>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.fund.BnkProject02Application",
+      "projectName": "server",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
 }
