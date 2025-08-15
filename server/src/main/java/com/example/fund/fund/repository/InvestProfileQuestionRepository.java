@@ -8,6 +8,6 @@ import org.springframework.data.jpa.repository.Query;
 import com.example.fund.fund.entity.InvestProfileQuestion;
 
 public interface InvestProfileQuestionRepository extends JpaRepository<InvestProfileQuestion, Integer>{
-	@Query("SELECT DISTINCT q FROM InvestProfileQuestion q LEFT JOIN FETCH q.options")
+	@Query("SELECT DISTINCT q FROM InvestProfileQuestion q LEFT JOIN FETCH q.options ORDER BY q.questionId ASC")
     List<InvestProfileQuestion> findAllWithOptions();
 }

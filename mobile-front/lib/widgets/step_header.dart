@@ -28,15 +28,15 @@ class StepHeader extends StatelessWidget {
       children: [
         // 큰 단계 표시 (칩 스타일)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _BigStepChip(index: 1, label: '작성동의', active: bigStep == 1),
+              _BigStepChip(index: 1, label: '작성 동의', active: bigStep == 1),
               _DividerArrow(),
-              _BigStepChip(index: 2, label: '확인서작성', active: bigStep == 2),
+              _BigStepChip(index: 2, label: '확인서 작성', active: bigStep == 2),
               _DividerArrow(),
-              _BigStepChip(index: 3, label: '분석결과', active: bigStep == 3),
+              _BigStepChip(index: 3, label: '분석 결과', active: bigStep == 3),
             ],
           ),
         ),

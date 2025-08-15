@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/core/routes/routes.dart';
+import 'package:mobile_front/screens/investprofile_test/questionnaire_screen.dart';
 import 'package:mobile_front/widgets/step_header.dart';
 import 'package:mobile_front/core/constants/colors.dart'; // AppColors.primaryBlue
 
@@ -48,54 +50,66 @@ class _ConsentStepPageState extends State<ConsentStepPage> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('투자성향분석 동의'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('작성 동의'),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
       body: Column(
         children: [
-          const StepHeader(bigStep: 1,  showBigProgress: false), // 큰 단계만 표시 (1/3)
+          const StepHeader(bigStep: 1, showBigProgress: false),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               children: [
-                SizedBox(height: 30,),
+                const SizedBox(height: 20),
                 _InfoCard(
                   title: '투자성향분석',
-                  // 1) subtitle 옵셔널 — 필요 없으면 빼거나 null 전달
-                  // subtitle: null,
                   bullets: const [
-                    '고객님은 자본시장통합법 시행세칙에 의거 일반고객으로 분류되었음을 알려드립니다.',
-                    '고객님의 투자 성향을 파악하여 적합한 상품 권유를 위한 기초 자료로 활용됩니다.',
+                    '고객님은 자본시장통합법 시행세칙에 의거 일반고객으로 \n분류되었음을 알려드립니다.',
+                    '고객님의 투자 성향을 파악하여 적합한 상품 권유를 위한 \n기초 자료로 활용됩니다.',
                   ],
                   titleStyle: titleStyleUnified,
                 ),
                 const SizedBox(height: 12),
-
-                // 2) 아코디언(타이틀 글자 크기 통일)
                 _AccordionConsentCard(
                   title: '투자자정보확인서 작성 동의 (필수)',
+                  sub_title: '투자자 정보를 제공하지 않는 고객님께서는 다음의 금융투자상품에 대한 투자권유 및 일반투자자로서 보호받지 못할 수 있음을 \n알려드립니다.',
                   expanded: expandInvestorInfo,
                   onToggle: () => setState(() => expandInvestorInfo = !expandInvestorInfo),
                   body: const _AccordionBody(),
                   titleStyle: titleStyleUnified,
                 ),
-
-                // 3) ✅ 체크박스는 박스 "밖" (아코디언 하단)에 배치
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Checkbox(
                       value: agreeInvestorInfo,
-                      onChanged: (v) => setState(() => agreeInvestorInfo = v ?? false),
+                      onChanged: (val) {
+                        setState(() => agreeInvestorInfo = val ?? false);
+                      },
                       activeColor: AppColors.primaryBlue,
                     ),
-                    const SizedBox(width: 4),
-                    Text('투자성향분석 진행에 동의합니다', style: theme.textTheme.bodyMedium),
+                    GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () {
+                        setState(() => agreeInvestorInfo = !agreeInvestorInfo);
+                      },
+                      child: Text(
+                        '투자자정보확인서 작성 동의',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
                   ],
-                ),
+                )
               ],
             ),
           ),
-
-          // 하단 CTA
           SafeArea(
             top: false,
             child: Padding(
@@ -112,16 +126,21 @@ class _ConsentStepPageState extends State<ConsentStepPage> {
                         ? Colors.white
                         : Colors.grey.shade600,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(40),
                     ),
                   ),
-                  onPressed: (agreeInvestorInfo && !submitting) ? _handleNext : null,
-                  child: submitting
-                      ? const SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2.2),
-                  )
-                      : const Text('다음'),
+                  onPressed: (agreeInvestorInfo && !submitting)
+                      ? () async {
+                    final result = await Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const QuestionnaireScreen()),
+                    );
+
+                    if (result != null) {
+                      debugPrint('설문 결과: $result');
+                    }
+                  }
+                      : null,
+                  child: const Text('다음', style: TextStyle(fontSize: 17),),
                 ),
               ),
             ),
@@ -129,6 +148,7 @@ class _ConsentStepPageState extends State<ConsentStepPage> {
         ],
       ),
     );
+
   }
 }
 
@@ -182,13 +202,15 @@ class _InfoCard extends StatelessWidget {
 /// 아코디언(떠오르는 애니메이션 + 통일된 타이틀 스타일)
 class _AccordionConsentCard extends StatelessWidget {
   final String title;
+  final String sub_title;
   final Widget body;
   final bool expanded;
   final VoidCallback onToggle;
-  final TextStyle? titleStyle; // ✅ 2) 타이틀 통일
+  final TextStyle? titleStyle;
 
   const _AccordionConsentCard({
     required this.title,
+    required this.sub_title,
     required this.body,
     required this.expanded,
     required this.onToggle,
@@ -199,6 +221,17 @@ class _AccordionConsentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderColor = expanded ? AppColors.primaryBlue : Colors.grey.shade300;
 
+    // ✅ 서브타이틀/본문 공통 스타일
+    final subAndBodyStyle = Theme.of(context)
+        .textTheme
+        .bodySmall
+        ?.copyWith(fontSize: 13,color: Colors.grey.shade800);
+
+    final BodyStyle = Theme.of(context)
+        .textTheme
+        .bodySmall
+        ?.copyWith(fontSize: 11,color: Colors.grey.shade600);
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
@@ -207,6 +240,7 @@ class _AccordionConsentCard extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // 헤더: 타이틀 + 화살표만
           InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: onToggle,
@@ -217,8 +251,11 @@ class _AccordionConsentCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title,
-                      // ✅ 2) 통일된 타이틀 사용
-                      style: titleStyle ?? Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      style: titleStyle ??
+                          Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
                   Icon(
@@ -232,14 +269,16 @@ class _AccordionConsentCard extends StatelessWidget {
             ),
           ),
 
-          // ✅ 4) "떠오르는" 느낌: Fade + 위로 살짝 Slide + Size 보정
+          // 펼쳤을 때만: 서브타이틀 + 본문
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeOutCubic,
             transitionBuilder: (child, anim) {
-              final slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
-                  .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
+              final slide = Tween<Offset>(
+                begin: const Offset(0, 0.06),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
               return FadeTransition(
                 opacity: anim,
                 child: SlideTransition(position: slide, child: child),
@@ -249,18 +288,32 @@ class _AccordionConsentCard extends StatelessWidget {
                 ? Padding(
               key: const ValueKey('expanded'),
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: body,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 서브타이틀
+                  Text(
+                    sub_title,
+                    style: subAndBodyStyle,
+                  ),
+                  const SizedBox(height: 14),
+                  // 본문: 같은 스타일 적용
+                  DefaultTextStyle(
+                    style: BodyStyle ?? const TextStyle(),
+                    child: body,
+                  ),
+                ],
+              ),
             )
-                : const SizedBox(
-              key: ValueKey('collapsed'),
-              height: 0,
-            ),
+                : const SizedBox.shrink(key: ValueKey('collapsed')),
           ),
         ],
       ),
     );
   }
 }
+
+
 
 class _AccordionBody extends StatelessWidget {
   const _AccordionBody();
@@ -271,19 +324,13 @@ class _AccordionBody extends StatelessWidget {
     return Column(
       children: [
         const _Bullet(
-          text: '투자자정보확인서를 작성하지 않을 경우 일부 금융투자상품에 대한 투자 권유 및 일반투자자로서 보호를 받지 못할 수 있습니다.',
+          text: '증권시장에 상장되어 있지 아니한 증권으로써 향후 상장이 확정되지 \n아니한 증권',
         ),
-        const _Bullet(text: '상장 예정이거나 상장 확정이 아닌 증권 등은 높은 위험을 수반할 수 있습니다.'),
-        const _Bullet(text: '투자적합등급 미달, 투자경험 부족, 관리종목 지정 등 특정 조건에서는 제한이 있을 수 있습니다.'),
-        const _Bullet(text: '신용거래, 파생상품 등은 손실 위험이 크니 유의하시기 바랍니다.'),
+        const _Bullet(text: '증권시장에서 투자경고종목, 투자위험종목, 관리종목으로 지정된 경우'),
+        const _Bullet(text: '투자적격등급에 미치지 아니하거나 신용등급을 받지 아니한 사채권, \n자산유동화증권, 기업어음증권 및 이에 준하는 고위험 채무증권'),
+        const _Bullet(text: '신용거래 및 투자자예탁재산규모에 비추어 결제가 곤란한 증권거래'),
+        const _Bullet(text: '파생상품 등(파생상품, 파생결합증권, 파생상품 투자펀드)'),
         const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            '※ 자세한 내용은 약관 전문을 확인해 주세요.',
-            style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
-          ),
-        ),
       ],
     );
   }
@@ -301,8 +348,8 @@ class _Bullet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 6,
-            height: 6,
+            width: 4,
+            height: 4,
             margin: const EdgeInsets.only(top: 7, right: 8),
             decoration: const BoxDecoration(
               shape: BoxShape.circle,

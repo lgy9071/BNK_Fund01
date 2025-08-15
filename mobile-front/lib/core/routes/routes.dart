@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/screens/investprofile_test/questionnaire_screen.dart';
 import 'package:mobile_front/screens/login_screen.dart';
 import 'package:mobile_front/screens/splash_screen.dart';
 import 'package:mobile_front/screens/main_scaffold.dart';
@@ -21,6 +22,7 @@ class AppRoutes {
   static const String guide = '/guide';
   static const String investType = '/invest-type';
   static const String fundMbti = '/fund-mbti';
+  static const String questionnaire = '/questionnaire';
 }
 
 class AppRouter {
@@ -59,6 +61,9 @@ class AppRouter {
 
       case AppRoutes.fundMbti:
         return _page(const FundMbtiFlowScreen());
+
+      case AppRoutes.questionnaire:
+        return _page(const QuestionnaireScreen());
 
       default:
         return _page(const Scaffold(
