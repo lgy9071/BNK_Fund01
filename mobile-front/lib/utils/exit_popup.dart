@@ -1,33 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/main.dart' show navigatorKey; // 루트 네비게이터용
 
 // 마지막 뒤로가기 시각 전역 보관
 DateTime? _lastBackPressedAt;
 // 현재 떠있는 플로팅바(있으면 교체)
 OverlayEntry? _infoBarEntry;
 
-/// 🔁 뒤로가기 2번에 종료: 첫 번째엔 커스텀 플로팅바 안내, 2초 안에 한 번 더 누르면 종료
-Future<void> showExitPopup(BuildContext context) async {
+/// 🔁 뒤로가기 2번에 종료: 첫 번째엔 커스텀 플로팅바 안내,
+/// 2초 안에 한 번 더 누르면 true 리턴(호출부에서 SystemNavigator.pop() 실행)
+Future<bool> showExitPopup(BuildContext context) async {
   final now = DateTime.now();
 
+  // 2초 초과 → 첫 번째 백프레스: 안내만 띄우고 종료 안함
   if (_lastBackPressedAt == null ||
       now.difference(_lastBackPressedAt!) > const Duration(seconds: 2)) {
     _lastBackPressedAt = now;
-    showFloatingInfoBar(context, '한번 더 누르면 앱이 종료됩니다.');
-    return; // 종료하지 않음
+    _showFloatingInfoBar('한번 더 누르면 앱이 종료됩니다.');
+    return false; // 종료하지 않음
   }
 
-  // 2초 안에 두 번째 뒤로가기 → 종료
-  SystemNavigator.pop();
+  // 2초 안에 두 번째 백프레스 → 종료 신호
+  return true;
 }
 
-void showFloatingInfoBar(BuildContext context, String message) {
-  final overlay = Overlay.of(context);
+void _showFloatingInfoBar(String message) {
+  // 항상 루트 오버레이 사용 (중첩 네비/다이얼로그 대비)
+  final overlay = navigatorKey.currentState?.overlay;
   if (overlay == null) return;
 
   _infoBarEntry?.remove();
-
   _infoBarEntry = OverlayEntry(
     builder: (_) => _FloatingInfoBar(
       message: message,
@@ -37,14 +40,12 @@ void showFloatingInfoBar(BuildContext context, String message) {
       },
     ),
   );
-
   overlay.insert(_infoBarEntry!);
 }
 
 class _FloatingInfoBar extends StatefulWidget {
   final String message;
   final VoidCallback onDismissed;
-
   const _FloatingInfoBar({
     Key? key,
     required this.message,
@@ -68,7 +69,6 @@ class _FloatingInfoBarState extends State<_FloatingInfoBar>
   void initState() {
     super.initState();
     _controller.forward();
-
     // 2초 보여주고 사라지기
     Future.delayed(const Duration(seconds: 2), () async {
       if (!mounted) return;
@@ -102,7 +102,7 @@ class _FloatingInfoBarState extends State<_FloatingInfoBar>
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.black87, // 살짝 투명
+                      color: Colors.black87,
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
@@ -114,13 +114,13 @@ class _FloatingInfoBarState extends State<_FloatingInfoBar>
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.white, size: 18), // info 아이콘
+                      children: const [
+                        Icon(Icons.info_outline, color: Colors.white, size: 18),
                         SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            widget.message,
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                            '한번 더 누르면 앱이 종료됩니다.',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
                           ),
                         ),
                       ],

@@ -11,65 +11,6 @@ import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/screens/onboarding_screen.dart';
 import 'package:mobile_front/screens/login_screen.dart';
 import 'package:mobile_front/main.dart'; // sessionManager, ApiConfig
-// TODO: 실제 홈으로 교체
-// class HomeScreen extends StatelessWidget {
-//   const HomeScreen({super.key});
-//
-//   Future<void> _logout(BuildContext context) async {
-//     final prefs = await SharedPreferences.getInstance();
-//     const secure = FlutterSecureStorage();
-//
-//     // (선택) 서버에 refresh 로그아웃 알리기
-//     final rt = await secure.read(key: 'refreshToken');
-//     if (rt != null) {
-//       try {
-//         await http.post(
-//           Uri.parse(ApiConfig.logout), // ApiConfig.logout = '/api/auth/logout'
-//           headers: {'Content-Type': 'application/json'},
-//           body: jsonEncode({'refreshToken': rt}),
-//         );
-//       } catch (_) {}
-//     }
-//
-//     await prefs.setBool('isAutoLogin', false);
-//     await secure.delete(key: 'accessToken');
-//     await secure.delete(key: 'refreshToken');
-//
-//     // 전역 세션 타이머 정지
-//     sessionManager.stop();
-//
-//     if (context.mounted) {
-//       Navigator.pushAndRemoveUntil(
-//         context,
-//         MaterialPageRoute(builder: (_) => const LoginScreen()),
-//             (route) => false,
-//       );
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('홈 화면'),
-//         backgroundColor: AppColors.primaryBlue,
-//         actions: [
-//           IconButton(
-//             icon: const Icon(Icons.logout),
-//             onPressed: () => _logout(context),
-//             tooltip: '로그아웃',
-//           ),
-//         ],
-//       ),
-//       body: const Center(
-//         child: Text(
-//           '홈 화면 (교체하세요)',
-//           style: TextStyle(fontSize: 18),
-//         ),
-//       ),
-//     );
-//   }
-// }
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
