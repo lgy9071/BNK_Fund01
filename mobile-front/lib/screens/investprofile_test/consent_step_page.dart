@@ -50,9 +50,11 @@ class _ConsentStepPageState extends State<ConsentStepPage> {
     );
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('작성 동의'),
         centerTitle: true,
+        backgroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
           onPressed: () {
@@ -175,7 +177,7 @@ class _InfoCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.primaryBlue),
       ),
@@ -234,7 +236,7 @@ class _AccordionConsentCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor, width: expanded ? 1.2 : 1),
       ),

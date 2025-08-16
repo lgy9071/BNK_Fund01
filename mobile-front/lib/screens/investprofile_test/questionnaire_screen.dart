@@ -1,10 +1,68 @@
 // screens/questionnaire_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/models/question.dart';
 import 'package:mobile_front/widgets/question_card.dart';
 import 'package:mobile_front/widgets/show_custom_confirm_dialog.dart';
 import 'package:mobile_front/widgets/step_header.dart'; // 경로 확인
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+
+int _toInt(dynamic v, {required String field}) {
+  if (v == null) throw StateError('$field is null');
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  return int.parse(v.toString());
+}
+T _pick<T>(Map<String, dynamic> j, List<String> keys, {required String field}) {
+  for (final k in keys) {
+    if (j.containsKey(k) && j[k] != null) return j[k] as T;
+  }
+  throw StateError('missing field for $field; tried ${keys.join(", ")}');
+}
+
+class RiskOptionDto {
+  final int optionId;
+  final String content;
+  RiskOptionDto({required this.optionId, required this.content});
+  factory RiskOptionDto.fromJson(Map<String, dynamic> j) => RiskOptionDto(
+    optionId: _toInt(
+      _pick(j, ['optionId','option_id','id'], field: 'optionId'),
+      field: 'optionId',
+    ),
+    content: _pick<String>(j, ['content','text','label'], field: 'content'),
+  );
+}
+
+class RiskQuestionDto {
+  final int questionId;
+  final String content;
+  final List<RiskOptionDto> options;
+  RiskQuestionDto({required this.questionId, required this.content, required this.options});
+  factory RiskQuestionDto.fromJson(Map<String, dynamic> j) => RiskQuestionDto(
+    questionId: _toInt(
+      _pick(j, ['questionId','question_id','id'], field: 'questionId'),
+      field: 'questionId',
+    ),
+    content: _pick<String>(j, ['content','text','title'], field: 'content'),
+    options: (j['options'] as List? ?? const [])
+        .map((e) => RiskOptionDto.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
+}
+
+/// 텍스트 매칭 정규화(공백/기호 제거 + 소문자)
+String _norm(String s) => s
+    .replaceAll(RegExp(r'\s+'), '')
+    .replaceAll(RegExp(r'[^\uAC00-\uD7A3a-z0-9]'), '')
+    .toLowerCase();
+
+
+
 
 class QuestionnaireScreen extends StatefulWidget {
   const QuestionnaireScreen({super.key});
@@ -95,6 +153,160 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
       confirmColor: const Color(0xFF383E56), // 기존 스타일 색상 맞춤
     );
   }
+  final FlutterSecureStorage storage = const FlutterSecureStorage();
+
+  /// 서버에서 DB 질문/옵션을 받아온다.
+  // Future<List<RiskQuestionDto>> _fetchDbQuestions() async {
+  //   final token = await storage.read(key: 'accessToken'); // 프로젝트 기존 방식 사용
+  //   final url = Uri.parse('${ApiConfig.baseUrl}/api/risk-test/questions');
+  //   final res = await http.get(url, headers: {
+  //     'Authorization': 'Bearer $token',
+  //   });
+  //   if (res.statusCode != 200) {
+  //     throw Exception('질문 조회 실패: ${res.statusCode} ${res.body}');
+  //   }
+  //   final data = jsonDecode(res.body) as Map<String, dynamic>;
+  //   final list = (data['questions'] as List)
+  //       .map((e) => RiskQuestionDto.fromJson(e))
+  //       .toList();
+  //   return list;
+  // }
+
+  Future<List<RiskQuestionDto>> _fetchDbQuestions() async {
+    final token = await storage.read(key: 'accessToken'); // 또는 prefs
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/risk-test/questions');
+
+    // 상태코드 먼저 확인
+    final res = await http.get(url, headers: {'Authorization': 'Bearer $token'});
+
+    // ✅ 상태 찍기
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('[PAYLOAD] status=${res.statusCode} len=${res.body.length}')),
+      );
+    }
+
+    if (res.statusCode != 200) {
+      throw Exception('questions ${res.statusCode}: ${res.body}');
+    }
+
+    // ✅ 파싱 try/catch로 어디서 깨지는지 명확히
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final listJson = (data['questions'] as List?);
+      if (listJson == null) throw StateError('`questions` key missing/null');
+
+      final list = listJson
+          .map((e) => RiskQuestionDto.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      // ✅ 첫 항목 샘플 로그
+      if (mounted && list.isNotEmpty) {
+        final q = list.first;
+        final opt = q.options.isNotEmpty ? q.options.first : null;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('[PAYLOAD] Q=${q.questionId} opt=${opt?.optionId ?? "-"}')),
+        );
+      }
+      return List<RiskQuestionDto>.from(list);
+    } catch (e) {
+      // ✅ 파싱 에러를 화면으로 바로
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('파싱 오류'),
+            content: SingleChildScrollView(child: Text(e.toString().length > 2000 ? e.toString().substring(0, 2000) : e.toString())),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기'))],
+          ),
+        );
+      }
+      rethrow;
+    }
+  }
+
+
+  /// 하드코딩 UI(_questions)와 DB 응답을 매핑해서 RiskSubmitRequest payload를 만든다.
+  /// - 1순위: 같은 인덱스 기준(빠름)
+  /// - 불일치 시: 텍스트 정규화로 질문/옵션 각각 매칭(안전)
+  Future<Map<String, dynamic>> _buildPayloadWithDbIds() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('[PAYLOAD] fetch dbQs')),
+    );
+
+    final dbQs = await _fetchDbQuestions();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('[PAYLOAD] dbQs len=${dbQs.length}')),
+    );
+
+    if (dbQs.length != _questions.length) {
+      // 개수 다르면 텍스트 매칭으로만 시도
+      // (원한다면 여기서 에러 처리)
+    }
+
+    final answers = <Map<String, dynamic>>[];
+
+    for (var qIdx = 0; qIdx < _questions.length; qIdx++) {
+      final uiQ = _questions[qIdx];                // 하드코딩된 UI 질문
+      final sel = _answers[qIdx] ?? <int>{};
+      if (sel.isEmpty) continue;
+
+      RiskQuestionDto? dbQ;
+      // 빠른 경로: 인덱스 동일 가정
+      if (qIdx < dbQs.length &&
+          _norm(dbQs[qIdx].content) == _norm(uiQ.text)) {
+        dbQ = dbQs[qIdx];
+      } else {
+        // 안전 경로: 텍스트로 찾기
+        dbQ = dbQs.firstWhere(
+              (x) => _norm(x.content) == _norm(uiQ.text),
+          orElse: () => throw Exception('질문 매칭 실패: "${uiQ.text}"'),
+        );
+      }
+
+      final optionIds = <int>[];
+      final dbOpts = dbQ.options;
+
+      // 옵션 개수/순서 같으면 인덱스 매핑
+      final sameLen = dbOpts.length == uiQ.options.length;
+      if (sameLen) {
+        for (final optIdx in sel) {
+          optionIds.add(dbOpts[optIdx].optionId);
+        }
+      } else {
+        // 안전 경로: 텍스트로 각각 찾기
+        for (final optIdx in sel) {
+          final uiOptText = uiQ.options[optIdx];
+          final match = dbOpts.firstWhere(
+                (o) => _norm(o.content) == _norm(uiOptText),
+            orElse: () => throw Exception('옵션 매칭 실패: "$uiOptText"'),
+          );
+          optionIds.add(match.optionId);
+        }
+      }
+
+      answers.add({
+        "questionId": dbQ.questionId,
+        "optionIds": optionIds,
+      });
+    }
+
+    final payload = {"answers": answers};
+
+// 검증: questionId/optionIds에 null이 있으면 바로 에러
+    for (final a in answers) {
+      if (a['questionId'] == null) {
+        throw StateError('questionId is null for a payload item');
+      }
+      final list = a['optionIds'] as List;
+      if (list.any((e) => e == null)) {
+        throw StateError('optionIds contains null: $list');
+      }
+    }
+
+    return payload;
+  }
 
 
 
@@ -125,11 +337,69 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
     return false;
   }
 
-  void _submit() {
-    // TODO: 서버 전송 or 결과 화면 이동
-    debugPrint('answers: $_answers');
-    Navigator.of(context).pop(_answers);
+  Future<void> _submit() async {
+    try {
+      // payload 생성
+      final payload = await _buildPayloadWithDbIds();
+
+      // 토큰 확인
+      final token = await storage.read(key: 'accessToken');
+      if (token == null) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (_) => const AlertDialog(
+            title: Text('로그인 필요'),
+            content: Text('로그인 후 다시 시도해 주세요.'),
+          ),
+        );
+        return;
+      }
+
+      // 전송
+      final url = Uri.parse('${ApiConfig.baseUrl}/api/risk-test/submit');
+      final res = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(payload),
+      );
+
+      // 상태 체크
+      if (res.statusCode != 201) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('제출 실패'),
+            content: Text('서버 응답 코드: ${res.statusCode}\n잠시 후 다시 시도해 주세요.'),
+          ),
+        );
+        return;
+      }
+
+      // 성공 → 결과 화면 이동
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.investResult,
+        arguments: data,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (_) => const AlertDialog(
+          title: Text('제출 오류'),
+          content: Text('네트워크 또는 서버 오류가 발생했습니다. 다시 시도해 주세요.'),
+        ),
+      );
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -140,14 +410,14 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
     return WillPopScope(
       onWillPop: _handleBack,
       child: Scaffold(
-        backgroundColor: theme.colorScheme.surface,
+        backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('확인서 작성'),
           centerTitle: true,
           // 뒤로가기 버튼이 문항 이전 로직을 먼저 타도록 커스텀
           scrolledUnderElevation: 0,             // ✅ 스크롤 시 음영 제거
           surfaceTintColor: Colors.transparent,
-          backgroundColor: theme.colorScheme.surface,
+          backgroundColor: Colors.white,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios),
             onPressed: () async {

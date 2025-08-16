@@ -3,6 +3,8 @@ package com.example.fund.api.controller;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,7 +30,8 @@ public class InvestProfileApiController {
     private final InvestProfileApiService investProfileApiService;
 
     @GetMapping("/questions")
-    public RiskQuestionListResponse questions(@CurrentUid Integer uid) {
+    public RiskQuestionListResponse questions(@CurrentUid Integer uid, @AuthenticationPrincipal Jwt jwt) {
+        System.out.println("claims=" + jwt.getClaims()); // uid 타입 확인
         return investProfileApiService.getQuestions(uid);
     }
 

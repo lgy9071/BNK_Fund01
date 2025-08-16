@@ -34,10 +34,7 @@ class InvestTypeResultLoader extends StatelessWidget {
           result: snap.data,                 // null이면 “분석 시작” UI
           lastRetestAt: lastRetestAt,
           onStartAssessment: () {
-            // TODO: 재(분석) 플로우 라우팅 연결
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('재검사 플로우로 이동(연결 필요)')),
-            );
+            Navigator.pushNamed(context, '/invest-test');
           },
         );
       },
