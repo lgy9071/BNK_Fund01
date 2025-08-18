@@ -1,12 +1,28 @@
 package com.example.fund.common.config;
 
-import com.example.fund.admin.config.AdminLoginCheckInterceptor;
+import java.util.List;
+
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import com.example.fund.admin.config.AdminLoginCheckInterceptor;
+import com.example.fund.common.CurrentUidArgumentResolver;
+
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+
+    private final CurrentUidArgumentResolver resolver;
+
+    public WebConfig(CurrentUidArgumentResolver resolver) {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(resolver);
+    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

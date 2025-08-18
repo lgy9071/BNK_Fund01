@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/utils/exit_guard.dart';
 import '../widgets/circle_nav_bar.dart';        // 동그라미 네브바
 import '../models/fund.dart';
 import '../screens/home_screen.dart';
 import '../screens/my_finance_screen.dart';
-import '../screens/fund_join_screen.dart';
+import '../screens/fund_list_screen.dart';
 import '../widgets/full_menu_overlay.dart';    // 전체 메뉴 오버레이(있다면)
+import 'package:flutter/services.dart';
+import 'package:mobile_front/core/routes/routes.dart';
+import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/models/fund.dart';
+import 'package:mobile_front/screens/home_screen.dart';
+import 'package:mobile_front/screens/my_finance_screen.dart';
+import 'package:mobile_front/screens/fund_list_screen.dart';
+import 'package:mobile_front/widgets/full_menu_overlay.dart';
+import 'package:mobile_front/widgets/circle_nav_bar.dart';
+import 'package:mobile_front/utils/exit_popup.dart';
+import 'package:mobile_front/main.dart' show navigatorKey;
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -15,6 +27,7 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _index = 0;
+  bool _exiting = false; // ← 재진입 방지 플래그
 
   // 데모/실제 데이터 연결
   final _myFunds = <Fund>[
@@ -32,12 +45,27 @@ class _MainScaffoldState extends State<MainScaffold> {
     _pages = [
       HomeScreen(myFunds: _myFunds, investType: '공격 투자형', userName: '@@'),
       const MyFinanceScreen(),
-      const FundJoinScreen(),          // ← main_join 기능을 여기로 흡수
+      const FundListScreen(),          // ← main_join 기능을 여기로 흡수
       const SizedBox.shrink(),         // 전체(오버레이용 자리만 차지)
     ];
   }
 
+  /// 오버레이 닫고 전역 라우팅 (합본/개인 동일!)
+  void _go(String route) {
+    Navigator.of(context, rootNavigator: true).pop(); // 오버레이 닫기
+    // 다음 프레임에서 안전하게 push
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      navigatorKey.currentState?.pushNamed(route);
+    });
+  }
+
   Future<void> _openFullMenu() async {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: AppColors.bg,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+    ));
+
     await showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -46,50 +74,32 @@ class _MainScaffoldState extends State<MainScaffold> {
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (_, __, ___) => const SizedBox.shrink(),
       transitionBuilder: (ctx, anim, __, ___) {
-        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
         return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(curved),
+          position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+              .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
           child: Material(
-            color: Theme.of(context).colorScheme.surface,
+            color: AppColors.bg,
             child: SafeArea(
               child: FullMenuOverlay(
                 userName: '이유저',
                 userId: '@user01',
-                onGoFundMain: () {
-                  Navigator.of(context, rootNavigator: true).pop();
-                  setState(() => _index = 0);
-                },
-                onGoFundJoin: () {
-                  Navigator.of(context, rootNavigator: true).pop();
-                  setState(() => _index = 2);
-                },
-                onGoInvestAnalysis: () {
-                  Navigator.of(context, rootNavigator: true).pop();
-                  // TODO: 분석 화면 연결
-                },
-                onGoFAQ: () { Navigator.of(context, rootNavigator: true).pop(); },
-                onGoGuide: () { Navigator.of(context, rootNavigator: true).pop(); },
-                onGoMbti: () { Navigator.of(context, rootNavigator: true).pop(); },
-                onGoForum: () { Navigator.of(context, rootNavigator: true).pop(); },
 
-                // 🔐 로그아웃
-                onLogout: () {
-                  Navigator.of(context, rootNavigator: true).pop(); // 오버레이 닫기
-                  // TODO: 토큰 삭제/로그아웃 처리
-                  // Navigator.of(context).pushReplacementNamed('/login');
-                },
+                // 탭 전환(메인 내부 이동) — setState
+                onGoFundMain: () { Navigator.of(context, rootNavigator: true).pop(); setState(() => _index = 0); },
+                onGoFundJoin: () { Navigator.of(context, rootNavigator: true).pop(); setState(() => _index = 2); },
 
-                // 📨 1:1 문의 작성
-                onAsk: () {
-                  Navigator.of(context, rootNavigator: true).pop();
-                  Navigator.of(context).pushNamed('/qna/compose');
-                },
+                // 전역 라우팅(새 화면) — 항상 navigatorKey 사용
+                onGoInvestAnalysis: () => _go(AppRoutes.investType),
+                onGoFAQ: () => _go(AppRoutes.faq),
+                onGoGuide: () => _go(AppRoutes.guide),
+                onGoMbti: () {},   // 추후 route 연결 시 _go('...')로
+                onGoForum: () {},  // 추후 route 연결 시 _go('...')로
 
-                // 📁 내 문의 목록
-                onMyQna: () {
-                  Navigator.of(context, rootNavigator: true).pop();
-                  Navigator.of(context).pushNamed('/qna/list');
-                },
+                onLogout: () { Navigator.of(context, rootNavigator: true).pop(); /* TODO: 로그아웃 처리 */ },
+
+                // 내 문의/문의하기도 전역 라우팅으로 통일
+                onAsk:   () => _go(AppRoutes.qnaCompose),
+                onMyQna: () => _go(AppRoutes.qnaList),
               ),
             ),
           ),
@@ -100,20 +110,16 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // 탭 상태 유지
-      body: IndexedStack(index: _index, children: _pages),
-
-      // 동그라미 네브바
-      bottomNavigationBar: CircleNavBar(
-        currentIndex: _index,
-        onTap: (i) {
-          if (i == 3) { // 전체
-            _openFullMenu();
-            return;
-          }
-          setState(() => _index = i);
-        },
+    return ExitGuard(
+      child: Scaffold(
+        body: IndexedStack(index: _index, children: _pages),
+        bottomNavigationBar: CircleNavBar(
+          currentIndex: _index,
+          onTap: (i) {
+            if (i == 3) { _openFullMenu(); return; }
+            setState(() => _index = i);
+          },
+        ),
       ),
     );
   }

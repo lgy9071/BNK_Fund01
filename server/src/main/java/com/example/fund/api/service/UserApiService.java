@@ -1,5 +1,14 @@
 package com.example.fund.api.service;
 
+import java.time.Instant;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.fund.api.common.SignupRequest;
 import com.example.fund.api.dto.TokenResponse;
 import com.example.fund.api.entity.RefreshTokenEntity;
@@ -8,15 +17,12 @@ import com.example.fund.common.JwtUtil;
 import com.example.fund.common.OpaqueTokenUtil;
 import com.example.fund.user.entity.User;
 import com.example.fund.user.repository.UserRepository;
+
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
-import java.util.Map;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserApiService {
@@ -56,21 +62,28 @@ public class UserApiService {
     /* -------------------- 여기부터 토큰 관련 메서드 -------------------- */
 
     /**
-     * 로그인: 항상 Access(10분) 발급, autoLogin=true면 Refresh(30일, 회전 대상)도 발급
+     * 로그인: access는 항상 발급, autoLogin=true면 refresh 신규 발급/저장
      */
     @Transactional
     public TokenResponse loginIssueTokens(String username, String rawPassword, boolean autoLogin) {
-        User user = userRepository.findByUsername(username).orElse(null);
-        if (user == null || !matches(rawPassword, user.getPassword())) {
-            throw new UnauthorizedException("invalid credentials");
+        // 1) 사용자 조회 + 비번 검증
+        User u = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UnauthorizedException("user not found"));
+        if (!passwordEncoder.matches(rawPassword, u.getPassword())) {
+            throw new UnauthorizedException("bad credentials");
         }
 
-        String access = jwtUtil.generateAccessToken(user.getUsername(), user.getUserId(), Map.of());
-        String refresh = null;
+        // 2) access 토큰 발급
+        String access = jwtUtil.generateAccessToken(u.getUsername(), u.getUserId(), Map.of());
+
+        // 3) autoLogin 체크 시 refresh 신규 발급/저장
+        String refreshRaw = null;
         if (autoLogin) {
-            refresh = issueRefresh(user.getUserId());
+            refreshRaw = issueRefresh(u.getUserId());
         }
-        return new TokenResponse(access, refresh);
+
+        // 4) 응답: access 항상, refresh는 autoLogin일 때만
+        return new TokenResponse(access, refreshRaw);
     }
 
     /**
@@ -86,31 +99,74 @@ public class UserApiService {
     }
 
     /**
-     * 리프레시(자동로그인 ON일 때): 검증 → 회전 → 새 Access + 새 Refresh 발급
+     * 액세스 연장(항상 사용): 만료 상태일때도 Refresh토큰을 검사해서 새 Access(10분) 재발급
      */
+
     @Transactional
+    public TokenResponse extendAccessAllowExpired(String accessToken) {
+        Claims c = jwtUtil.parseAccessAllowExpired(accessToken); // ✅ 만료 허용 파싱
+        if (!"access".equals(c.get("token_type"))) {
+            throw new UnauthorizedException("invalid token_type");
+        }
+
+        Integer uid = c.get("uid", Integer.class);
+        if (uid == null)
+            throw new UnauthorizedException("missing uid");
+
+        var user = userRepository.findById(uid).orElseThrow();
+        String newAccess = jwtUtil.generateAccessToken(user.getUsername(), uid, Map.of());
+        return new TokenResponse(newAccess, null);
+    }
+
+    // 바깥 메서드엔 @Transactional 걸지 말 것! (안에서 트랜잭션을 2번 나눠서 쓸 거라)
     public TokenResponse refreshRotate(String refreshRaw) {
+        log.info("refreshRotate called id={}", java.util.UUID.randomUUID());
+
+        // 1) revoke를 독립 트랜잭션으로 처리하고 userId 반환
+        Integer userId = revokeRefreshInNewTx(refreshRaw);
+
+        // 2) 새 refresh 발급/저장도 독립 트랜잭션으로
+        String newRefreshRaw = issueRefreshInNewTx(userId);
+
+        // 3) access 토큰은 DB에 안 쓰니 그냥 여기서 생성
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new UnauthorizedException("user not found"));
+        String newAccess = jwtUtil.generateAccessToken(u.getUsername(), u.getUserId(), java.util.Map.of());
+
+        return new TokenResponse(newAccess, newRefreshRaw);
+    }
+
+    /** 현재 refresh를 revoke만 하고 commit (독립 트랜잭션) */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Integer revokeRefreshInNewTx(String refreshRaw) {
         String hash = OpaqueTokenUtil.sha256Hex(refreshRaw);
         RefreshTokenEntity cur = refreshRepo.findById(hash)
                 .orElseThrow(() -> new UnauthorizedException("invalid refresh"));
 
-        if (cur.isRevoked() || cur.getExpiresAt().isBefore(Instant.now())) {
+        if (cur.isRevoked() || cur.getExpiresAt().isBefore(java.time.Instant.now())) {
             throw new UnauthorizedException("expired/revoked refresh");
         }
 
-        // 회전: 현재 것 revoke
         cur.setRevoked(true);
+        // 벌크/네이티브가 아니면 save로 충분. 확실히 하고 싶으면 saveAndFlush
         refreshRepo.save(cur);
+        return cur.getUserId();
+    }
 
-        // 새 refresh 발급/저장
-        String newRefreshRaw = issueRefresh(cur.getUserId());
+    /** 새 refresh를 발급/저장하고 바로 commit (독립 트랜잭션) */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public String issueRefreshInNewTx(Integer userId) {
+        String raw = OpaqueTokenUtil.generate(); // 이미 있으니 그대로 사용
+        String hash = OpaqueTokenUtil.sha256Hex(raw);
 
-        // 새 access 발급(username은 필요 시 조회)
-        User u = userRepository.findById(cur.getUserId())
-                .orElseThrow(() -> new UnauthorizedException("user not found"));
-        String newAccess = jwtUtil.generateAccessToken(u.getUsername(), u.getUserId(), Map.of());
+        RefreshTokenEntity e = new RefreshTokenEntity();
+        e.setTokenHash(hash);
+        e.setUserId(userId);
+        e.setRevoked(false);
+        e.setExpiresAt(java.time.Instant.now().plus(java.time.Duration.ofDays(30)));
 
-        return new TokenResponse(newAccess, newRefreshRaw);
+        refreshRepo.save(e);
+        return raw; // 해시가 아닌 RAW를 클라이언트에 내려줌
     }
 
     /**
