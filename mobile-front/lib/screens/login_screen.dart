@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/dev_jiyong/main_home.dart';
+import 'package:mobile_front/utils/exit_guard.dart';
 import 'package:mobile_front/widgets/dismiss_keyboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -117,13 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return DismissKeyboard(
-      child: PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, result) async {
-          if (!didPop) {
-            await showExitPopup(context);
-          }
-        },
+      child: ExitGuard(
         child: Scaffold(
           backgroundColor: Colors.white,
           body: SafeArea(

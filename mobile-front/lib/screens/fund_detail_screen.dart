@@ -311,21 +311,17 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [tossBlue, tossBlueDark],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+                color: const Color(0xFF0064FF),
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('${data.basic.investmentRegion} · ${data.basic.fundType}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                      style: const TextStyle(color: Colors.white70, fontSize: 15)),
                   const SizedBox(height: 6),
                   const Text('수익률 그래프',
-                      style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 10),
 
                   Card(
@@ -356,7 +352,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
                   const SizedBox(height: 12),
 
                   _PeriodTabs(tab: _tab, onChanged: (t) => setState(() => _tab = t)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 15),
 
                   // 그래프 하단 핵심정보 2개만
                   _KeyFactsRow(
@@ -369,7 +365,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 30),
 
             // 간편 적립식 참고 카드
             _SimpleDcaCard(
@@ -459,8 +455,8 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
             showTitles: true,
             reservedSize: 26,
             getTitlesWidget: (v, _) {
-              if (v == 0) return const Text('초', style: TextStyle(fontSize: 10));
-              if (v == spots.last.x) return const Text('지금', style: TextStyle(fontSize: 10));
+              if (v == 0) return const Text('초', style: TextStyle(fontSize: 12));
+              if (v == spots.last.x) return const Text('현재', style: TextStyle(fontSize: 11));
               return const SizedBox.shrink();
             },
           ),
@@ -546,6 +542,7 @@ class _KeyFactsRow extends StatelessWidget {
     final level = _riskLevelFromText(riskText).clamp(1, 5);
     return Row(
       children: [
+        // 기준가 카드
         Expanded(
           child: Container(
             height: 92,
@@ -554,25 +551,53 @@ class _KeyFactsRow extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 6, offset: const Offset(0, 2))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(.06),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                )
+              ],
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start, // 제목은 왼쪽
               children: [
-                const Text('기준가(전일대비)', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                const Text(
+                  '기준가 (전일대비)',
+                  style: TextStyle(fontSize: 15, color: Colors.black54),
+                ),
                 const Spacer(),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.end, // 수치는 오른쪽
                   children: [
-                    Text((isUp ? '▲' : '▼') + ' ${navChangeRate1d.toStringAsFixed(2)} ',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: isUp ? Colors.red : Colors.blue)),
+                    Text(
+                      (isUp ? '▲' : '▼') +
+                          ' ${navChangeRate1d.toStringAsFixed(2)} ',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: isUp ? Colors.red : Colors.blue,
+                      ),
+                    ),
                     const SizedBox(width: 6),
-                    Flexible(child: Text('${_won.format(navPrice)} 원', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900))),
+                    Flexible(
+                      child: Text(
+                        '${_won.format(navPrice)} 원',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
         ),
+
+        // 위험수준 카드
         Expanded(
           child: Container(
             height: 92,
@@ -581,14 +606,34 @@ class _KeyFactsRow extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 6, offset: const Offset(0, 2))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(.06),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                )
+              ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                const Text('위험수준', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                const Spacer(),
-                Text('레벨 $level', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                const Align(
+                  alignment: Alignment.topLeft,
+                  child: Text(
+                    '위험수준',
+                    style: TextStyle(fontSize: 15, color: Colors.black54),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '레벨 $level',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
               ],
             ),
           ),
@@ -627,6 +672,7 @@ class _SimpleDcaCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFE9F1FF),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black12),
         ),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         child: Column(
@@ -719,18 +765,21 @@ class _RiskCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('위험수준', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text('위험수준', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               Row(
                 children: [
                   SizedBox(
-                    width: 140, height: 140,
+                    width: 140, height: 170,
                     child: PieChart(PieChartData(
                       centerSpaceRadius: 46,
                       sectionsSpace: 2,
@@ -772,6 +821,8 @@ class _AssetCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
@@ -779,7 +830,7 @@ class _AssetCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('자산 구성 비율', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text('자산 구성 비율', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
               const SizedBox(height: 40),
               LayoutBuilder(
                 builder: (context, c) {
@@ -797,9 +848,9 @@ class _AssetCard extends StatelessWidget {
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('기준', style: TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w600)),
                             Text(fmtDate(asset.baseDate),
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                            const Text('기준', style: TextStyle(fontSize: 16, color: Colors.black54, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ],
@@ -845,7 +896,7 @@ List<PieChartSectionData> _pieSections(FundAssetSummary a, double size) {
       color: it.$3,
       radius: (size * 0.26) + (isMax ? 8 : 0),
       title: '${it.$1}\n${it.$2.toStringAsFixed(1)}%',
-      titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+      titleStyle: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
       titlePositionPercentageOffset: .48,
       badgePositionPercentageOffset: 1.0,
     );
@@ -904,26 +955,35 @@ class _StockBondTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('주식 및 채권 보유 비중', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              DataTable(
-                headingRowHeight: 32,
-                dataRowMinHeight: 32,
-                dataRowMaxHeight: 36,
-                columns: const [DataColumn(label: Text('자산')), DataColumn(label: Text('비중')), DataColumn(label: Text('기준일'))],
-                rows: [
-                  DataRow(cells: [const DataCell(Text('주식')), DataCell(Text('${stockPct.toStringAsFixed(1)}%')), DataCell(Text(fmtDate(baseDate)))]),
-                  DataRow(cells: [const DataCell(Text('채권')), DataCell(Text('${bondPct.toStringAsFixed(1)}%')), DataCell(Text(fmtDate(baseDate)))]),
-                ],
-              ),
-            ],
+      child: SizedBox(
+        width: double.infinity,
+        child: Card(
+          color: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: .6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('주식 및 채권 보유 비중', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: DataTable(
+                    headingRowHeight: 35,
+                    dataRowMinHeight: 32,
+                    dataRowMaxHeight: 36,
+                    columns: const [DataColumn(label: Text('자산')), DataColumn(label: Text('비중')), DataColumn(label: Text('기준일'))],
+                    rows: [
+                      DataRow(cells: [const DataCell(Text('주식')), DataCell(Text('${stockPct.toStringAsFixed(1)}%')), DataCell(Text(fmtDate(baseDate)))]),
+                      DataRow(cells: [const DataCell(Text('채권')), DataCell(Text('${bondPct.toStringAsFixed(1)}%')), DataCell(Text(fmtDate(baseDate)))]),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -977,64 +1037,70 @@ class _FeeCards extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: LayoutBuilder(
-            builder: (context, c) {
-              final isNarrow = c.maxWidth < 360; // 폭 좁으면 세로로
-              final children = [
-                block('매입할 때', [
-                  ('선취판매수수료', _feeText(fee.frontLoadFee)),
-                ]),
-                block('투자기간동안', [
-                  ('총 보수(연)', fmtPercent(fee.totalFee, digits: 3)),
-                  ('총비용비율(TER)', fmtPercent(fee.ter, digits: 4)),
-                  // 긴 항목들을 4줄로 분리해 깨짐 방지
-                  ('운용보수', fmtPercent(fee.managementFee, digits: 3)),
-                  ('판매보수', fmtPercent(fee.salesFee, digits: 3)),
-                  ('일반사무관리보수', fmtPercent(fee.adminFee, digits: 3)),
-                  ('수탁보수', fmtPercent(fee.trustFee, digits: 3)),
-                ]),
-                block('환매할 때', [
-                  ('후취판매수수료', _feeText(fee.rearLoadFee)),
-                  ('환매수수료', '수수료없음'),
-                ]),
-              ];
-
-              if (isNarrow) {
-                // 세로 스택
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 12),
-                    ...children.expand((w) => [w, const SizedBox(height: 8)]).toList()..removeLast(),
-                  ],
-                );
-              } else {
-                // 가로 + 간격
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(child: children[0]),
-                        const SizedBox(width: 8),
-                        Expanded(child: children[1]),
-                        const SizedBox(width: 8),
-                        Expanded(child: children[2]),
-                      ],
-                    ),
-                  ],
-                );
-              }
-            },
+      child: SizedBox(
+        width: double.infinity,
+        child: Card(
+          color: Colors.white,                // ← 추가
+          surfaceTintColor: Colors.white,     // ← 추가 (Material3 틴트 무력화)
+          elevation: .6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final isNarrow = c.maxWidth < 360; // 폭 좁으면 세로로
+                final children = [
+                  block('매입할 때', [
+                    ('선취판매수수료', _feeText(fee.frontLoadFee)),
+                  ]),
+                  block('투자기간동안', [
+                    ('총 보수(연)', fmtPercent(fee.totalFee, digits: 3)),
+                    ('총비용비율(TER)', fmtPercent(fee.ter, digits: 4)),
+                    // 긴 항목들을 4줄로 분리해 깨짐 방지
+                    ('운용보수', fmtPercent(fee.managementFee, digits: 3)),
+                    ('판매보수', fmtPercent(fee.salesFee, digits: 3)),
+                    ('일반사무관리보수', fmtPercent(fee.adminFee, digits: 3)),
+                    ('수탁보수', fmtPercent(fee.trustFee, digits: 3)),
+                  ]),
+                  block('환매할 때', [
+                    ('후취판매수수료', _feeText(fee.rearLoadFee)),
+                    ('환매수수료', '수수료없음'),
+                  ]),
+                ];
+        
+                if (isNarrow) {
+                  // 세로 스택
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}',
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 12),
+                      ...children.expand((w) => [w, const SizedBox(height: 8)]).toList()..removeLast(),
+                    ],
+                  );
+                } else {
+                  // 가로 + 간격
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}',
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(child: children[0]),
+                          const SizedBox(width: 8),
+                          Expanded(child: children[1]),
+                          const SizedBox(width: 8),
+                          Expanded(child: children[2]),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+              },
+            ),
           ),
         ),
       ),
@@ -1053,6 +1119,9 @@ class _InfoCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Card(
+        color: Colors.white,                // ← 추가
+        surfaceTintColor: Colors.white,     // ← 추가 (Material3 틴트 무력화)
+        elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
@@ -1092,6 +1161,9 @@ class _DocsCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Card(
+        color: Colors.white,                // ← 추가
+        surfaceTintColor: Colors.white,     // ← 추가 (Material3 틴트 무력화)
+        elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
@@ -1162,6 +1234,9 @@ class _ProcessCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
