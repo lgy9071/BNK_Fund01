@@ -39,6 +39,7 @@ public class InvestProfileApiController {
     public ResponseEntity<RiskResultView> submit(
             @CurrentUid Integer uid,
             @RequestBody @Valid RiskSubmitRequest request) {
+        System.out.println(request);
         RiskResultView view = investProfileApiService.evaluateAndSave(uid, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(view);
     }

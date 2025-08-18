@@ -100,6 +100,7 @@ class QuestionCard extends StatelessWidget {
                 onChanged: (_) => _toggleMulti(i),
                 // 필요 시 터치영역 축소
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                activeColor: AppColors.primaryBlue,
               )
                   : Radio<int>(
                 value: i,

@@ -78,11 +78,12 @@ public class InvestProfileApiService {
 
         if (opt.isPresent()) {
             InvestProfileResult r = opt.get();
+            String description = r.getType().getDescription();
             // 1년 유효기간 체크(기존 로직)
             if (r.getAnalysisDate().plusDays(365).isBefore(LocalDateTime.now())) {
                 throw new ResponseStatusException(NOT_FOUND, "최근 결과 없음(유효기간 만료)");
             }
-            return toView(r);
+            return toView(r, description);
         }
         throw new ResponseStatusException(NOT_FOUND, "최근 결과 없음");
     }
@@ -173,7 +174,9 @@ public class InvestProfileApiService {
         history.setSignedAt(saved.getSignedAt());
         historyRepository.save(history);
 
-        return toView(saved);
+        String description = saved.getType().getDescription();
+
+        return toView(saved, description);
     }
 
     /* ===== (호환) 기존 폼 paramMap 방식 ===== */
@@ -257,7 +260,9 @@ public class InvestProfileApiService {
         history.setSignedAt(savedResult.getSignedAt());
         historyRepository.save(history);
 
-        return toView(savedResult);
+        String description = savedResult.getType().getDescription();
+
+        return toView(savedResult, description);
     }
 
     /* ===== 내부 유틸 ===== */
@@ -316,12 +321,12 @@ public class InvestProfileApiService {
         }
     }
 
-    private RiskResultView toView(InvestProfileResult r) {
+    private RiskResultView toView(InvestProfileResult r, String description) {
         return new RiskResultView(
                 r.getResultId(),
                 r.getTotalScore(),
                 r.getType().getTypeName(),
-                r.getType().getTypeName(), // profile은 간단히 typeName 재사용(필요시 description 요약)
+                description, // profile은 간단히 typeName 재사용(필요시 description 요약)
                 List.of(), // recommendations는 필요 시 채워넣기
                 r.getAnalysisDate().toString());
     }

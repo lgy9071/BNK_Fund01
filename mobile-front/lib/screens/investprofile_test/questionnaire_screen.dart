@@ -62,8 +62,6 @@ String _norm(String s) => s
     .toLowerCase();
 
 
-
-
 class QuestionnaireScreen extends StatefulWidget {
   const QuestionnaireScreen({super.key});
 
@@ -132,12 +130,8 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   bool get _isLast => _index == _questions.length - 1;
   bool get _hasSelection => (_answers[_index] ?? {}).isNotEmpty;
 
-
   bool _isBlockedCurrent() {
-    // 0-based로 5번 문항은 _index == 4
     if (_index != 4) return false;
-
-    // 4번 보기(0-based index 3)가 선택되어 있으면 막음
     final sel = _answers[_index] ?? <int>{};
     return sel.contains(3);
   }
@@ -149,116 +143,47 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
       title: '진행 안내',
       message: '펀드 상품은 원금 보장형이 없습니다.\n다음으로 진행하려면 다른 선택지를 \n선택해 주세요.',
       confirmText: '확인',
-      showCancel: false, // 확인 버튼만 표시
-      confirmColor: const Color(0xFF383E56), // 기존 스타일 색상 맞춤
+      showCancel: false,
+      confirmColor: const Color(0xFF383E56),
     );
   }
+
   final FlutterSecureStorage storage = const FlutterSecureStorage();
 
-  /// 서버에서 DB 질문/옵션을 받아온다.
-  // Future<List<RiskQuestionDto>> _fetchDbQuestions() async {
-  //   final token = await storage.read(key: 'accessToken'); // 프로젝트 기존 방식 사용
-  //   final url = Uri.parse('${ApiConfig.baseUrl}/api/risk-test/questions');
-  //   final res = await http.get(url, headers: {
-  //     'Authorization': 'Bearer $token',
-  //   });
-  //   if (res.statusCode != 200) {
-  //     throw Exception('질문 조회 실패: ${res.statusCode} ${res.body}');
-  //   }
-  //   final data = jsonDecode(res.body) as Map<String, dynamic>;
-  //   final list = (data['questions'] as List)
-  //       .map((e) => RiskQuestionDto.fromJson(e))
-  //       .toList();
-  //   return list;
-  // }
-
   Future<List<RiskQuestionDto>> _fetchDbQuestions() async {
-    final token = await storage.read(key: 'accessToken'); // 또는 prefs
+    final token = await storage.read(key: 'accessToken');
     final url = Uri.parse('${ApiConfig.baseUrl}/api/risk-test/questions');
 
-    // 상태코드 먼저 확인
     final res = await http.get(url, headers: {'Authorization': 'Bearer $token'});
-
-    // ✅ 상태 찍기
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('[PAYLOAD] status=${res.statusCode} len=${res.body.length}')),
-      );
-    }
-
     if (res.statusCode != 200) {
       throw Exception('questions ${res.statusCode}: ${res.body}');
     }
 
-    // ✅ 파싱 try/catch로 어디서 깨지는지 명확히
-    try {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final listJson = (data['questions'] as List?);
-      if (listJson == null) throw StateError('`questions` key missing/null');
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final listJson = (data['questions'] as List?);
+    if (listJson == null) throw StateError('`questions` key missing/null');
 
-      final list = listJson
-          .map((e) => RiskQuestionDto.fromJson(e as Map<String, dynamic>))
-          .toList();
+    final list = listJson
+        .map((e) => RiskQuestionDto.fromJson(e as Map<String, dynamic>))
+        .toList();
 
-      // ✅ 첫 항목 샘플 로그
-      if (mounted && list.isNotEmpty) {
-        final q = list.first;
-        final opt = q.options.isNotEmpty ? q.options.first : null;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('[PAYLOAD] Q=${q.questionId} opt=${opt?.optionId ?? "-"}')),
-        );
-      }
-      return List<RiskQuestionDto>.from(list);
-    } catch (e) {
-      // ✅ 파싱 에러를 화면으로 바로
-      if (mounted) {
-        await showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('파싱 오류'),
-            content: SingleChildScrollView(child: Text(e.toString().length > 2000 ? e.toString().substring(0, 2000) : e.toString())),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기'))],
-          ),
-        );
-      }
-      rethrow;
-    }
+    return List<RiskQuestionDto>.from(list);
   }
 
-
-  /// 하드코딩 UI(_questions)와 DB 응답을 매핑해서 RiskSubmitRequest payload를 만든다.
-  /// - 1순위: 같은 인덱스 기준(빠름)
-  /// - 불일치 시: 텍스트 정규화로 질문/옵션 각각 매칭(안전)
   Future<Map<String, dynamic>> _buildPayloadWithDbIds() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('[PAYLOAD] fetch dbQs')),
-    );
-
     final dbQs = await _fetchDbQuestions();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('[PAYLOAD] dbQs len=${dbQs.length}')),
-    );
-
-    if (dbQs.length != _questions.length) {
-      // 개수 다르면 텍스트 매칭으로만 시도
-      // (원한다면 여기서 에러 처리)
-    }
-
     final answers = <Map<String, dynamic>>[];
-
     for (var qIdx = 0; qIdx < _questions.length; qIdx++) {
-      final uiQ = _questions[qIdx];                // 하드코딩된 UI 질문
+      final uiQ = _questions[qIdx];
       final sel = _answers[qIdx] ?? <int>{};
       if (sel.isEmpty) continue;
 
       RiskQuestionDto? dbQ;
-      // 빠른 경로: 인덱스 동일 가정
       if (qIdx < dbQs.length &&
           _norm(dbQs[qIdx].content) == _norm(uiQ.text)) {
         dbQ = dbQs[qIdx];
       } else {
-        // 안전 경로: 텍스트로 찾기
         dbQ = dbQs.firstWhere(
               (x) => _norm(x.content) == _norm(uiQ.text),
           orElse: () => throw Exception('질문 매칭 실패: "${uiQ.text}"'),
@@ -267,15 +192,13 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
 
       final optionIds = <int>[];
       final dbOpts = dbQ.options;
-
-      // 옵션 개수/순서 같으면 인덱스 매핑
       final sameLen = dbOpts.length == uiQ.options.length;
+
       if (sameLen) {
         for (final optIdx in sel) {
           optionIds.add(dbOpts[optIdx].optionId);
         }
       } else {
-        // 안전 경로: 텍스트로 각각 찾기
         for (final optIdx in sel) {
           final uiOptText = uiQ.options[optIdx];
           final match = dbOpts.firstWhere(
@@ -294,7 +217,6 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
 
     final payload = {"answers": answers};
 
-// 검증: questionId/optionIds에 null이 있으면 바로 에러
     for (final a in answers) {
       if (a['questionId'] == null) {
         throw StateError('questionId is null for a payload item');
@@ -308,22 +230,17 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
     return payload;
   }
 
-
-
   void _goNext() async {
-    // ▼ 막힘 조건이면 경고만 띄우고 return
     if (_isBlockedCurrent()) {
       await _showBlockedAlert();
       return;
     }
-
     if (_isLast) {
       _submit();
     } else {
       setState(() => _index++);
     }
   }
-
 
   void _onChangeSelection(Set<int> newSel) {
     setState(() {
@@ -332,17 +249,14 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   }
 
   Future<bool> _handleBack() async {
-    if (_index == 0) return true; // 첫 문항이면 화면 자체를 뒤로
-    setState(() => _index--);     // 아니면 문항만 이전으로
+    if (_index == 0) return true;
+    setState(() => _index--);
     return false;
   }
 
   Future<void> _submit() async {
     try {
-      // payload 생성
       final payload = await _buildPayloadWithDbIds();
-
-      // 토큰 확인
       final token = await storage.read(key: 'accessToken');
       if (token == null) {
         if (!mounted) return;
@@ -356,7 +270,6 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
         return;
       }
 
-      // 전송
       final url = Uri.parse('${ApiConfig.baseUrl}/api/risk-test/submit');
       final res = await http.post(
         url,
@@ -367,7 +280,6 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
         body: jsonEncode(payload),
       );
 
-      // 상태 체크
       if (res.statusCode != 201) {
         if (!mounted) return;
         await showDialog(
@@ -380,7 +292,6 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
         return;
       }
 
-      // 성공 → 결과 화면 이동
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       if (!mounted) return;
       Navigator.pushReplacementNamed(
@@ -400,7 +311,6 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final q = _questions[_index];
@@ -414,8 +324,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
         appBar: AppBar(
           title: const Text('확인서 작성'),
           centerTitle: true,
-          // 뒤로가기 버튼이 문항 이전 로직을 먼저 타도록 커스텀
-          scrolledUnderElevation: 0,             // ✅ 스크롤 시 음영 제거
+          scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
           backgroundColor: Colors.white,
           leading: IconButton(
@@ -431,38 +340,37 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              // ✅ 큰 단계 프로그레스바 숨김
               StepHeader(
-                bigStep: 2,                       // (동의 → 설문 → …)
-                smallStepCurrent: _index + 1,     // 현재 문항
-                smallStepTotal: _questions.length, // 총 문항
-                showBigProgress: false,           // ← 큰 단계 바 숨기기
+                bigStep: 2,
+                smallStepCurrent: _index + 1,
+                smallStepTotal: _questions.length,
+                showBigProgress: false,
               ),
-              SizedBox(height: 10,),
+              SizedBox(height: 10),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                   children: [
-                    SizedBox(height: 20), // ← 상단 여백
+                    SizedBox(height: 20),
                     QuestionCard(
                       questionText: q.text,
                       options: q.options,
                       multi: q.multi,
                       selectedIndexes: selected,
                       onChanged: _onChangeSelection,
-                      questionFontSize: (){
-                        if(_index != 6) return 21.0;
-                        if(_index != 8) return 21.0;
+                      questionFontSize: () {
+                        if (_index != 6) return 21.0;
+                        if (_index != 8) return 21.0;
                         return 22.0;
                       }(),
-                      optionFontSize: (){
-                        if(_index == 0 || _index == 3) return 13.2;
-                        if(_index == 7) return 15.0;
-                        if(_index != 6) return 14.0;
+                      optionFontSize: () {
+                        if (_index == 0 || _index == 3) return 13.2;
+                        if (_index == 7) return 15.0;
+                        if (_index != 6) return 14.0;
                         return 15.0;
                       }(),
                     ),
-                    SizedBox(height: 20), // ← 하단 여백
+                    SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -479,7 +387,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                         backgroundColor: AppColors.primaryBlue,
                         foregroundColor: Colors.white,
                       ),
-                      child: Text(_isLast ? '완료' : '다음', style: TextStyle(fontSize: 17),),
+                      child: Text(_isLast ? '완료' : '다음', style: TextStyle(fontSize: 17)),
                     ),
                   ),
                 ),
