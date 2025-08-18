@@ -1,9 +1,15 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_front/core/constants/colors.dart';
-
 import '../core/actions/auth_actions.dart';
 import '../screens/fund_mbti_flow.dart';
+
+//서버에서 내정보를 가져오기 위한 의존성
+import 'package:mobile_front/core/services/user_service.dart';
+import 'package:mobile_front/models/user_profile.dart';
+//import 'package:mobile_front/utils/session_manager.dart';
 
 const tossBlue = Color(0xFF0064FF);
 Color pastel(Color c) => c.withOpacity(.12);
@@ -11,6 +17,9 @@ Color pastel(Color c) => c.withOpacity(.12);
 class FullMenuOverlay extends StatefulWidget {
   final String userName;
   final String userId;
+
+  final UserService? userService;
+  final String? accessToken;
 
   final VoidCallback onGoFundMain;
   final VoidCallback onGoFundJoin;
@@ -39,6 +48,9 @@ class FullMenuOverlay extends StatefulWidget {
     required this.onLogout,
     required this.onAsk,
     required this.onMyQna,
+
+    this.userService,
+    this.accessToken,
   });
 
   @override
@@ -49,10 +61,38 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
   double _dragAccum = 0;
   static const _kDismissThreshold = 80;
 
+  // 프로필 비동기 로딩 Future
+  Future<UserProfile?>? _meFuture;
+
   @override
   void initState() {
     super.initState();
     _applySystemBars();
+    _meFuture = _loadMe(); // API 호출 시작
+  }
+
+  // SessionManager가 있으면 토큰을 얻어 사용, 실패해도 안전 폴백
+  Future<UserProfile?> _loadMe() async {
+    try {
+      final svc = widget.userService ?? UserService();
+      // 1) 우선 주입된 토큰 사용
+      String? token = widget.accessToken;
+
+      // 디버그용
+      debugPrint('FullMenuOverlay.accessToken? ${
+          token == null ? "null" : token.substring(0, math.min(12, token.length)) + "..."
+      }');
+
+      if (token == null || token.isEmpty) return null; // 토큰 없으면 패스
+
+      // UserService가 token을 받는 시그니처라면 ↓ 사용
+      return await svc.getMe(token);
+
+      // 만약 UserService가 내부에서 dio(세션매니저)를 쓰는 형태라면:
+      // return await svc.getMe();
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -85,6 +125,11 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
 
   void _maybePop() => Navigator.of(context, rootNavigator: true).pop();
 
+  // 터치/스크롤 시 세션 리셋(세션 매니저 없으면 조용히 무시)
+  void _pingSession() {
+    // no-op: SessionManager 싱글톤이 없으므로 아무 것도 하지 않음
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,8 +140,10 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
+              onTapDown: (_) => _pingSession(),
               onHorizontalDragUpdate: (d) {
                 _dragAccum += d.delta.dx;
+                _pingSession();
                 if (_dragAccum > _kDismissThreshold) _maybePop();
               },
               onHorizontalDragEnd: (_) => _dragAccum = 0,
@@ -105,12 +152,36 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ProfileCard(
-                      userName: widget.userName,
-                      userId: widget.userId,
-                      onLogout: widget.onLogout,
-                      onAsk: widget.onAsk,
-                      onMyQna: widget.onMyQna,
+                    // 내정보 불러오기(FutureBuilder, 실패 시 props 폴백)
+                    FutureBuilder<UserProfile?>(
+                      future: _meFuture,
+                      builder: (_, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                          );
+                        }
+                        if (snap.hasError) {
+                          debugPrint('getMe error: ${snap.error}');   // 콘솔 출력
+                          // 에러여도 props 폴백으로 계속 진행
+                        }
+
+                        final data = snap.data;
+                        final name  = (data != null && data.name.isNotEmpty)  ? data.name  : widget.userName;
+                        final idTxt = (data != null && data.email.isNotEmpty) ? data.email : widget.userId;
+
+                        return _ProfileCard(
+                          userName: name,
+                          userId: idTxt,
+                          onLogout: widget.onLogout,
+                          onAsk: widget.onAsk,
+                          onMyQna: widget.onMyQna,
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
 

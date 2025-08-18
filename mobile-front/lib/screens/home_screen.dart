@@ -6,9 +6,9 @@ import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/utils/exit_popup.dart';
 import '../core/routes/routes.dart';
 import '../models/fund.dart';
-import 'package:mobile_front/core/services/invest_result_service.dart';
-import 'package:mobile_front/screens/invest_type_result_loader.dart';
-import 'package:mobile_front/core/constants/api.dart';
+import 'package:mobile_front/core/services/user_service.dart';
+import 'package:mobile_front/models/user_profile.dart';
+
 
 const tossBlue = Color(0xFF0064FF);
 Color pastel(Color c) => Color.lerp(Colors.white, c, 0.12)!;
@@ -44,11 +44,15 @@ class HomeScreen extends StatefulWidget {
   final List<Fund> myFunds;
   final String investType;
   final String userName;
+  final String? accessToken;
+  final UserService? userService;
   const HomeScreen({
     super.key,
     required this.myFunds,
     required this.investType,
     required this.userName,
+    this.accessToken,
+    this.userService,
   });
 
   @override
@@ -61,6 +65,32 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _obscure = false;          // 금액 숨김
   bool _expandFunds = false;      // 더보기
   FundSort _sort = FundSort.amountDesc;
+  String? _displayName; // 서버에서 받은 이름 저장
+
+  //데이터 전달 받기 위한 클래스
+  @override
+    void initState() {
+        super.initState();
+        _loadMe(); // ⬅ 들어오자마자 내 정보 로드
+      }
+
+    Future<void> _loadMe() async {
+        final token = widget.accessToken;
+        if (token == null || token.isEmpty) return; // 토큰 없으면 패스
+        try {
+          final svc = widget.userService ?? UserService();
+          final me = await svc.getMe(token);
+          if (!mounted) return;
+          setState(() {
+            // name이 비어있지 않으면 화면에 반영
+            _displayName = me.name.isNotEmpty ? me.name : null;
+          });
+        } catch (e) {
+          debugPrint('getMe failed: $e'); // 원인 확인용
+          // 실패 시 조용히 무시 (props 유지)
+        }
+      }
+      //데이터 전달 받기 위한 클래스2
 
   // 디자인 커스텀은 ‘총 평가금액’ 카드에만 적용됨
   BgChoice _bg = BgChoice.solid(pastel(tossBlue));
@@ -142,6 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final displayName = _displayName ?? widget.userName; // 표시 이름
     final funds = _sortedFunds();
     final baseText = AppColors.fontColor;
     final baseDim = baseText.withOpacity(.54);
@@ -201,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     child: Row(
                       children: [
-                        Text('${widget.userName}님의 투자성향',
+                        Text('${displayName}님의 투자성향',
                             style: TextStyle(fontSize: 15, color: baseText)),
                         const Spacer(),
                         Text(widget.investType,
@@ -490,8 +521,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
 
                 const SizedBox(height: 12),
-                Text('추천/공지 섹션 자리',
-                    style: TextStyle(color: baseText.withOpacity(.6))),
+
+                _MbtiPromoCard(
+                  onTap: () => Navigator.of(context).pushNamed(AppRoutes.fundMbti),
+                ),
+
+                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -625,7 +660,7 @@ class _DesignSheetState extends State<_DesignSheet> {
     final presets = <BgChoice>[
       BgChoice.solid(pastel(const Color(0xFFA8E6CF))), // 민트
       BgChoice.solid(pastel(const Color(0xFFE0BBE4))), // 라벤더
-      BgChoice.solid(pastel(const Color(0xFFC9E4FF))), // 하늘
+      BgChoice.solid(pastel(const Color(0xFF0064FF))), // 하늘
       // BgChoice.solid(pastel(const Color(0xFFFDCEDF))), // 베이비핑크
       BgChoice.solid(const Color(0xFFFF595E)), // 비비드 레드
       BgChoice.solid(const Color(0xFFFFCA3A)), // 옐로우
@@ -819,6 +854,81 @@ class _PlusTile extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MbtiPromoCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _MbtiPromoCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFEAF3FF), // 파스텔 블루 (연한 톤)
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 88,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.black.withOpacity(.05)), // 연한 테두리
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/images/mbti-char3.png',
+                  height: 64,
+                  width: 64,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.extension,
+                    size: 36,
+                    color: Colors.black45,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '나의 투자 성격은?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.black.withOpacity(.70),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '펀드 MBTI로 1분 만에 확인하기',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1E1F23),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, color: Colors.black.withOpacity(.35)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

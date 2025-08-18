@@ -19,4 +19,7 @@ class ApiConfig {
 
   // logout
   static const String logout = '$baseUrl/api/auth/logout';
+
+  //마이페이지 카드용 프로필
+  static const String userMe = '$baseUrl/api/users/me';
 }
