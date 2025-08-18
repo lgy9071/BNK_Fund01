@@ -148,7 +148,7 @@ public class FundDataWriter implements ItemWriter<CompleteFundData> {
         entity.setPublicType(dto.getPublicType());
         entity.setAddUnitType(dto.getAddUnitType());
         entity.setFundStatus(dto.getFundStatus());
-        entity.setRiskGrade(dto.getRiskGrade());
+        entity.setRiskGrade(dto.getRiskLevel());
         entity.setPerformanceDisclosure(dto.getPerformanceDisclosure());
         entity.setManagementCompany(dto.getManagementCompany());
         entity.setMinSubscriptionAmount(dto.getMinSubscriptionAmount());
