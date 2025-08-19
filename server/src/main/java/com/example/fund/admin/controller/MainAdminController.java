@@ -172,14 +172,16 @@ public class MainAdminController {
         return "fund/fundRegister";
     }
 
-    /*
     @GetMapping("/fund/list")
-    public String fundListPage(@PageableDefault(size = 10) Pageable pageable, Model model) {
-        Page<FundPolicy> policyPage = fundPolicyRepository.findAllWithFund(pageable);
-        model.addAttribute("policyPage", policyPage);
-        return "fund/fundRegistList";
+    public String fundListPage(
+            @PageableDefault(size = 10) Pageable pageable,
+            Model model
+    ) {
+        // Page<FundPolicy> policyPage = fundPolicyRepository.findAllWithFund(pageable);
+        // model.addAttribute("policyPage", policyPage);
+        // return "fund/fundRegistList";
+        return "admin/constructionPage";
     }
-    */
 
     // 공사 페이지
     @GetMapping("/construction")
