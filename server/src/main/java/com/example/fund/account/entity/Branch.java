@@ -1,7 +1,17 @@
 package com.example.fund.account.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "branch")
@@ -12,7 +22,7 @@ public class Branch {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Oracle 12c+
     @Column(name = "branch_id", nullable = false)
-    private Long branchId;                 // 지점 ID (AUTO_INCREMENT)
+    private Integer branchId;                 // 지점 ID (AUTO_INCREMENT)
 
     @Column(name = "branch_name", length = 50)
     private String branchName;             // 지점명

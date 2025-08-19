@@ -32,10 +32,10 @@ public class FundTransaction {
     @Column(name = "order_id", nullable = false)
     private Long orderId; // 거래 ID (AUTO_INCREMENT)
 
-    // FK: 펀드상품 ID
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "fund_id")
-    private Fund fund; // fund_id NUMBER
+//    // FK: 펀드상품 ID
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "fund_id")
+//    private Fund fund; // fund_id NUMBER
 
     // FK: 펀드 계좌 ID
     @ManyToOne(fetch = FetchType.LAZY)
