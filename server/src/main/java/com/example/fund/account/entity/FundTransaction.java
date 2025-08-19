@@ -23,19 +23,22 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "fund_transaction")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class FundTransaction {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // Oracle 12c+
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Oracle 12c+ 가능
     @Column(name = "order_id", nullable = false)
     private Long orderId; // 거래 ID (AUTO_INCREMENT)
 
-//    // FK: 펀드상품 ID
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "fund_id")
-//    private Fund fund; // fund_id NUMBER
+    // FK: 펀드상품 ID
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "fund_id")
+    private Fund fund; // fund_id NUMBER
 
     // FK: 펀드 계좌 ID
     @ManyToOne(fetch = FetchType.LAZY)
@@ -54,15 +57,23 @@ public class FundTransaction {
     private BigDecimal amount; // 주문금액 (원 단위)
 
     @Column(name = "unit_price")
-    private BigDecimal unitPrice; // 기준가
+    private BigDecimal unitPrice; // 기준가 (거래일 기준)
 
     @Column(name = "units", precision = 10, scale = 3)
-    private BigDecimal units; // 좌수 (DECIMAL(10,3))
+    private BigDecimal units; // 좌수 (거래금액 ÷ 기준가)
 
     // FK: 관리 지점
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id")
     private Branch branch; // branch_id NUMBER
+
+    // FK: 입출금 계좌
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deposit_account_id")
+    private DepositAccount depositAccount; // deposit_account_id NUMBER
+
+    @Column(name = "invest_rule", length = 20)
+    private String investRule; // 투자규칙
 
     @Column(name = "requested_at")
     private LocalDateTime requestedAt; // 접수 시각

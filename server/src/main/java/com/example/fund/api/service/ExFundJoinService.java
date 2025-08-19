@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class FundJoinService {
+public class ExFundJoinService {
 	
 	private final TermsAgreementRepository termsAgreementRepo;
 	private final UserRepository userRepo;
