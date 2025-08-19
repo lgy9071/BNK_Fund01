@@ -1,12 +1,12 @@
 package com.example.fund.fund.repository_fund;
 
-import com.example.batch_scraper.entity.Fund;
-import com.example.batch_scraper.entity.FundAssetSummary;
+import com.example.fund.fund.entity_fund.Fund;
+import com.example.fund.fund.entity_fund.FundAssetSummary;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface FundAssetSummaryRepository extends JpaRepository<FundAssetSummary, Long> { 
+public interface FundAssetSummaryRepository extends JpaRepository<FundAssetSummary, Long> {
 	
 	void deleteByFund(Fund fund);
 }
