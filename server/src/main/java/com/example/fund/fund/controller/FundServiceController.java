@@ -25,6 +25,8 @@ public class FundServiceController {
         this.fundService = fundService;
     }
 
+    // 펀드 등록
+    /*
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> registerFund(
             @RequestPart("data") FundRegisterRequest request,
@@ -51,6 +53,7 @@ public class FundServiceController {
             ));
         }
     }
+    */
 
 
 }

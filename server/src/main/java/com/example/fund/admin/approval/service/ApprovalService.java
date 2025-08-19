@@ -5,8 +5,8 @@ import com.example.fund.admin.approval.repository.ApprovalRepository;
 import com.example.fund.admin.entity.Admin;
 import com.example.fund.admin.repository.AdminRepository_A;
 import com.example.fund.admin.repository.projection.StatusCount;
-import com.example.fund.fund.entity.Fund;
-import com.example.fund.fund.repository.FundRepository;
+import com.example.fund.fund.entity_fund.Fund;
+import com.example.fund.fund.repository_fund.FundRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -104,7 +104,7 @@ public class ApprovalService {
 
     /* ───── 5. 결재 요청 등록 (요청자) ───── */
     @Transactional
-    public Integer createApproval(String title, String content, Integer adminId, Long fundId) {
+    public Integer createApproval(String title, String content, Integer adminId, String fundId) {
 
         Admin writer = adminRepository.findById(adminId)
                 .orElseThrow(() -> new IllegalArgumentException("작성자 정보 없음"));

@@ -2,11 +2,9 @@ package com.example.fund.admin.controller;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.NoSuchElementException;
 
-import com.example.fund.fund.entity.Fund;
-import com.example.fund.fund.entity.FundDocument;
-import com.example.fund.fund.repository.FundDocumentRepository;
+import com.example.fund.fund.entity_fund.FundDocument;
+import com.example.fund.fund.repository_fund.FundDocumentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,8 +28,6 @@ import com.example.fund.admin.dto.AdminDTO;
 import com.example.fund.admin.entity.Admin;
 import com.example.fund.admin.service.AdminService_A;
 import com.example.fund.fund.dto.FundDetailResponse;
-import com.example.fund.fund.entity.FundPolicy;
-import com.example.fund.fund.repository.FundPolicyRepository;
 import com.example.fund.fund.service.FundService;
 import com.example.fund.qna.service.QnaService;
 
@@ -44,8 +40,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MainAdminController {
 
-    private final AdminService_A adminService_a;
     private final FundDocumentRepository fundDocumentRepository;
+    private final AdminService_A adminService_a;
+    private final QnaService qnaService;
+    private final FundService fundService;
+
 
     /* 1) /admin/ → 세션 O : 대시보드로 / 세션 X : 로그인 */
     @GetMapping({ "/", "" })
@@ -56,15 +55,6 @@ public class MainAdminController {
 
     }
 
-    @Autowired
-    QnaService qnaService;
-
-    @Autowired
-    FundService fundService;
-
-    @Autowired
-    FundPolicyRepository fundPolicyRepository;
-
     /* 2) /admin/main → 과거 주소로 들어와도 대시보드로 보냄 */
     @GetMapping("/main")
     public String legacyMain() {
@@ -73,9 +63,11 @@ public class MainAdminController {
 
     /* 3) 로그인 성공 후 → /admin/dashboard */
     @PostMapping("/login")
-    public String login(AdminDTO adminDTO,
+    public String login(
+            AdminDTO adminDTO,
             HttpServletRequest request,
-            RedirectAttributes rttr) {
+            RedirectAttributes rttr
+    ) {
 
         if (!adminService_a.login(adminDTO)) {
             rttr.addFlashAttribute("msg", "아이디 또는 비밀번호를 확인하세요");
@@ -118,7 +110,10 @@ public class MainAdminController {
     }
 
     @PostMapping("/adminRegist")
-    public String adminRegist(AdminDTO adminDTO, RedirectAttributes rttr) {
+    public String adminRegist(
+            AdminDTO adminDTO,
+            RedirectAttributes rttr
+    ) {
         adminService_a.adminRegist(adminDTO);
         rttr.addFlashAttribute("msg", "관리자 등록을 완료하였습니다");
         return "admin/super/adminSetting";
@@ -130,7 +125,8 @@ public class MainAdminController {
             @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            Model model) {
+            Model model
+    ) {
         Pageable pageable = PageRequest.of(page, size);
         Page<AdminDTO> adminPage = (role == null || role.isEmpty())
                 ? adminService_a.getAllAdmins(pageable)
@@ -143,7 +139,10 @@ public class MainAdminController {
 
     // 관리자 리스트 >> 상세정보 조회
     @GetMapping("/detail/{id}")
-    public String getAdminDetail(@PathVariable Integer id, Model model) {
+    public String getAdminDetail(
+            @PathVariable Integer id,
+            Model model
+    ) {
         model.addAttribute("admin", adminService_a.findById(id));
         return "admin/super/adminList :: admin-modify-modal";
     }
@@ -170,15 +169,22 @@ public class MainAdminController {
     // 펀드 등록 폼으로 이동
     @GetMapping("/fund/new")
     public String newFundForm() {
-
         return "fund/fundRegister";
     }
 
+    /*
     @GetMapping("/fund/list")
     public String fundListPage(@PageableDefault(size = 10) Pageable pageable, Model model) {
         Page<FundPolicy> policyPage = fundPolicyRepository.findAllWithFund(pageable);
         model.addAttribute("policyPage", policyPage);
         return "fund/fundRegistList";
+    }
+    */
+
+    // 공사 페이지
+    @GetMapping("/construction")
+    public String construction() {
+        return "admin/constructionPage";
     }
 
 //    @GetMapping("/fund/view/{id}")
@@ -212,16 +218,19 @@ public class MainAdminController {
 //        return "fund/fundRegistDetail";
 //    }
 
+    // 잠시 fundPolicy 주석
+    /*
     @GetMapping("/fund/view/{id}")
-    public String viewFundDetail(@PathVariable Long id, Model model) {
-        FundDetailResponse fund = fundService.getFundDetailWithPolicy(id);
+    public String viewFundDetail(@PathVariable String id, Model model) {
+        // FundDetailResponse fund = fundService.getFundDetailWithPolicy(id);
 
-        FundPolicy policy = fundPolicyRepository.findByFund_FundId(id).orElse(null);
+        // FundPolicy policy = fundPolicyRepository.findByFund_FundId(id).orElse(null);
 
-        model.addAttribute("fund", fund);
-        model.addAttribute("policy", policy);
+        // model.addAttribute("fund", fund);
+        // model.addAttribute("policy", policy);
         return "fund/fundRegistDetail";
     }
+    */
 
 //    // 수정하기 페이지로 이동
 //    @GetMapping("/fund/edit/{id}")
@@ -244,44 +253,54 @@ public class MainAdminController {
 //        return "fund/fundRegistEdit";
 //    }
 
-    //재수정
+
+    // 잠시 fundPolicy 주석
+    /*
     @GetMapping("/fund/edit/{id}")
     public String editPage(@PathVariable("id") Long id, Model model) {
         // 정책까지 꼭 포함된 DTO 를 가져오도록 강제
-        FundDetailResponse fund = fundService.getFundDetailWithPolicy(id);
-        model.addAttribute("fund", fund);
+        // FundDetailResponse fund = fundService.getFundDetailWithPolicy(id);
+        // model.addAttribute("fund", fund);
         return "fund/fundRegistEdit";
     }
+    */
 
-    @GetMapping("/construction")
-    public String construction() {
-        return "admin/constructionPage";
-    }
 
+    /*
     private Long getDocId(List<FundDocument> list, String type){
         return list.stream()
                 .filter(d -> type.equals(d.getDocType()))
                 .map(FundDocument::getDocumentId)
                 .findFirst().orElse(null);
     }
+    */
+
+
+    /*
     private String getDocName(List<FundDocument> list, String type){
         return list.stream()
                 .filter(d -> type.equals(d.getDocType()))
                 .map(FundDocument::getDocTitle)
                 .findFirst().orElse(null);
     }
+    */
 
+
+    /*
     @PostMapping("/fund/update/{id}")
-    public String updateFund(@PathVariable Long id,
-                             @RequestParam String fundTheme,
-                             @RequestParam(required = false) MultipartFile fileTerms,
-                             @RequestParam(required = false) MultipartFile fileManual,
-                             @RequestParam(required = false) MultipartFile fileProspectus,
-                             RedirectAttributes rttr) throws IOException {
+    public String updateFund(
+            @PathVariable String id,
+            @RequestParam String fundTheme,
+            @RequestParam(required = false) MultipartFile fileTerms,
+            @RequestParam(required = false) MultipartFile fileManual,
+            @RequestParam(required = false) MultipartFile fileProspectus,
+            RedirectAttributes rttr
+    ) throws IOException {
 
         fundService.updateFundAdmin(id, fundTheme, fileTerms, fileManual, fileProspectus);
 
         rttr.addFlashAttribute("msg", "펀드 수정이 완료되었습니다.");
         return "redirect:/admin/fund/view/" + id;
     }
+    */
 }

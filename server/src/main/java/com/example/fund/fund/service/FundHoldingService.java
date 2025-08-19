@@ -1,7 +1,7 @@
 package com.example.fund.fund.service;
 
-import com.example.fund.fund.entity.FundHolding;
-import com.example.fund.fund.repository.FundHoldingRepository;
+import com.example.fund.fund.entity_fund_etc.FundHolding;
+import com.example.fund.fund.repository_fund_etc.FundHoldingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

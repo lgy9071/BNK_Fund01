@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.example.fund.fund.entity.InvestProfileQuestion;
-import com.example.fund.fund.entity.InvestProfileResult;
+import com.example.fund.fund.entity_fund_etc.InvestProfileQuestion;
+import com.example.fund.fund.entity_fund_etc.InvestProfileResult;
 import com.example.fund.fund.service.InvestProfileService;
 import com.example.fund.user.entity.User;
 

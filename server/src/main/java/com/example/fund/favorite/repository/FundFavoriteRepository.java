@@ -1,7 +1,7 @@
 package com.example.fund.favorite.repository;
 
 import com.example.fund.favorite.entity.FundFavorite;
-import com.example.fund.fund.entity.Fund;
+import com.example.fund.fund.entity_fund.Fund;
 import com.example.fund.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;

@@ -44,7 +44,6 @@ public class FundDocument {
     private String fileName;
 
     /** 시스템 업로드 시각 */
-    @Column(name = "uploaded_at", nullable = false,
-            columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "uploaded_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime uploadedAt;
 }

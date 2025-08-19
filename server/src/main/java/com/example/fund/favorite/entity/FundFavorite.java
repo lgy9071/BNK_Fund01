@@ -1,6 +1,6 @@
 package com.example.fund.favorite.entity;
 
-import com.example.fund.fund.entity.Fund;
+import com.example.fund.fund.entity_fund.Fund;
 import com.example.fund.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;

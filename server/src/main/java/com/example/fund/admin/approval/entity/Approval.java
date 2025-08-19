@@ -2,7 +2,7 @@ package com.example.fund.admin.approval.entity;
 
 import com.example.fund.admin.entity.Admin;
 import com.example.fund.common.entity.BaseEntity;
-import com.example.fund.fund.entity.Fund;
+import com.example.fund.fund.entity_fund.Fund;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
