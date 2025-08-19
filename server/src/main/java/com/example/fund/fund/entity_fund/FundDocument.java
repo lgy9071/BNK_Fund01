@@ -32,4 +32,3 @@ public class FundDocument {
     @Column(name = "file_name", length = 100, nullable = false)
     private String fileName;
 }
-../fund_document
