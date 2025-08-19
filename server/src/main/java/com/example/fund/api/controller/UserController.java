@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.fund.api.common.SignupRequest;
+import com.example.fund.api.dto.UserInfo;
 import com.example.fund.api.service.UserApiService;
 import com.example.fund.common.CurrentUid;
 import com.example.fund.user.entity.User;
@@ -50,4 +51,19 @@ public class UserController {
         boolean duplicate = userApiService.existsByUsername(username);
         return Map.of("duplicate", duplicate);
     }
+
+    @GetMapping("/me")
+    public UserInfo me(@CurrentUid Integer uid) {
+        User u = userApiService.getById(uid); // 사용자 조회
+        String typename = userApiService.getByTypeName(u);
+
+        return new UserInfo(
+                u.getUserId(), // Integer
+                u.getUsername(),
+                u.getName(),
+                u.getEmail(),
+                typename // 접속중인 User의 최근 투자성향결과 typeName
+        );
+    }
+
 }

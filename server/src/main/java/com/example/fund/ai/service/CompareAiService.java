@@ -7,10 +7,10 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 import com.example.fund.fund.dto.FundPolicyResponseDTO;
-import com.example.fund.fund.entity.Fund;
-import com.example.fund.fund.entity.FundReturn;
-import com.example.fund.fund.repository.FundRepository;
-import com.example.fund.fund.repository.FundReturnRepository;
+import com.example.fund.fund.entity_fund.Fund;
+import com.example.fund.fund.entity_fund.FundReturn;
+import com.example.fund.fund.repository_fund.FundRepository;
+import com.example.fund.fund.repository_fund.FundReturnRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,12 +31,12 @@ public class CompareAiService {
         .content();
   }
 
-  public String fundsCompare(List<Long> fundIds, Integer investType) {
-
+  public String fundsCompare(List<String> fundIds, Integer investType) {
+    /*
     List<FundPolicyResponseDTO> compareList = new ArrayList<>();
 
     // 펀드 ID리스트를 FundResponseDTO 리스트로 변환하는 for문
-    for (Long id : fundIds) {
+    for (String id : fundIds) {
       Fund fund = fundRepository.findById(id)
           .orElseThrow(() -> new RuntimeException("Fund not found: " + id)); // 예외처리
 
@@ -71,6 +71,9 @@ public class CompareAiService {
     String result = talk(message);
 
     return result;
+    */
+
+    return "";
   }
 
   // 프롬프트 생성 함수

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/screens/investprofile_test/consent_step_page.dart';
+import 'package:mobile_front/screens/investprofile_test/invest_result_screen.dart';
+import 'package:mobile_front/screens/investprofile_test/questionnaire_screen.dart';
 import 'package:mobile_front/screens/login_screen.dart';
 import 'package:mobile_front/screens/splash_screen.dart';
 import 'package:mobile_front/screens/main_scaffold.dart';
@@ -21,6 +24,9 @@ class AppRoutes {
   static const String guide = '/guide';
   static const String investType = '/invest-type';
   static const String fundMbti = '/fund-mbti';
+  static const String questionnaire = '/questionnaire';
+  static const String investTest = '/invest-test';
+  static const String investResult = '/invest-result';
 }
 
 class AppRouter {
@@ -59,6 +65,28 @@ class AppRouter {
 
       case AppRoutes.fundMbti:
         return _page(const FundMbtiFlowScreen());
+
+      case AppRoutes.questionnaire:
+        return _page(const QuestionnaireScreen());
+
+      case AppRoutes.investTest:
+        return MaterialPageRoute(
+          builder: (ctx) => ConsentStepPage(
+            onSubmit: (agreed) async {
+              // TODO: 서버 전송 필요 시 여기서 처리
+              // await consentApi.save(agreed);
+            },
+            onNext: () {
+              // 동의 완료 -> 설문으로 이동
+              Navigator.pushNamed(ctx, AppRoutes.questionnaire);
+            },
+          ),
+        );
+
+      case AppRoutes.investResult:
+        return _page(InvestResultScreen(
+          result: (s.arguments as Map<String, dynamic>?) ?? const {},
+        ));
 
       default:
         return _page(const Scaffold(

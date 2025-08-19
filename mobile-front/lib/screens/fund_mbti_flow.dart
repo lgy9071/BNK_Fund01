@@ -8,6 +8,10 @@ class FundMbtiFlowScreen extends StatefulWidget {
   State<FundMbtiFlowScreen> createState() => _FundMbtiFlowScreenState();
 }
 
+// 토스 파스텔 배경
+const tossBlue = Color(0xFF0064FF);
+final Color tossPastel = Color.lerp(Colors.white, tossBlue, 0.12)!;
+
 enum _Stage { clouds, panel, quiz, result }
 
 class _FundMbtiFlowScreenState extends State<FundMbtiFlowScreen>
@@ -24,7 +28,7 @@ class _FundMbtiFlowScreenState extends State<FundMbtiFlowScreen>
   int _idx = -1; // -1이면 퀴즈 전
   final List<int?> _answers = List<int?>.filled(5, null);
 
-  // 질문 데이터
+  // 질문 데이터 (bg는 유지하지만 화면 배경에는 사용하지 않음)
   final _questions = const [
     _Q(
       text: '1. 투자 시 더 중요한 것은?',
@@ -93,7 +97,7 @@ class _FundMbtiFlowScreenState extends State<FundMbtiFlowScreen>
     'AGG-FREE-TREND-REACT-HIGH': _Result(
       title: '즉흥공격형',
       desc: '감각과 속도로 움직이는 민첩한 고위험 투자자입니다.',
-      tag: '#스피드투자 #고위험고수익',
+      tag: '#스피드투자 #고수익고위험',
     ),
   };
 
@@ -247,7 +251,7 @@ class _CloudsIntroState extends State<_CloudsIntro> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0E5FF),
+      backgroundColor: tossPastel, // ✅ 토스 파스텔
       body: SafeArea(
         child: Stack(
           children: [
@@ -346,7 +350,7 @@ class _CloudShape extends StatelessWidget {
   );
 }
 
-/* ───────── [Scene 2] 시작 패널 (디자인 매칭) ───────── */
+/* ───────── [Scene 2] 시작 패널 ───────── */
 
 class _StartPanel extends StatefulWidget {
   final VoidCallback onStart;
@@ -369,7 +373,7 @@ class _StartPanelState extends State<_StartPanel> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0E5FF),
+      backgroundColor: tossPastel, // ✅ 토스 파스텔
       body: SafeArea(
         child: Center(
           child: AnimatedSlide(
@@ -546,7 +550,7 @@ class _LetterTile extends StatelessWidget {
   );
 }
 
-/* ───────── [Scene 3] 질문 (선택 시 카드 왼쪽 아웃) ───────── */
+/* ───────── [Scene 3] 질문 ───────── */
 
 class _QuestionScene extends StatefulWidget {
   final _Q q;
@@ -570,16 +574,16 @@ class _QuestionSceneState extends State<_QuestionScene> {
   bool _slideOut = false;
 
   Future<void> _choose(int v) async {
-    setState(() => _slideOut = true);               // ← 흰 카드가 왼쪽으로 이탈
+    setState(() => _slideOut = true); // ← 흰 카드 왼쪽으로 이탈
     await Future.delayed(const Duration(milliseconds: 260));
-    widget.onPick(v);                               // 다음 문항(오른쪽에서 인)
+    widget.onPick(v);                  // 다음 문항(오른쪽에서 인)
   }
 
   @override
   Widget build(BuildContext context) {
     final q = widget.q;
     return Scaffold(
-      backgroundColor: q.bg,
+      backgroundColor: tossPastel,
       body: SafeArea(
         child: Stack(
           children: [
@@ -591,7 +595,7 @@ class _QuestionSceneState extends State<_QuestionScene> {
               child: LinearProgressIndicator(
                 value: (widget.index + 1) / widget.total,
                 backgroundColor: Colors.white.withOpacity(.35),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                valueColor: const AlwaysStoppedAnimation<Color>(tossBlue),
                 minHeight: 6,
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -764,14 +768,14 @@ class _ResultPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4EFFF),
+      backgroundColor: tossPastel, // ✅ 토스 파스텔
       body: SafeArea(
-        child: Center( // ✅ 세로 가운데 정렬
-          child: SingleChildScrollView( // 내용이 길어질 경우 대비
+        child: Center(
+          child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center, // ✅ 중앙 정렬
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Text(
