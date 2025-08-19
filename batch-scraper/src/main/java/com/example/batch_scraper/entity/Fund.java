@@ -87,8 +87,8 @@ public class Fund {
     private String fundStatus;
 
     // 위험 등급
-    @Column(name = "risk_grade", length = 30)
-    private String riskGrade;
+     @Column(name = "risk_level")
+     private Integer riskLevel;
 
     // 운용 실적 공시 분류
     @Column(name = "performance_disclosure", length = 50)

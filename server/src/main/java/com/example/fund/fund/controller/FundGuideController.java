@@ -8,8 +8,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import com.example.fund.fund.entity.FundGuide;
-import com.example.fund.fund.repository.FundGuideRepository;
+import com.example.fund.fund.entity_fund_etc.FundGuide;
+import com.example.fund.fund.repository_fund_etc.FundGuideRepository;
 
 @Controller
 public class FundGuideController {

@@ -63,7 +63,9 @@ public class FundDetailProcessor implements ItemProcessor<FundRowData, CompleteF
 
 			String fundId = fundRowData.getStandardCode();
 			String fundName = fundRowData.getFundName();
-			String riskGrade = fundRowData.getRiskRate();
+			// String riskGrade = fundRowData.getRiskRate();
+			Integer riskLevel = convertToRiskLevel(fundRowData.getRiskRate());
+
 			BigDecimal return1M = new BigDecimal(fundRowData.getRet1M());
 			BigDecimal return3M = new BigDecimal(fundRowData.getRet3M());
 			BigDecimal return6M = new BigDecimal(fundRowData.getRet6M());
@@ -149,7 +151,7 @@ public class FundDetailProcessor implements ItemProcessor<FundRowData, CompleteF
 				String performanceDisclosure = getOnlyText(getElementText(wait, "ProfitTypeCdNm"));
 				String managementCompany = getOnlyText(getElementText(wait, "ManageCompNm"));
 				BigDecimal minSubscriptionAmount = ceilToThousand(navPrice);
-				
+
 				BigDecimal managementFee = new BigDecimal(removeParentheses(getOnlyText(getElementText(wait, "ManageRewRate"))));
 				BigDecimal salesFee = new BigDecimal(removeParentheses(getOnlyText(getElementText(wait, "SaleRewRate"))));
 				BigDecimal trustFee = new BigDecimal(removeParentheses(getOnlyText(getElementText(wait, "TrustRewRate"))));
@@ -221,7 +223,8 @@ public class FundDetailProcessor implements ItemProcessor<FundRowData, CompleteF
 						.publicType(publicType)
 						.addUnitType(addUnitType)
 						.fundStatus(fundStatus)
-						.riskGrade(riskGrade)
+						.riskLevel(riskLevel)
+						// .riskGrade(riskGrade)
 						.performanceDisclosure(performanceDisclosure)
 						.managementCompany(managementCompany)
 						.minSubscriptionAmount(minSubscriptionAmount)
@@ -387,6 +390,49 @@ public class FundDetailProcessor implements ItemProcessor<FundRowData, CompleteF
 	        return false;
 	    }
 	}
+
+	// 숫자를 위험등급 문자열로 변환 (역변환용)
+	public Integer convertToRiskLevel(String riskGrade) {
+		if (riskGrade == null || riskGrade.trim().isEmpty()) {
+			return 4; // 기본값: 보통위험
+		}
+
+		String grade = riskGrade.trim();
+
+		// 1: 최고위험
+		if (grade.equals("매우높은위험(UH)")) {
+			return 1;
+		}
+
+
+		if (grade.equals("다소높은위험(UH)") || grade.equals("높은위험(UH)")) {
+			return 2;
+		}
+
+		// 3: 높은위험
+		if (grade.equals("높은위험(H)")) {
+			return 3;
+		}
+
+		// 4: 보통위험
+		if (grade.equals("보통위험(UH)")) {
+			return 4;
+		}
+
+		// 5: 낮은위험
+		if (grade.equals("낮은위험(H)")) {
+			return 5;
+		}
+
+		// 6: 매우낮은위험
+		if (grade.equals("낮은위험(UH)")) {
+			return 6;
+		}
+
+		// 매칭되지 않는 경우 기본값 반환
+		return 4; // 보통위험
+	}
+
 
 	// 탭 이동
 	private void moveToTab(WebDriverWait wait, String tabId) {

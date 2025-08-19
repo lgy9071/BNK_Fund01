@@ -18,7 +18,7 @@ public class CompareAiController {
     private CompareAiService compareAiService;
 
     @GetMapping("/compare")
-    public String fundCompare(@RequestParam("fundId") List<Long> fundId, @RequestParam("invert") Integer invert) {
+    public String fundCompare(@RequestParam("fundId") List<String> fundId, @RequestParam("invert") Integer invert) {
 
         String result = compareAiService.fundsCompare(fundId, invert);
         return result;

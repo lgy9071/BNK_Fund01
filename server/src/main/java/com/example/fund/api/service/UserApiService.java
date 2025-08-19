@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 
+import com.example.fund.api.dto.UserInfo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -232,5 +233,11 @@ public class UserApiService {
         public UnauthorizedException(String msg) {
             super(msg);
         }
+    }
+
+    // 유저 조회 → DTO
+    public UserInfo getUserInfo(Integer userId) {
+        User u = userRepository.findById(userId).orElseThrow();
+        return new UserInfo(u.getUserId(), u.getUsername(), u.getName(), u.getEmail());
     }
 }
