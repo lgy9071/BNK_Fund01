@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
 
-import com.example.fund.fund.entity.Fund;
 import com.example.fund.user.entity.User;
 
 import jakarta.persistence.Column;

@@ -3,8 +3,6 @@ package com.example.fund.account.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
-
 @Entity
 @Table(
     name = "branch",
@@ -23,7 +21,7 @@ import java.math.BigDecimal;
 @SequenceGenerator(
     name = "branch_seq_generator",
     sequenceName = "branch_seq",   // 오라클 시퀀스명
-    allocationSize = 1             // 갭 방지용 1 권장
+    allocationSize = 1             // 갭 방지 최소화
 )
 public class Branch {
 
@@ -41,11 +39,7 @@ public class Branch {
     @Column(name = "address", nullable = false, length = 255)
     private String address;
 
-    /** 위도 (NUMBER(9,6), NOT NULL) */
-    @Column(name = "lat", nullable = false, precision = 9, scale = 6)
-    private BigDecimal lat;
-
-    /** 경도 (NUMBER(9,6), NOT NULL) */
-    @Column(name = "lng", nullable = false, precision = 9, scale = 6)
-    private BigDecimal lng;
+    /** 전화번호 (VARCHAR2(20), NOT NULL) */
+    @Column(name = "tel", nullable = false, length = 20)
+    private String tel;
 }
