@@ -5,6 +5,7 @@ import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/models/question.dart';
+import 'package:mobile_front/screens/investprofile_test/loading_screen.dart';
 import 'package:mobile_front/widgets/question_card.dart';
 import 'package:mobile_front/widgets/show_custom_confirm_dialog.dart';
 import 'package:mobile_front/widgets/step_header.dart'; // 경로 확인
@@ -255,61 +256,30 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   }
 
   Future<void> _submit() async {
-    try {
-      final payload = await _buildPayloadWithDbIds();
-      final token = await storage.read(key: 'accessToken');
-      if (token == null) {
-        if (!mounted) return;
-        await showDialog(
-          context: context,
-          builder: (_) => const AlertDialog(
-            title: Text('로그인 필요'),
-            content: Text('로그인 후 다시 시도해 주세요.'),
-          ),
-        );
-        return;
-      }
-
-      final url = Uri.parse('${ApiConfig.baseUrl}/api/risk-test/submit');
-      final res = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(payload),
-      );
-
-      if (res.statusCode != 201) {
-        if (!mounted) return;
-        await showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('제출 실패'),
-            content: Text('서버 응답 코드: ${res.statusCode}\n잠시 후 다시 시도해 주세요.'),
-          ),
-        );
-        return;
-      }
-
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.investResult,
-        arguments: data,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      await showDialog(
-        context: context,
-        builder: (_) => const AlertDialog(
-          title: Text('제출 오류'),
-          content: Text('네트워크 또는 서버 오류가 발생했습니다. 다시 시도해 주세요.'),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LoadingScreen(
+          onLoad: () async {
+            final payload = await _buildPayloadWithDbIds();
+            final token = await storage.read(key: 'accessToken');
+            final url = Uri.parse('${ApiConfig.baseUrl}/api/risk-test/submit');
+            final res = await http.post(
+              url,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode(payload),
+            );
+            if (res.statusCode != 201) throw Exception("제출 실패");
+            return jsonDecode(res.body) as Map<String, dynamic>;
+          },
         ),
-      );
-    }
+      ),
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {

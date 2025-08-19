@@ -198,6 +198,7 @@ class _InvestResultScreenState extends State<InvestResultScreen> {
                       24 + 52 + 16, // 하단 버튼 높이만큼 여유
                     ),
                     children: [
+                      SizedBox(height: 25,),
                       // ===== 상단 타이틀: 이름 강조 =====
                       Center(
                         child: RichText(
@@ -207,12 +208,12 @@ class _InvestResultScreenState extends State<InvestResultScreen> {
                                 text: _displayName.isEmpty ? '' : _displayName,
                                 style: theme.textTheme.headlineSmall?.copyWith(
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 26,
+                                  fontSize: 30,
                                   color: AppColors.fontColor,
                                 ),
                               ),
                               TextSpan(
-                                text: _displayName.isEmpty ? '투자성향 결과' : ' 님의 투자성향',
+                                text: _displayName.isEmpty ? '투자성향 결과' : '  님의 투자성향',
                                 style: theme.textTheme.headlineSmall?.copyWith(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 24,
@@ -223,7 +224,7 @@ class _InvestResultScreenState extends State<InvestResultScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 30),
 
                       // ===== 투자유형 카드: 결과 유형 이름 + 설명 (+ 등급 칩) =====
                       _TypeCard(
@@ -232,48 +233,61 @@ class _InvestResultScreenState extends State<InvestResultScreen> {
                         grade: grade,
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 30),
 
-                      // ===== 게이지 =====
-                      Center(
+                      // // ===== 게이지 =====
+                      // Center(
+                      //   child: ScoreGauge(
+                      //     score: score,
+                      //     maxScore: widget.maxScore,
+                      //     color: AppColors.primaryBlue,
+                      //     size: gaugeSize,
+                      //   ),
+                      // ),
+
+
+                      // ===== 유형 버블 (강조) =====
+                      _TypeRailEmphasis(selectedIndex: selectedIdx),
+
+                      const SizedBox(height: 80),
+                      RepaintBoundary(
                         child: ScoreGauge(
                           score: score,
                           maxScore: widget.maxScore,
                           color: AppColors.primaryBlue,
                           size: gaugeSize,
+                          thickness: 24,
+                          gradientColors: const [Color(0xFF9DBEFF), Color(0xFF0064FF), Color(0xFF003FAD)],
+                          gradientStops: const [0.0, 0.6, 1.0],
                         ),
                       ),
 
-                      const SizedBox(height: 28),
 
-                      // ===== 유형 버블 (강조) =====
-                      _TypeRailEmphasis(selectedIndex: selectedIdx),
-
-                      const SizedBox(height: 24),
+                      //const SizedBox(height: 24),
 
                       // (선택) 디버그 JSON
-                      ExpansionTile(
-                        tilePadding: EdgeInsets.zero,
-                        childrenPadding: const EdgeInsets.only(bottom: 8),
-                        title: Text(
-                          '디버그 상세(JSON)',
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: SelectableText(
-                              const JsonEncoder.withIndent('  ').convert(_data),
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
+                      // ExpansionTile(
+                      //   tilePadding: EdgeInsets.zero,
+                      //   childrenPadding: const EdgeInsets.only(bottom: 8),
+                      //   title: Text(
+                      //     '디버그 상세(JSON)',
+                      //     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      //   ),
+                      //   children: [
+                      //     Container(
+                      //       width: double.infinity,
+                      //       padding: const EdgeInsets.all(12),
+                      //       decoration: BoxDecoration(
+                      //         color: theme.colorScheme.surfaceContainerHighest,
+                      //         borderRadius: BorderRadius.circular(8),
+                      //       ),
+                      //       child: SelectableText(
+                      //         const JsonEncoder.withIndent('  ').convert(_data),
+                      //         style: theme.textTheme.bodySmall,
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
                     ],
                   );
                 },

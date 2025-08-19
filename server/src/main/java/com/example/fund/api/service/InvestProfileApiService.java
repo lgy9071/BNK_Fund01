@@ -326,7 +326,7 @@ public class InvestProfileApiService {
                 r.getResultId(),
                 r.getTotalScore(),
                 r.getType().getTypeName(),
-                description, // profile은 간단히 typeName 재사용(필요시 description 요약)
+                description, // 유형별 설명
                 List.of(), // recommendations는 필요 시 채워넣기
                 r.getAnalysisDate().toString());
     }
