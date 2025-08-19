@@ -16,6 +16,8 @@ import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StopWatch;
 
 import lombok.RequiredArgsConstructor;
@@ -44,10 +46,9 @@ public class JobRunner implements ApplicationRunner {
 		runJob(trigger);
 	}
 
-	/**
-	 * 펀드 스크래핑 Job 실행
-	 */
-	public JobExecution runJob(String trigger) {
+	/** 펀드 스크래핑 Job 실행 */
+	@Transactional(isolation = Isolation.READ_COMMITTED)
+	public void runJob(String trigger) {
 		String runDate = LocalDate.now(ZoneId.of("Asia/Seoul")).toString();				// 예: 매일 실행이라면 오늘 날짜를 비즈니스 키로 사용
 
 		JobParameters params = new JobParametersBuilder().addString("runDate", runDate) // 비즈니스 키(재시작/중복제어에 유리)
@@ -63,13 +64,10 @@ public class JobRunner implements ApplicationRunner {
 		try {
 			JobExecution exec = jobLauncher.run(job, params);
 			log.info("JobRunner - 실행 종료");
-			return exec;
 		} catch (JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
 			log.error("JobRunner - 실행 실패: {}", e);
-			return null;
 		} catch (Exception e) {
 			log.error("JobRunner - 예상치 못한 예외로 Job 실행 실패: {}", e);
-			return null;
 		} finally {
             sw.stop();
             log.info("JobRunner - 배치 처리 소요시간: {} ms", sw.getTotalTimeMillis());

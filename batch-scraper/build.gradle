@@ -29,8 +29,14 @@ dependencies {
 	
 	// Spring jpa
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	
-    // Spring web
+
+	// Oracle JDBC + Wallet (전부 로컬 JAR 사용)
+	implementation files('libs/ojdbc11.jar')
+	implementation files('libs/oraclepki.jar')
+	implementation files('libs/osdt_core.jar')
+	implementation files('libs/osdt_cert.jar')
+
+	// Spring web
     implementation 'org.springframework.boot:spring-boot-starter-web'
     
     // Oracle Database Driver
