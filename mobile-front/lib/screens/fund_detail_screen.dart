@@ -327,7 +327,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
                   Card(
                     elevation: .8,
                     color: isDark ? const Color(0xFFEFF4FF) : Colors.white,
-                    surfaceTintColor: isDark ? const Color(0xFFEFF4FF) : Colors.white,
+                    surfaceTintColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
@@ -559,29 +559,31 @@ class _KeyFactsRow extends StatelessWidget {
                 )
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, // 제목은 왼쪽
+            child: Stack(
               children: [
-                const Text(
-                  '기준가 (전일대비)',
-                  style: TextStyle(fontSize: 15, color: Colors.black54),
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: const Text(
+                    '기준가 (전일대비)',
+                    style: TextStyle(fontSize: 15, color: Colors.black54),
+                  ),
                 ),
-                const Spacer(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end, // 수치는 오른쪽
-                  children: [
-                    Text(
-                      (isUp ? '▲' : '▼') +
-                          ' ${navChangeRate1d.toStringAsFixed(2)} ',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: isUp ? Colors.red : Colors.blue,
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        (isUp ? '▲' : '▼') +
+                            ' ${navChangeRate1d.toStringAsFixed(2)} ',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: isUp ? Colors.red : Colors.blue,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
+                      const SizedBox(width: 6),
+                      Text(
                         '${_won.format(navPrice)} 원',
                         style: const TextStyle(
                           fontSize: 20,
@@ -589,8 +591,8 @@ class _KeyFactsRow extends StatelessWidget {
                         ),
                         textAlign: TextAlign.right,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -616,22 +618,25 @@ class _KeyFactsRow extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                const Align(
-                  alignment: Alignment.topLeft,
+                Align(
+                  alignment: Alignment.topCenter,
                   child: Text(
                     '위험수준',
-                    style: TextStyle(fontSize: 15, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 Align(
-                  alignment: Alignment.centerRight,
+                  alignment: Alignment.bottomCenter,
                   child: Text(
                     '레벨 $level',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                     ),
-                    textAlign: TextAlign.right,
                   ),
                 ),
               ],
@@ -670,7 +675,7 @@ class _SimpleDcaCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFE9F1FF),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.black12),
         ),
@@ -1194,7 +1199,7 @@ class _ProcessCard extends StatelessWidget {
 
   Widget _chip(String t) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    decoration: BoxDecoration(color: const Color(0xFFE8F0FF), borderRadius: BorderRadius.circular(10)),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
     child: Text(t, style: const TextStyle(fontWeight: FontWeight.w700)),
   );
 
@@ -1202,7 +1207,7 @@ class _ProcessCard extends StatelessWidget {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: const Color(0xFFE9F1FF), borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

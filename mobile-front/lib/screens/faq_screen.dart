@@ -26,8 +26,10 @@ class _FaqScreenState extends State<FaqScreen> {
   bool _showAll = false; // 더보기 상태
   static const int _initialCount = 5;
 
+  String _query = '';
+
   final List<FaqItem> _items = [
-    // pinned 먼저(예시 2개)
+    // pinned
     FaqItem('펀드는 무엇인가요?',
         '여러 투자자의 자금을 모아 운용사가 다양한 자산에 투자하는 간접 투자상품입니다.',
         category: '기본', pinned: true),
@@ -35,7 +37,7 @@ class _FaqScreenState extends State<FaqScreen> {
         '앱의 “펀드 가입” 탭에서 비대면으로 가입 가능합니다.',
         category: '가입', pinned: true),
 
-    // 일반(총 10개 내외가 되도록 예시 추가)
+    // 일반
     FaqItem('투자 성향 분석은 필수인가요?', '네, 투자자 보호를 위해 의무 절차입니다.', category: '규정'),
     FaqItem('펀드 위험 확인 방법은?', '상품 상세의 위험수준 카드와 설명서를 참고하세요.', category: '위험'),
     FaqItem('수수료는 어떻게 부과되나요?', '매입/환매 수수료 및 각종 보수가 있습니다.', category: '수수료'),
@@ -55,24 +57,27 @@ class _FaqScreenState extends State<FaqScreen> {
 
   List<int> get _pinnedIndexes =>
       List.generate(_items.length, (i) => i).where((i) => _items[i].pinned).toList();
-
   List<int> get _normalIndexes =>
       List.generate(_items.length, (i) => i).where((i) => !_items[i].pinned).toList();
 
   bool _matchCategory(FaqItem item) =>
       _selected == '전체' ? true : (item.category == _selected);
+  bool _matchQuery(FaqItem item) {
+    if (_query.trim().isEmpty) return true;
+    final q = _query.toLowerCase();
+    return item.q.toLowerCase().contains(q) || item.a.toLowerCase().contains(q);
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    // 순서: pinned 먼저, 그 다음 일반. (헤더 없이)
+    // 순서: pinned 먼저 → 일반
     final ordered = [
-      ..._pinnedIndexes.where((i) => _matchCategory(_items[i])),
-      ..._normalIndexes.where((i) => _matchCategory(_items[i])),
+      ..._pinnedIndexes.where((i) => _matchCategory(_items[i]) && _matchQuery(_items[i])),
+      ..._normalIndexes.where((i) => _matchCategory(_items[i]) && _matchQuery(_items[i])),
     ];
 
-    // 보여줄 개수(더보기 이전엔 5개만)
     final totalCount = ordered.length;
     final visibleCount = _showAll ? totalCount : (totalCount < _initialCount ? totalCount : _initialCount);
     final hasMore = !_showAll && totalCount > visibleCount;
@@ -81,51 +86,64 @@ class _FaqScreenState extends State<FaqScreen> {
       appBar: AppBar(
         title: const Text('자주 묻는 질문'),
         centerTitle: true,
-        backgroundColor: Colors.white, // 상단(카테고리 영역 포함)은 흰색
+        backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: .5,
       ),
-      backgroundColor: Colors.white, // 전체 기본 흰색
+      backgroundColor: Colors.white,
       body: Column(
         children: [
-          // ── 카테고리(흰 배경 영역, 리스트 배경에 포함되지 않음) ──
+          // ── 검색 + 카테고리 ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _SearchField(
+                    hint: '질문, 키워드로 검색',
+                    onChanged: (v) => setState(() {
+                      _query = v;
+                      _showAll = true; // 검색 시는 전체 노출
+                    }),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _CountPill(count: totalCount),
+              ],
+            ),
+          ),
           _CategoryChips(
             categories: _categories,
             selected: _selected,
             onSelected: (v) {
               setState(() {
                 _selected = v;
-                _showAll = false; // 카테고리 바꿀 때는 다시 5개부터
+                _query = '';
+                _showAll = false;
               });
             },
           ),
 
-          // 카테고리와 질문 목록 사이 간격 + 구분선
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           Divider(height: 1, thickness: 1, color: cs.outlineVariant.withOpacity(.5)),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          // ── 질문 목록 영역(하단 배경색 적용: faqListBg) ──
+          // ── 질문 목록 영역 ──
           Expanded(
             child: Container(
               color: faqListBg,
               child: totalCount == 0
-                  ? const Center(child: Text('해당 카테고리의 질문이 없습니다.'))
+                  ? const Center(child: Text('해당 조건의 질문이 없습니다.'))
                   : ListView.builder(
-                padding: const EdgeInsets.only(bottom: 20),
-                itemCount: visibleCount + (hasMore ? 1 : 0), // 더보기 버튼 포함
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                itemCount: visibleCount + (hasMore ? 1 : 0),
                 itemBuilder: (_, i) {
-                  // 더보기 버튼
                   if (hasMore && i == visibleCount) {
-                    return _MoreButton(
-                      onTap: () => setState(() => _showAll = true),
-                    );
+                    return _MoreButton(onTap: () => setState(() => _showAll = true));
                   }
-
                   final idx = ordered[i];
                   final item = _items[idx];
                   final isOpen = _expanded.contains(idx);
-
                   return _FaqCard(
                     item: item,
                     isExpanded: isOpen,
@@ -149,7 +167,35 @@ class _FaqScreenState extends State<FaqScreen> {
   }
 }
 
-/* ───────── 카테고리 칩(선택=토스블루+화이트, 미선택=텍스트만) ───────── */
+/* ───────── 검색창 ───────── */
+
+class _SearchField extends StatelessWidget {
+  final String hint;
+  final ValueChanged<String> onChanged;
+  const _SearchField({required this.hint, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: hint,
+        isDense: true,
+        prefixIcon: const Icon(Icons.search),
+        filled: true,
+        fillColor: const Color(0xFFF2F4F8),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+}
+
+/* ───────── 카테고리 칩 ───────── */
 
 class _CategoryChips extends StatelessWidget {
   final List<String> categories;
@@ -164,9 +210,9 @@ class _CategoryChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 48,
+      height: 44,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -174,19 +220,28 @@ class _CategoryChips extends StatelessWidget {
           final label = categories[i];
           final isSel = label == selected;
           return InkWell(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(999),
             onTap: () => onSelected(label),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: isSel ? tossBlue : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
+                color: isSel ? tossBlue : Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: isSel ? tossBlue : Colors.black12),
+                boxShadow: [
+                  if (isSel)
+                    const BoxShadow(
+                      color: Color(0x1A000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    )
+                ],
               ),
               child: Text(
                 label,
                 style: TextStyle(
-                  fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                  color: isSel ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.w800,
+                  color: isSel ? Colors.white : Colors.black87,
                 ),
               ),
             ),
@@ -197,7 +252,7 @@ class _CategoryChips extends StatelessWidget {
   }
 }
 
-/* ───────── 질문 카드(투명 배경) ───────── */
+/* ───────── 질문 카드 ───────── */
 
 class _FaqCard extends StatelessWidget {
   final FaqItem item;
@@ -213,62 +268,111 @@ class _FaqCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        backgroundColor: Colors.transparent,        // 카드 배경 투명
-        collapsedBackgroundColor: Colors.transparent,
-        initiallyExpanded: isExpanded,
-        onExpansionChanged: onToggle,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.black12),
+          boxShadow: const [
+            BoxShadow(color: Color(0x12000000), blurRadius: 8, offset: Offset(0, 3)),
+          ],
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            backgroundColor: Colors.white,
+            collapsedBackgroundColor: Colors.white,
+            initiallyExpanded: isExpanded,
+            onExpansionChanged: onToggle,
+            tilePadding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
 
-        title: Row(
-          children: [
-            if (item.pinned) ...[
-              const Icon(Icons.push_pin, size: 16),
-              const SizedBox(width: 6),
-            ],
-            Expanded(
-              child: Text(
-                item.q,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
+            title: Row(
+              children: [
+                if (item.pinned)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF5FF),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0xFFCCE0FF)),
+                    ),
+                    child: const Text('고정', style: TextStyle(color: tossBlue, fontSize: 11, fontWeight: FontWeight.w800)),
+                  ),
+                Expanded(
+                  child: Text(
+                    item.q,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      height: 1.25,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              ],
+            ),
+
+            trailing: Icon(isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded),
+
+            children: [
+              const Divider(height: 1),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  item.a,
+                  textAlign: TextAlign.start,
+                  style: TextStyle(color: cs.onSurface, height: 1.5, fontSize: 14.5),
+                ),
               ),
-            ),
-          ],
-        ),
-
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              tooltip: '복사',
-              icon: const Icon(Icons.copy, size: 18),
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: '${item.q}\n\n${item.a}'));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('복사되었습니다.')),
-                  );
-                }
-              },
-            ),
-            Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
-          ],
-        ),
-
-        children: [
-          Text(
-            item.a,
-            style: TextStyle(color: cs.onSurfaceVariant, height: 1.4),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: '${item.q}\n\n${item.a}'));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('복사되었습니다.')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.copy, size: 18),
+                    label: const Text('복사'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: tossBlue,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
+    );
+  }
+}
+
+/* ───────── 수량 표시 ───────── */
+
+class _CountPill extends StatelessWidget {
+  final int count;
+  const _CountPill({required this.count});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F4F8),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text('$count개', style: const TextStyle(fontWeight: FontWeight.w800)),
     );
   }
 }
@@ -281,15 +385,16 @@ class _MoreButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
       child: SizedBox(
         height: 44,
-        child: OutlinedButton(
+        child: FilledButton(
           onPressed: onTap,
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: Colors.black.withOpacity(.2)),
+          style: FilledButton.styleFrom(
+            backgroundColor: tossBlue,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          child: const Text('더보기'),
+          child: const Text('더보기', style: TextStyle(fontWeight: FontWeight.w700)),
         ),
       ),
     );
