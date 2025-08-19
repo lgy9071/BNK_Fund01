@@ -3,16 +3,14 @@ package com.example.fund.auth.service;
 import com.example.fund.ai.service.CompareAiService;
 import com.example.fund.auth.dto.JoinRequest;
 import com.example.fund.auth.dto.UserUpdateRequest;
-import com.example.fund.fund.entity.InvestProfileResult;
-import com.example.fund.fund.repository.InvestProfileResultRepository;
+import com.example.fund.fund.entity_fund_etc.InvestProfileResult;
+import com.example.fund.fund.repository_fund_etc.InvestProfileResultRepository;
 import com.example.fund.qna.repository.QnaRepository;
 import com.example.fund.user.entity.User;
 import com.example.fund.user.repository.UserRepository;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
-import java.util.Optional;
 
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.stereotype.Service;

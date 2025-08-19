@@ -10,4 +10,5 @@ public class UserInfo {
     private String username;
     private String name;
     private String email;
+    private String typename;
 }

@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_front/core/constants/api.dart';
-import 'package:mobile_front/dev_jiyong/main_home.dart';
+// import 'package:mobile_front/dev_jiyong/main_home.dart';
 import 'package:mobile_front/utils/exit_guard.dart';
 import 'package:mobile_front/widgets/dismiss_keyboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:mobile_front/screens/main_scaffold.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/screens/signup/signup_screen.dart';
-import 'package:mobile_front/utils/exit_popup.dart';
-import 'package:mobile_front/main.dart'; // navigatorKey, sessionManager, ApiConfig
+import 'package:mobile_front/main.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -93,9 +93,26 @@ class _LoginScreenState extends State<LoginScreen> {
         sessionManager.start();
 
         if (!mounted) return;
+
+        //아래 코드로 수정
+        // Navigator.of(context).pushAndRemoveUntil(
+        //   MaterialPageRoute(builder: (_) => const MainScaffold()),
+        //       (route) => false,
+        // );
+
+        //디버그
+        debugPrint('[LOGIN] access len=${
+            access?.length}, preview=${
+            access?.substring(0, 12)}');
+
+
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainScaffold()),
-              (route) => false,
+          MaterialPageRoute(
+            builder: (_) => MainScaffold(
+              initialAccessToken: cleanToken(access), // 생성자 주입
+            ),
+          ),
+              (_) => false,
         );
 
       } else if (res.statusCode == 401) {

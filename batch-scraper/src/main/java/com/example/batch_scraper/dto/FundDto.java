@@ -32,7 +32,8 @@ public class FundDto {
     private String publicType;
     private String addUnitType;
     private String fundStatus;
-    private String riskGrade;
+    // private String riskGrade;
+    private Integer riskLevel;
     private String performanceDisclosure;
     private String managementCompany;
     private BigDecimal minSubscriptionAmount;

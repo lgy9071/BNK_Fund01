@@ -8,9 +8,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.example.fund.fund.entity.FundStatus;
+import com.example.fund.fund.entity_fund_etc.FundStatus;
 import com.example.fund.fund.service.FundStatusService;
-import com.example.fund.user.entity.User;
 
 import jakarta.servlet.http.HttpSession;
 

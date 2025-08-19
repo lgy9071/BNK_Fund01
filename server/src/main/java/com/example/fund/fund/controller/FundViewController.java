@@ -1,7 +1,7 @@
 package com.example.fund.fund.controller;
 
-import com.example.fund.fund.entity.InvestProfileResult;
-import com.example.fund.fund.repository.InvestProfileResultRepository;
+import com.example.fund.fund.entity_fund_etc.InvestProfileResult;
+import com.example.fund.fund.repository_fund_etc.InvestProfileResultRepository;
 import com.example.fund.fund.service.FundService;
 import com.example.fund.user.entity.User;
 import jakarta.servlet.http.HttpSession;
@@ -127,7 +127,7 @@ public class FundViewController {
 
     @GetMapping("/{fundId}")  // 상세 페이지
     public String detailPage(
-            @PathVariable Long fundId,
+            @PathVariable String fundId,
             HttpSession session,
             Model model
     ) {

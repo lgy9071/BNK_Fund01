@@ -26,7 +26,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class FundAssetSummary {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "fund_asset_summary_id")
@@ -50,5 +49,4 @@ public class FundAssetSummary {
 
     @Column(name = "etc_ratio", precision = 5, scale = 2)
     private BigDecimal etcRatio;
-
 }

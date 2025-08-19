@@ -126,9 +126,10 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('투자성향 결과'),
+        centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: base,
-        elevation: 0.5,
+        elevation: 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -604,7 +605,7 @@ class _EmptyDataCard extends StatelessWidget {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.fontColor)),
           const SizedBox(height: 8),
           Text(
-            '분석을 먼저 진행해주세요. 분석 완료 후 개인별 결과(그래프/정보)가 표시됩니다.\n'
+            '분석을 먼저 진행해주세요. 분석 완료 후 개인별 결과\n(그래프/정보)가 표시됩니다.\n'
                 '아래의 “투자위험지도/투자유형안내”는 가이드로 언제든 확인할 수 있습니다.',
             style: TextStyle(color: AppColors.fontColor.withOpacity(.85)),
           ),
@@ -615,6 +616,9 @@ class _EmptyDataCard extends StatelessWidget {
               onPressed: onStart,
               icon: const Icon(Icons.play_arrow, size: 18),
               label: const Text('분석 시작'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,   // ✅ 배경색
+              ),
             ),
           ),
         ],

@@ -1,10 +1,8 @@
 // src/main/java/com/example/fund/auth/controller/MypageController.java
 package com.example.fund.auth.controller;
 
-import com.example.fund.ai.service.CompareAiService;
 import com.example.fund.auth.dto.UserUpdateRequest;
 import com.example.fund.auth.service.UserService;
-import com.example.fund.fund.repository.InvestProfileResultRepository;
 import com.example.fund.qna.service.QnaService;
 import com.example.fund.user.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
