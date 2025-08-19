@@ -25,6 +25,7 @@ public class FavoriteController {
     }
 
     /* ♥ 토글 AJAX */
+    /*
     @PostMapping("/{fundId}/toggle")
     @ResponseBody
     public String toggle(@PathVariable int fundId, HttpSession session) {
@@ -32,4 +33,5 @@ public class FavoriteController {
         favoriteService.toggle(loginUser.getUserId(), fundId);
         return "ok";
     }
+    */
 }

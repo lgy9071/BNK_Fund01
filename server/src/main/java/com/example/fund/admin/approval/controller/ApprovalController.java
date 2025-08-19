@@ -1,25 +1,18 @@
 package com.example.fund.admin.approval.controller;
 
-import java.util.List;
-
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
 import com.example.fund.admin.approval.entity.Approval;
 import com.example.fund.admin.approval.entity.ApprovalLog;
 import com.example.fund.admin.approval.service.ApprovalLogService;
 import com.example.fund.admin.approval.service.ApprovalService;
 import com.example.fund.admin.dto.AdminDTO;
-import com.example.fund.fund.service.FundService;
-
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.List;
 
 @Controller
 @RequestMapping("/admin/approval")
@@ -43,15 +36,15 @@ public class ApprovalController {
         }
 
         //커튼
-        var pending  = approvalService.getApprovalsByStatus("결재대기", pendingPage);
-        var waiting  = approvalService.getApprovalsByStatus("배포대기", readyPage);
-        var rejected = approvalService.getApprovalsByStatus("반려",     rejectedPage);
-        model.addAttribute("pendingPage",  pending);
-        model.addAttribute("readyPage",    waiting);
+        var pending = approvalService.getApprovalsByStatus("결재대기", pendingPage);
+        var waiting = approvalService.getApprovalsByStatus("배포대기", readyPage);
+        var rejected = approvalService.getApprovalsByStatus("반려", rejectedPage);
+        model.addAttribute("pendingPage", pending);
+        model.addAttribute("readyPage", waiting);
         model.addAttribute("rejectedPage", rejected);
         /* 추가 – 요약바에 쓸 건수 */
-        model.addAttribute("pendingTotal",  pending.getTotalElements());
-        model.addAttribute("waitingTotal",  waiting.getTotalElements());
+        model.addAttribute("pendingTotal", pending.getTotalElements());
+        model.addAttribute("waitingTotal", waiting.getTotalElements());
         model.addAttribute("rejectedTotal", rejected.getTotalElements());
 
         // 로그인 관리자 역할
@@ -63,7 +56,7 @@ public class ApprovalController {
     // 승인 사유란 기입 + 간단한 예외 처리
     @PostMapping("/approve/{id}")
     public String approve(@PathVariable Integer id,
-                          @RequestParam(required=false) String reason,
+                          @RequestParam(required = false) String reason,
                           HttpSession session,
                           RedirectAttributes redirect) {
 
@@ -137,7 +130,7 @@ public class ApprovalController {
 
             Approval approval = approvalService.findById(id);
             if (approval != null && approval.getFund() != null) {
-                Long fundId = approval.getFund().getFundId();
+                String fundId = approval.getFund().getFundId();
                 return "redirect:/admin/fund/view/" + fundId;
             }
         } catch (SecurityException e) {
@@ -161,22 +154,22 @@ public class ApprovalController {
 
         String adminname = admin.getAdminname();
 
-        var pending  = approvalService.getApprovalsByStatus(adminname,"결재대기", pendingPage);
-        var waiting  = approvalService.getApprovalsByStatus(adminname,"배포대기", waitingPage);
-        var rejected = approvalService.getApprovalsByStatus(adminname,"반려",     rejectedPage);
-        var published= approvalService.getApprovalsByStatus(adminname,"배포",     publishedPage);
+        var pending = approvalService.getApprovalsByStatus(adminname, "결재대기", pendingPage);
+        var waiting = approvalService.getApprovalsByStatus(adminname, "배포대기", waitingPage);
+        var rejected = approvalService.getApprovalsByStatus(adminname, "반려", rejectedPage);
+        var published = approvalService.getApprovalsByStatus(adminname, "배포", publishedPage);
 
-        model.addAttribute("pendingPage",  pending);
-        model.addAttribute("waitingPage",  waiting);
+        model.addAttribute("pendingPage", pending);
+        model.addAttribute("waitingPage", waiting);
         model.addAttribute("rejectedPage", rejected);
-        model.addAttribute("publishedPage",published);
+        model.addAttribute("publishedPage", published);
         model.addAttribute("adminRole", admin.getRole());
 
         /* ★ 요약바 숫자 */
-        model.addAttribute("pendingTotal",  pending.getTotalElements());
-        model.addAttribute("waitingTotal",  waiting.getTotalElements());
+        model.addAttribute("pendingTotal", pending.getTotalElements());
+        model.addAttribute("waitingTotal", waiting.getTotalElements());
         model.addAttribute("rejectedTotal", rejected.getTotalElements());
-        model.addAttribute("publishedTotal",published.getTotalElements());
+        model.addAttribute("publishedTotal", published.getTotalElements());
 
         return "admin/approval/list";
     }
@@ -184,7 +177,7 @@ public class ApprovalController {
     @GetMapping("/form")
     public String showForm(@RequestParam(value = "fundId", required = false) Long fundId, HttpSession session, Model model) {
         AdminDTO admin = (AdminDTO) session.getAttribute("admin");
-        if (admin == null || !"planner".equals(admin.getRole())){
+        if (admin == null || !"planner".equals(admin.getRole())) {
             return "redirect:/admin/";
         }
 
@@ -195,7 +188,7 @@ public class ApprovalController {
     @PostMapping("/register")
     public String register(@RequestParam("title") String title,
                            @RequestParam("content") String content,
-                           @RequestParam(value = "fundId", required = false) Long fundId,
+                           @RequestParam(value = "fundId", required = false) String fundId,
                            HttpSession session,
                            RedirectAttributes redirect) {
 

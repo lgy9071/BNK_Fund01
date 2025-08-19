@@ -12,16 +12,16 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.example.fund.fund.entity.InvestProfileHistory;
-import com.example.fund.fund.entity.InvestProfileOption;
-import com.example.fund.fund.entity.InvestProfileQuestion;
-import com.example.fund.fund.entity.InvestProfileResult;
-import com.example.fund.fund.entity.InvestProfileType;
-import com.example.fund.fund.repository.InvestProfileHistoryRepository;
-import com.example.fund.fund.repository.InvestProfileOptionRepository;
-import com.example.fund.fund.repository.InvestProfileQuestionRepository;
-import com.example.fund.fund.repository.InvestProfileResultRepository;
-import com.example.fund.fund.repository.InvestProfileTypeRepository;
+import com.example.fund.fund.entity_fund_etc.InvestProfileHistory;
+import com.example.fund.fund.entity_fund_etc.InvestProfileOption;
+import com.example.fund.fund.entity_fund_etc.InvestProfileQuestion;
+import com.example.fund.fund.entity_fund_etc.InvestProfileResult;
+import com.example.fund.fund.entity_fund_etc.InvestProfileType;
+import com.example.fund.fund.repository_fund_etc.InvestProfileHistoryRepository;
+import com.example.fund.fund.repository_fund_etc.InvestProfileOptionRepository;
+import com.example.fund.fund.repository_fund_etc.InvestProfileQuestionRepository;
+import com.example.fund.fund.repository_fund_etc.InvestProfileResultRepository;
+import com.example.fund.fund.repository_fund_etc.InvestProfileTypeRepository;
 import com.example.fund.user.entity.User;
 import com.example.fund.user.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
