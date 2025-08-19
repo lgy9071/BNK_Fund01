@@ -59,7 +59,8 @@ Future<bool?> showAppConfirmDialog({
             Row(
               children: [
                 if (showCancel) ...[
-                  Expanded(
+                  Flexible(
+                    flex: 3,
                     child: TextButton(
                       onPressed: () {
                         Navigator.of(ctx, rootNavigator: true).pop(false);
@@ -84,7 +85,8 @@ Future<bool?> showAppConfirmDialog({
                 ],
 
                 // 확인 버튼
-                Expanded(
+                Flexible(
+                  flex: 7,
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(ctx, rootNavigator: true).pop(true);

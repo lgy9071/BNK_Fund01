@@ -2,6 +2,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mobile_front/core/routes/routes.dart';
+import 'package:mobile_front/utils/exit_guard.dart';
+import 'package:mobile_front/widgets/show_custom_confirm_dialog.dart';
 
 import '../core/constants/colors.dart';
 import '../models/fund.dart';
@@ -26,6 +29,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   int _index = 0;
   String? _initialAccessToken; // 라우트로 받은 토큰 저장
   late List<Widget> _pages;
+  String? _investTypeName; // 투자성향 이름 저장
 
   final _myFunds = <Fund>[
     Fund(id: 1, name: '한국성장주식 A', rate: 3.2, balance: 5_500_000),
@@ -54,7 +58,33 @@ class _MainScaffoldState extends State<MainScaffold> {
     super.initState();
     _initialAccessToken = widget.initialAccessToken; // ⬅ 생성자 값으로 세팅
     _buildPages(); // 초기(토큰 null일 수 있음) 1회 구성  > 바로 페이지 구성
+    _loadUserInfo(); // ✅ 유저 정보 불러오기
   }
+
+  Future<void> _loadUserInfo() async {
+    String? token = _initialAccessToken;
+
+    if (token == null || token.isEmpty) {
+      const storage = FlutterSecureStorage();
+      token = await storage.read(key: 'accessToken');
+    }
+
+    if (token == null || token.isEmpty) return;
+
+    try {
+      final svc = UserService();
+      final me = await svc.getMe(token);
+      setState(() {
+        _investTypeName = me.typename.isNotEmpty ? me.typename : null;
+        _initialAccessToken = token;
+        _buildPages(); // 🔥 HomeScreen을 새로운 데이터로 다시 구성
+      });
+    } catch (e) {
+      debugPrint("MainScaffold.getMe failed: $e");
+    }
+  }
+
+
 
   Future<void> _openFullMenu() async {
     // 1) 라우트 인자로 받은 토큰 우선 사용
@@ -145,20 +175,61 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
+  // @override
+  // Widget build(BuildContext context) {
+  //   return ExitGuard(
+  //     child: Scaffold(
+  //       body: IndexedStack(index: _index, children: _pages),
+  //       backgroundColor: Colors.white,
+  //       bottomNavigationBar: CustomNavBar(
+  //         currentIndex: _index,
+  //         onTap: (i) {
+  //           if (i == 3) {
+  //             _openFullMenu();
+  //             return;
+  //           }
+  //           setState(() => _index = i);
+  //         },
+  //       ),
+  //     ),
+  //   );
+  // }
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: CircleNavBar(
-        currentIndex: _index,
-        onTap: (i) {
-          if (i == 3) {
-            _openFullMenu();
-            return;
-          }
-          setState(() => _index = i);
-        },
+    return ExitGuard(
+      child: Scaffold(
+        body: IndexedStack(index: _index, children: _pages),
+        backgroundColor: Colors.white,
+        bottomNavigationBar: CustomNavBar(
+          currentIndex: _index,
+          onTap: (i) async {
+            if (i == 3) {
+              _openFullMenu();
+              return;
+            }
+
+            if (i == 2) { // 👉 펀드 가입 탭
+              if (_investTypeName == null || _investTypeName!.isEmpty) {
+                final result = await showAppConfirmDialog(
+                  context: context,
+                  title: "안내",
+                  message: "펀드 가입을 위해서는 투자성향 \n분석이 필요합니다 진행하시겠습니까?",
+                  confirmText: "분석진행",
+                  cancelText: "취소",
+                  confirmColor: AppColors.primaryBlue,
+                  onConfirm: () {
+                    Navigator.pushNamed(context, AppRoutes.investType);
+                  },
+                );
+                return; // 🚫 펀드 가입 탭 화면 이동 막음
+              }
+            }
+
+            setState(() => _index = i); // 정상 이동
+          },
+        ),
       ),
     );
   }
+
 }

@@ -113,7 +113,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     return ExitGuard(
       child: Scaffold(
         body: IndexedStack(index: _index, children: _pages),
-        bottomNavigationBar: CircleNavBar(
+        bottomNavigationBar: CustomNavBar(
           currentIndex: _index,
           onTap: (i) {
             if (i == 3) { _openFullMenu(); return; }
