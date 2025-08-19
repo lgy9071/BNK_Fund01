@@ -18,7 +18,8 @@ import com.example.fund.api.entity.RefreshTokenEntity;
 import com.example.fund.api.repository.RefreshTokenRepository;
 import com.example.fund.common.JwtUtil;
 import com.example.fund.common.OpaqueTokenUtil;
-import com.example.fund.fund.entity.InvestProfileResult;
+import com.example.fund.fund.entity_fund_etc.InvestProfileResult;
+import com.example.fund.fund.repository_fund_etc.InvestProfileResultRepository;
 import com.example.fund.fund.service.InvestProfileService;
 import com.example.fund.user.entity.User;
 import com.example.fund.user.repository.UserRepository;
@@ -35,6 +36,7 @@ public class UserApiService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final InvestProfileService investProfileService;
+    private final InvestProfileResultRepository resultRepository;
 
     // ✅ 토큰 관련 의존성 추가
     private final JwtUtil jwtUtil; // Access JWT
@@ -238,6 +240,9 @@ public class UserApiService {
     // 유저 조회 → DTO
     public UserInfo getUserInfo(Integer userId) {
         User u = userRepository.findById(userId).orElseThrow();
-        return new UserInfo(u.getUserId(), u.getUsername(), u.getName(), u.getEmail());
+        Optional<InvestProfileResult> opt = resultRepository.findTopByUserOrderByAnalysisDateDesc(u);
+        InvestProfileResult r = opt.get();
+        String typename = r.getType().getTypeName();
+        return new UserInfo(u.getUserId(), u.getUsername(), u.getName(), u.getEmail(), typename);
     }
 }
