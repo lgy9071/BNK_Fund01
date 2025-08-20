@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/core/routes/routes.dart';
+import 'package:mobile_front/dev_jiyong/main_home.dart';
 import 'package:mobile_front/widgets/step_header.dart';
 import 'package:mobile_front/widgets/score_gauge.dart';
 
@@ -235,16 +236,6 @@ class _InvestResultScreenState extends State<InvestResultScreen> {
 
                       const SizedBox(height: 30),
 
-                      // // ===== 게이지 =====
-                      // Center(
-                      //   child: ScoreGauge(
-                      //     score: score,
-                      //     maxScore: widget.maxScore,
-                      //     color: AppColors.primaryBlue,
-                      //     size: gaugeSize,
-                      //   ),
-                      // ),
-
 
                       // ===== 유형 버블 (강조) =====
                       _TypeRailEmphasis(selectedIndex: selectedIdx),
@@ -261,33 +252,6 @@ class _InvestResultScreenState extends State<InvestResultScreen> {
                           gradientStops: const [0.0, 0.6, 1.0],
                         ),
                       ),
-
-
-                      //const SizedBox(height: 24),
-
-                      // (선택) 디버그 JSON
-                      // ExpansionTile(
-                      //   tilePadding: EdgeInsets.zero,
-                      //   childrenPadding: const EdgeInsets.only(bottom: 8),
-                      //   title: Text(
-                      //     '디버그 상세(JSON)',
-                      //     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                      //   ),
-                      //   children: [
-                      //     Container(
-                      //       width: double.infinity,
-                      //       padding: const EdgeInsets.all(12),
-                      //       decoration: BoxDecoration(
-                      //         color: theme.colorScheme.surfaceContainerHighest,
-                      //         borderRadius: BorderRadius.circular(8),
-                      //       ),
-                      //       child: SelectableText(
-                      //         const JsonEncoder.withIndent('  ').convert(_data),
-                      //         style: theme.textTheme.bodySmall,
-                      //       ),
-                      //     ),
-                      //   ],
-                      // ),
                     ],
                   );
                 },
@@ -303,9 +267,9 @@ class _InvestResultScreenState extends State<InvestResultScreen> {
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () {
-                      Navigator.pushNamedAndRemoveUntil(
+                      Navigator.pushAndRemoveUntil(
                         context,
-                        AppRoutes.home,
+                        MaterialPageRoute(builder: (_) => const MainScaffold()),
                             (_) => false,
                       );
                     },

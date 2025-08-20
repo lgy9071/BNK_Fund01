@@ -3,12 +3,14 @@ class UserProfile {
   final String username;
   final String name;
   final String email;
+  final String typename;
 
   UserProfile({
     required this.userId,
     required this.username,
     required this.name,
     required this.email,
+    required this.typename,
   });
 
   static int _asInt(dynamic v) {
@@ -22,5 +24,6 @@ class UserProfile {
     username: (j['username'] ?? j['loginId'] ?? '').toString(),
     name: (j['name'] ?? j['nickname'] ?? j['fullName'] ?? '').toString(),
     email: (j['email'] ?? '').toString(),
+    typename: (j['typename'] ?? '').toString(),
   );
 }

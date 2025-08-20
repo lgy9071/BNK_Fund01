@@ -125,7 +125,7 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('투자성향 결과'),
+        title: const Text('투자성향분석'),
         centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: base,
