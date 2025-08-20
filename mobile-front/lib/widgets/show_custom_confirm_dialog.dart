@@ -48,7 +48,7 @@ Future<bool?> showAppConfirmDialog({
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 height: 1.4,
                 color: Color(0xFF6B7280),
               ),

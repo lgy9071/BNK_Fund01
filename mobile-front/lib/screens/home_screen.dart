@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -234,40 +235,56 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                     }
                   },
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                   child: Container(
                     height: (investTypeName != null && investTypeName.isNotEmpty) ? 72.h : 180.h,
-                    padding: EdgeInsets.symmetric(horizontal: 14),
+                    padding: EdgeInsets.symmetric(horizontal: 14.w),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       border: Border.all(color: tossBlue.withOpacity(0.16), width: 1.w),
                     ),
                     child: Row(
                       children: [
                         if (investTypeName != null && investTypeName.isNotEmpty) ...[
-                          // ✅ 투자성향 결과가 있을 때
-                          Text(
-                            '$displayName 님의 투자성향',
-                            style: TextStyle(fontSize: 15.sp, color: baseText),
+                          // ✅ 좌측 라벨: 한 줄 + 말줄임
+                          Expanded(
+                            child: AutoSizeText(
+                              '$displayName 님의 투자성향',
+                              maxLines: 1,
+                              minFontSize: 10,
+                              stepGranularity: 0.5,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 15.sp, color: baseText),
+                            ),
                           ),
-                          const Spacer(),
-                          // 🔹 [투자성향 결과 + 화살표]
+                          SizedBox(width: 8.w),
+
+                          // 🔹 우측 결과(텍스트 + 화살표): 폭 제한 + 한 줄 유지(자동 축소)
                           InkWell(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                             onTap: () async {
                               if (widget.onStartInvestFlow != null) {
                                 await widget.onStartInvestFlow!(); // ✅ 결과 화면/재검사 진입 포함
                               }
                             },
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  investTypeName!,
-                                  style: TextStyle(
-                                    fontSize: 20.sp,
-                                    fontWeight: FontWeight.w800,
-                                    color: baseText,
+                                // 결과 텍스트: 너무 길면 자동 축소해서 1줄 유지
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(maxWidth: 160.w),
+                                  child: AutoSizeText(
+                                    investTypeName!,
+                                    maxLines: 1,
+                                    minFontSize: 10,
+                                    stepGranularity: 0.5,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 20.sp,
+                                      fontWeight: FontWeight.w800,
+                                      color: baseText,
+                                    ),
                                   ),
                                 ),
                                 SizedBox(width: 8.w),
@@ -283,9 +300,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 SizedBox(height: 5.h),
-                                // 🔹 유저 이름
-                                RichText(
-                                  text: TextSpan(
+
+                                // 🔹 유저 이름 + 환영 문구: 한 줄 고정(자동 축소)
+                                // RichText 대신 AutoSizeText.rich로 1줄 강제
+                                AutoSizeText.rich(
+                                  TextSpan(
                                     children: [
                                       TextSpan(
                                         text: displayName,
@@ -305,20 +324,36 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ],
                                   ),
-                                ),
-                                SizedBox(height: 10.h),
-                                // 🔹 안내 문구
-                                Text(
-                                  '투자성향분석을 진행하고 펀드 가입을 시작해보세요!',
-                                  style: TextStyle(
-                                    fontSize: 16.sp,
-                                    color: baseText.withOpacity(0.7),
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  maxLines: 1,
+                                  minFontSize: 12,
+                                  stepGranularity: 0.5,
+                                  overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
                                 ),
+
+                                SizedBox(height: 10.h),
+
+                                // 🔹 안내 문구: 반드시 한 줄 + 자동 축소
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: AutoSizeText(
+                                    '투자성향분석을 진행하고 펀드 가입을 시작해보세요!',
+                                    maxLines: 1,
+                                    minFontSize: 11,
+                                    stepGranularity: 0.5,
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 16.sp,
+                                      color: baseText.withOpacity(0.7),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+
                                 SizedBox(height: 16.h),
-                                // 🔹 맨 아래 버튼
+
+                                // 🔹 맨 아래 버튼: 텍스트 한 줄 강제(FittedBox로 축소)
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton(
@@ -335,9 +370,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                         borderRadius: BorderRadius.circular(10.r),
                                       ),
                                     ),
-                                    child: Text(
-                                      '투자성향 분석하기',
-                                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        '투자성향 분석하기',
+                                        maxLines: 1,
+                                        softWrap: false,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -349,6 +390,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+
 
 
 
