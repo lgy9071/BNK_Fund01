@@ -7,6 +7,8 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -37,9 +39,10 @@ public class DepositTransaction {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
     private DepositAccount account; // 계좌 ID (FK)
-
+    
+    @Enumerated(EnumType.STRING)
     @Column(name = "tx_type", length = 12, nullable = false)
-    private String txType; // 거래유형 (입금/출금)
+    private TxType txType; // 거래유형 (입금/출금)
 
     @Column(name = "amount", precision = 18, scale = 2, nullable = false)
     private BigDecimal amount; // 거래 금액
@@ -53,4 +56,9 @@ public class DepositTransaction {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt; // 생성 시각
+    
+    public enum TxType {
+        DEPOSIT,   // 입금
+        WITHDRAW   // 출금
+    }
 }

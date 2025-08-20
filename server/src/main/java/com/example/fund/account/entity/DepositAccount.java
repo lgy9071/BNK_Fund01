@@ -48,7 +48,8 @@ public class DepositAccount {
 	
 	@Column(name="pin_hash")
 	private Integer pinHash;
-	  
+	
+    @Column(name = "balance", precision = 18, scale = 0, nullable = false)
 	private BigDecimal balance; // 현재 잔액
 	
     @CreationTimestamp // entity 처음 생성 시 시간 자동 등록
