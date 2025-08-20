@@ -22,11 +22,11 @@ class AppRoutes {
   static const String qnaList = '/qna/list';
   static const String faq = '/faq';
   static const String guide = '/guide';
-  static const String investType = '/invest-type';
+  static const String investType = '/invest-type';      // 도입부(결과/재분석 시작)
   static const String fundMbti = '/fund-mbti';
-  static const String questionnaire = '/questionnaire';
-  static const String investTest = '/invest-test';
-  static const String investResult = '/invest-result';
+  static const String questionnaire = '/questionnaire'; // 설문 화면
+  static const String investTest = '/invest-test';      // 동의 -> 설문 진입
+  static const String investResult = '/invest-result';  // 결과 화면
 }
 
 class AppRouter {
@@ -53,40 +53,52 @@ class AppRouter {
       case AppRoutes.guide:
         return _page(const FundGuideScreen());
 
-    // 투자성향 결과: Loader를 통해 최신 결과 호출
+    // ✅ 도입부(최신 결과 로더). 완료 시 pop(true) 전파해야 하므로 bool?로 반환
       case AppRoutes.investType: {
-        final uid = (s.arguments as int?) ?? 1; // 전달 없으면 임시 1
-        return _page(InvestTypeResultLoader(
-          userId: uid,
-          service: InvestResultService(baseUrl: ApiConfig.baseUrl),
-          lastRetestAt: null,
-        ));
+        final uid = (s.arguments as int?) ?? 1;
+        return _page<bool?>(
+          InvestTypeResultLoader(
+            userId: uid,
+            service: InvestResultService(baseUrl: ApiConfig.baseUrl),
+            lastRetestAt: null,
+          ),
+          settings: s,
+        );
       }
 
       case AppRoutes.fundMbti:
         return _page(const FundMbtiFlowScreen());
 
+    // ✅ 설문 화면도 최종 true 전파 가능해야 하므로 bool?
       case AppRoutes.questionnaire:
-        return _page(const QuestionnaireScreen());
+        return _page<bool?>(const QuestionnaireScreen(), settings: s);
 
+    // ✅ 동의 -> 설문 진입(동의 화면). onNext가 설문을 await하고 bool? 반환
       case AppRoutes.investTest:
-        return MaterialPageRoute(
+        return MaterialPageRoute<bool?>(
           builder: (ctx) => ConsentStepPage(
             onSubmit: (agreed) async {
-              // TODO: 서버 전송 필요 시 여기서 처리
-              // await consentApi.save(agreed);
+              // 서버 전송 필요 시 추가
             },
-            onNext: () {
-              // 동의 완료 -> 설문으로 이동
-              Navigator.pushNamed(ctx, AppRoutes.questionnaire);
+            onNext: () async {
+              final bool? res = await Navigator.pushNamed<bool?>(
+                ctx,
+                AppRoutes.questionnaire,
+              );
+              return res; // true면 Consent에서도 pop(true) 전파
             },
           ),
+          settings: s,
         );
 
+    // ✅ 결과 화면: 완료 시 pop(true) 전파 → bool?
       case AppRoutes.investResult:
-        return _page(InvestResultScreen(
-          result: (s.arguments as Map<String, dynamic>?) ?? const {},
-        ));
+        return _page<bool?>(
+          InvestResultScreen(
+            result: (s.arguments as Map<String, dynamic>?) ?? const {},
+          ),
+          settings: s, // arguments 유지
+        );
 
       default:
         return _page(const Scaffold(
@@ -95,6 +107,7 @@ class AppRouter {
     }
   }
 
-  static MaterialPageRoute _page(Widget w) =>
-      MaterialPageRoute(builder: (_) => w);
+  // ✅ 제네릭 헬퍼: 필요하면 반환 타입을 지정할 수 있음 (settings도 전달 가능)
+  static MaterialPageRoute<T> _page<T>(Widget w, {RouteSettings? settings}) =>
+      MaterialPageRoute<T>(builder: (_) => w, settings: settings);
 }

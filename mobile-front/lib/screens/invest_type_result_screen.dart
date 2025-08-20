@@ -54,7 +54,7 @@ class InvestTypeResultScreen extends StatefulWidget {
   final DateTime? lastRetestAt;
 
   /// 분석/재분석 시작 콜백
-  final VoidCallback? onStartAssessment;
+  final Future<bool?> Function()? onStartAssessment;
 
   const InvestTypeResultScreen({
     super.key,
@@ -77,6 +77,9 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
+  // 1) onStartAssessment 타입이 아래처럼 되어 있어야 함
+// final Future<bool?> Function()? onStartAssessment;
+
   Future<void> _handleStartAssessment(BuildContext context) async {
     final now = DateTime.now();
     final alreadyToday =
@@ -88,34 +91,45 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
       return;
     }
 
-    await showDialog(
+    // ✅ 다이얼로그는 동의 여부만 반환
+    final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('재검사 정책 확인'),
         content: const Text(
-            '• 투자성향 검사는 1년마다 재실시해야 합니다.\n'
-                '• 재검사는 하루에 한 번만 가능합니다.\n\n'
-                '위 정책을 확인하셨다면 계속 진행을 눌러주세요.'
+          '• 투자성향 검사는 1년마다 재실시해야 합니다.\n'
+              '• 재검사는 하루에 한 번만 가능합니다.\n\n'
+              '위 정책을 확인하셨다면 계속 진행을 눌러주세요.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
           FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              if (widget.onStartAssessment != null) {
-                widget.onStartAssessment!();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('재검사를 시작합니다. 라우팅을 연결해주세요.')),
-                );
-              }
-            },
+            onPressed: () => Navigator.pop(context, true), // ⬅️ 다이얼로그만 닫음
             child: const Text('계속 진행'),
           ),
         ],
       ),
     );
+
+    if (confirmed != true) return; // 동의 안 했으면 종료
+
+    // ✅ 다이얼로그 닫힌 후: 실제 플로우 시작(동의→설문→로딩→결과)
+    if (widget.onStartAssessment != null) {
+      final bool? ok = await widget.onStartAssessment!(); // investTest 진입 → 최종 true 전파
+      if (ok == true && mounted) {
+        Navigator.of(context).pop(true); // ⬅️ 도입부도 닫아서 메인까지 true 전파
+      }
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('재검사를 시작합니다. 라우팅을 연결해주세요.')),
+      );
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {

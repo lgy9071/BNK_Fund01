@@ -39,7 +39,7 @@ public class TermsAgreement {
 	private User user;
 	
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name="doc_id", nullable=false)
+	@JoinColumn(name="document_id", nullable=false)
 	private FundDocument document;
 	
 	@Column(name="agreed_at", updatable=false, nullable=false)
