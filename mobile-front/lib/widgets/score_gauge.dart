@@ -6,7 +6,7 @@ class ScoreGauge extends StatefulWidget {
   final int score;
   final int maxScore;
   final Color color;
-  final double size;
+  final double size; // 요청한 기준 너비(부모 폭이 더 작으면 자동 축소)
   final double thickness;
   final double progressExtraThickness;
   final Color trackColor;
@@ -40,7 +40,6 @@ class _ScoreGaugeState extends State<ScoreGauge> with SingleTickerProviderStateM
     _ac = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
     _anim = CurvedAnimation(parent: _ac, curve: Curves.easeOutCubic);
 
-    // 🔥 살짝 지연 후 애니메이션 시작 (UI 먼저 뜨고 차트 실행)
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) _ac.forward();
     });
@@ -64,75 +63,101 @@ class _ScoreGaugeState extends State<ScoreGauge> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final percent = (widget.score / widget.maxScore).clamp(0.0, 1.0);
-    final pct100 = (percent * 100).round();
-    final gaugeH = widget.size * 0.66;
+    final rawPercent = (widget.score / widget.maxScore).clamp(0.0, 1.0);
+    final pct100 = (rawPercent * 100).round();
 
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, __) {
-        final p = percent * _anim.value;
-        return SizedBox(
-          width: widget.size,
-          height: gaugeH,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(
-                size: Size(widget.size, gaugeH),
-                painter: _SemiGaugePainter(
-                  progress: p,
-                  trackColor: widget.trackColor,
-                  baseColor: widget.color,
-                  thickness: widget.thickness,
-                  progressExtraThickness: widget.progressExtraThickness,
-                  gradientColors: widget.gradientColors,
-                  gradientStops: widget.gradientStops,
-                ),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 부모 제약 내에서 결국 사용할 실제 너비/높이
+        final maxW = constraints.maxWidth.isFinite ? constraints.maxWidth : widget.size;
+        final effW = math.min(widget.size, maxW); // 실제 사용 너비
+        final effH = effW * 0.66;                 // 반원 게이지 높이 비율
 
-              Column(
-                mainAxisSize: MainAxisSize.min,
+        // 비율 기반 여백/폰트 사이즈 (클램프로 과도한 축소/확대 방지)
+        double clamp(double v, double min, double max) => math.max(min, math.min(max, v));
+        final topGap  = clamp(effH * 0.26, 14, 72);   // 상단 여백
+        final midGap  = clamp(effH * 0.08,  8, 28);   // 점수와 라벨 사이
+        final fsMain  = clamp(effW * 0.18, 22, 56);   // 큰 숫자
+        final fsSub   = clamp(effW * 0.065,10, 22);   // "/ 100"
+        final fsLabel = clamp(effW * 0.06, 10, 20);   // "위험도 점수"
+
+        return AnimatedBuilder(
+          animation: _anim,
+          builder: (_, __) {
+            final p = rawPercent * _anim.value;
+            return SizedBox(
+              width: effW,
+              height: effH,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  SizedBox(height: 60,),
-                  RichText(
-                    textAlign: TextAlign.center,
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '$pct100',
-                          style: const TextStyle(
-                            fontSize: 46,
-                            height: 1.0,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.fontColor,
-                          ),
-                        ),
-                        const TextSpan(
-                          text: ' / 100',
-                          style: TextStyle(
-                            fontSize: 16,
-                            height: 1.0,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.fontColor,
-                          ),
-                        ),
-                      ],
+                  // 게이지
+                  CustomPaint(
+                    size: Size(effW, effH),
+                    painter: _SemiGaugePainter(
+                      progress: p,
+                      trackColor: widget.trackColor,
+                      baseColor: widget.color,
+                      thickness: widget.thickness,
+                      progressExtraThickness: widget.progressExtraThickness,
+                      gradientColors: widget.gradientColors,
+                      gradientStops: widget.gradientStops,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    '위험도 점수',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: AppColors.fontColor,
-                      fontWeight: FontWeight.w700,
-                    ),
+
+                  // 중앙 텍스트
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(height: topGap),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: RichText(
+                          textAlign: TextAlign.center,
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '$pct100',
+                                style: TextStyle(
+                                  fontSize: fsMain,
+                                  height: 1.0,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.fontColor,
+                                ),
+                              ),
+                              TextSpan(
+                                text: ' / 100',
+                                style: TextStyle(
+                                  fontSize: fsSub,
+                                  height: 1.0,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.fontColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: midGap),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '위험도 점수',
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: fsLabel,
+                            color: AppColors.fontColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -164,7 +189,6 @@ class _SemiGaugePainter extends CustomPainter {
     return List<double>.generate(n, (i) => i * step);
   }
 
-  // 상단 반원(왼→오른)을 t=0..1로 보고 해당 위치 색 샘플
   Color _sampleColor(List<Color> colors, List<double> stops, double t) {
     t = t.clamp(0.0, 1.0);
     if (t <= stops.first) return colors.first;
@@ -182,7 +206,6 @@ class _SemiGaugePainter extends CustomPainter {
     final trackStroke = thickness;
     final progressStroke = thickness + progressExtraThickness;
 
-    // 진행선 기준으로 패딩된 원
     final diameter = size.width - progressStroke;
     final rect = Rect.fromLTWH(
       progressStroke / 2,
@@ -192,11 +215,9 @@ class _SemiGaugePainter extends CustomPainter {
     );
     final r = rect.width / 2;
 
-    // 각도: 상단 반원 (왼쪽→오른쪽)
     const startAngle = math.pi;   // 9시
-    const fullSweep  = math.pi;   // 시계방향 반원
+    const fullSweep  = math.pi;   // 반원
 
-    // 배경 트랙
     final trackPaint = Paint()
       ..isAntiAlias = true
       ..style = PaintingStyle.stroke
@@ -205,21 +226,18 @@ class _SemiGaugePainter extends CustomPainter {
       ..color = trackColor;
     canvas.drawArc(rect, startAngle, fullSweep, false, trackPaint);
 
-    // 본체(그라데이션) — butt로 그림(이음새 영향 제거)
     final gradPaint = Paint()
       ..isAntiAlias = true
       ..style = PaintingStyle.stroke
       ..strokeWidth = progressStroke
       ..strokeCap = StrokeCap.butt;
 
-    // 캡(양끝 짧은 라운드 아크)
     final capPaint = Paint()
       ..isAntiAlias = true
       ..style = PaintingStyle.stroke
       ..strokeWidth = progressStroke
       ..strokeCap = StrokeCap.round;
 
-    // 셰이더 준비
     List<Color> colors;
     List<double> stops;
     if (gradientColors != null && gradientColors!.isNotEmpty) {
@@ -228,10 +246,9 @@ class _SemiGaugePainter extends CustomPainter {
           ? List<double>.from(gradientStops!)
           : _autoStops(colors.length);
 
-      // 오른쪽 끝이 마지막 색으로 끝나도록 보장
       gradPaint.shader = SweepGradient(
-        startAngle: math.pi,              // 9시
-        endAngle: 2 * math.pi,            // 3시
+        startAngle: math.pi,
+        endAngle: 2 * math.pi,
         colors: [...colors, colors.last],
         stops:  [...stops,  1.0],
         tileMode: TileMode.clamp,
@@ -242,35 +259,26 @@ class _SemiGaugePainter extends CustomPainter {
       gradPaint.color = baseColor;
     }
 
-    // 진행 각도
     final p = progress.clamp(0.0, 1.0);
     final sweep = fullSweep * p;
     if (sweep <= 0) return;
 
-    // 1) 본체(그라데이션, butt)
+    // 본체(그라데이션)
     canvas.drawArc(rect, startAngle, sweep, false, gradPaint);
 
-    // 2) 양끝 라운드 캡 — '아주 짧게' + '정확한 색'으로
-    //    tiny 길이를 라운드캡 각도의 0.35배로 축소 → 덧칠 티 최소화
-    final capAngle = (progressStroke / 2) / r;   // 라운드캡이 차지하는 각도
+    // 라운드 캡(양끝): 짧은 호로 색 맞춰서 그리기
+    final capAngle = (progressStroke / 2) / r;
     final tiny = math.min(sweep / 2, capAngle * 0.05);
 
     if (tiny > 0) {
-      // t 매핑: 상단 반원(왼→오른) 0..1 에서 각도 기반
-      // 본체 범위는 startAngle..(startAngle+sweep)
-      // - 시작 캡 중앙: startAngle + tiny/2  -> tStart
-      // - 끝   캡 중앙: startAngle + sweep - tiny/2 -> tEnd
-      final tStart = (tiny / 2) / fullSweep;                // 0..1
-      final tEnd   = (sweep - tiny / 2) / fullSweep;        // 0..1, p와 정합
-
+      final tStart = (tiny / 2) / fullSweep;
+      final tEnd   = (sweep - tiny / 2) / fullSweep;
       final startColor = _sampleColor(colors, stops, tStart);
       final endColor   = _sampleColor(colors, stops, tEnd);
 
-      // 시작 캡
       capPaint.color = startColor;
       canvas.drawArc(rect, startAngle, tiny, false, capPaint);
 
-      // 끝 캡
       capPaint.color = endColor;
       final endAngle = startAngle + sweep;
       canvas.drawArc(rect, endAngle - tiny, tiny, false, capPaint);
@@ -288,4 +296,3 @@ class _SemiGaugePainter extends CustomPainter {
         old.gradientStops != gradientStops;
   }
 }
-

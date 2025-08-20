@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_front/core/services/invest_result_service.dart';
 import 'package:mobile_front/screens/invest_type_result_screen.dart';
 import 'package:mobile_front/core/routes/routes.dart'; // AppRoutes 사용
+import 'package:mobile_front/core/constants/colors.dart';
 
 class InvestTypeResultLoader extends StatelessWidget {
   final int userId;                     // 로그인 유저 USER_ID
@@ -22,12 +23,14 @@ class InvestTypeResultLoader extends StatelessWidget {
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(child: CircularProgressIndicator(
+              color: AppColors.primaryBlue,
+            )),
           );
         }
         if (snap.hasError) {
           return Scaffold(
-            appBar: AppBar(title: const Text('투자성향 결과')),
+            appBar: AppBar(title: const Text('투자성향분석')),
             body: Center(child: Text('오류: ${snap.error}')),
           );
         }
