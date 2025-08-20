@@ -1,5 +1,7 @@
 package com.example.fund.api.service;
 
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -11,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.fund.api.common.SignupRequest;
 import com.example.fund.api.dto.TokenResponse;
@@ -37,6 +40,7 @@ public class UserApiService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final InvestProfileService investProfileService;
     private final InvestProfileResultRepository resultRepository;
+    private final InvestProfileApiService investProfileApiService;
 
     // ✅ 토큰 관련 의존성 추가
     private final JwtUtil jwtUtil; // Access JWT
@@ -237,12 +241,25 @@ public class UserApiService {
         }
     }
 
-    // 유저 조회 → DTO
+    // 유저 조회 → DTO / 검사한지 1년지나면 null처리
     public UserInfo getUserInfo(Integer userId) {
+        String typename = null;
+
         User u = userRepository.findById(userId).orElseThrow();
-        Optional<InvestProfileResult> opt = resultRepository.findTopByUserOrderByAnalysisDateDesc(u);
-        InvestProfileResult r = opt.get();
-        String typename = r.getType().getTypeName();
+        InvestProfileResult r = resultRepository
+                .findTopByUserOrderByAnalysisDateDesc(u)
+                .orElse(null);
+
+        if (r != null) {
+            if (r.getAnalysisDate().plusDays(365).isBefore(LocalDateTime.now())) {
+                // 1년 초과 → null 처리
+                typename = null;
+            } else {
+                // 유효 → 값 넣기
+                typename = r.getType().getTypeName();
+            }
+        }
+
         return new UserInfo(u.getUserId(), u.getUsername(), u.getName(), u.getEmail(), typename);
     }
 }

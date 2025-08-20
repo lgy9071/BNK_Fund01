@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/core/constants/colors.dart';
 
-const _navBlue = Color(0xFF0064FF);
-
-class CircleNavBar extends StatelessWidget {
-  const CircleNavBar({
+class CustomNavBar extends StatelessWidget {
+  const CustomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
@@ -24,11 +23,18 @@ class CircleNavBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        height: 78,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: const BoxDecoration(
-          color: _navBlue,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        height: 90,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 6,
+              offset: const Offset(0, -2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -38,33 +44,67 @@ class CircleNavBar extends StatelessWidget {
 
             return Expanded(
               child: InkWell(
+                borderRadius: BorderRadius.circular(11),
                 onTap: () => onTap(i),
-                child: Center(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    width: 66, height: 66,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: active ? Colors.white : Colors.transparent,
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(item.icon, size: 33, color: active ? _navBlue : Colors.white),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: active ? _navBlue : Colors.white,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 🔹 밑 오오라 (활성화 시만)
+                    if (active)
+                      Positioned(
+                        bottom: 0,
+                        child: Container(
+                          width: 75,
+                          height: 75,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                AppColors.primaryBlue.withOpacity(0.2),
+                                AppColors.primaryBlue.withOpacity(0.0),
+                              ],
+                            ),
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(30),
                             ),
                           ),
-                        ],
+                        ),
                       ),
+
+                    // 🔹 아이콘 + 텍스트
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedScale(
+                          scale: active ? 1.2 : 1.0,
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOutBack,
+                          child: Icon(
+                            item.icon,
+                            size: 28,
+                            color: active
+                                ? AppColors.primaryBlue
+                                : AppColors.fontColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontSize: active ? 16 : 14,
+                            fontWeight: active
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                            color: active
+                                ? AppColors.primaryBlue
+                                : AppColors.fontColor,
+                          ),
+                          child: Text(item.label),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
                 ),
               ),
             );
