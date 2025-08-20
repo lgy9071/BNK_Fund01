@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/utils/exit_popup.dart';
@@ -46,6 +47,8 @@ class HomeScreen extends StatefulWidget {
   final String userName;
   final String? accessToken;
   final UserService? userService;
+  final Future<void> Function()? onStartInvestFlow; // ✅ 추가: 투자성향분석 플로우 시작 콜백
+
   const HomeScreen({
     super.key,
     required this.myFunds,
@@ -53,6 +56,7 @@ class HomeScreen extends StatefulWidget {
     required this.userName,
     this.accessToken,
     this.userService,
+    this.onStartInvestFlow,
   });
 
   @override
@@ -223,77 +227,78 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 /* 투자성향 카드 */
                 InkWell(
-                  onTap: () {
+                  onTap: () async {
                     if (investTypeName == null || investTypeName.isEmpty) {
-                      // 검사 내역 없으면 검사 화면으로 이동
-                      Navigator.of(context).pushNamed(AppRoutes.investTest);
+                      if (widget.onStartInvestFlow != null) {
+                        await widget.onStartInvestFlow!(); // ✅ 부모가 라우팅 + 리로드
+                      }
                     }
                   },
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
-                    height: (investTypeName != null && investTypeName.isNotEmpty) ? 72 : 180,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    height: (investTypeName != null && investTypeName.isNotEmpty) ? 72.h : 180.h,
+                    padding: EdgeInsets.symmetric(horizontal: 14),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: tossBlue.withOpacity(0.16), width: 1),
+                      border: Border.all(color: tossBlue.withOpacity(0.16), width: 1.w),
                     ),
                     child: Row(
                       children: [
                         if (investTypeName != null && investTypeName.isNotEmpty) ...[
-                          /// ✅ 투자성향 결과가 있을 때
+                          // ✅ 투자성향 결과가 있을 때
                           Text(
                             '$displayName 님의 투자성향',
-                            style: TextStyle(fontSize: 15, color: baseText),
+                            style: TextStyle(fontSize: 15.sp, color: baseText),
                           ),
                           const Spacer(),
-
-                          /// 🔹 [투자성향 결과 + 화살표] 전체를 InkWell로 묶음
+                          // 🔹 [투자성향 결과 + 화살표]
                           InkWell(
                             borderRadius: BorderRadius.circular(8),
-                            onTap: () {
-                              Navigator.of(context).pushNamed(AppRoutes.investType);
+                            onTap: () async {
+                              if (widget.onStartInvestFlow != null) {
+                                await widget.onStartInvestFlow!(); // ✅ 결과 화면/재검사 진입 포함
+                              }
                             },
                             child: Row(
                               children: [
                                 Text(
                                   investTypeName!,
                                   style: TextStyle(
-                                    fontSize: 20,
+                                    fontSize: 20.sp,
                                     fontWeight: FontWeight.w800,
                                     color: baseText,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Icon(Icons.chevron_right, color: baseDim),
+                                SizedBox(width: 8.w),
+                                Icon(Icons.chevron_right, color: baseDim, size: 20.sp),
                               ],
                             ),
                           ),
                         ] else ...[
-                          /// ❌ 투자성향 결과가 없을 때
+                          // ❌ 투자성향 결과가 없을 때
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const SizedBox(height: 5),
-
-                                // 🔹 유저 이름 (위에 표시)
+                                SizedBox(height: 5.h),
+                                // 🔹 유저 이름
                                 RichText(
                                   text: TextSpan(
                                     children: [
                                       TextSpan(
-                                        text: displayName, // 이름
+                                        text: displayName,
                                         style: TextStyle(
-                                          fontSize: 24, // 이름은 좀 더 크게
-                                          fontWeight: FontWeight.w700, // 굵게
+                                          fontSize: 24.sp,
+                                          fontWeight: FontWeight.w700,
                                           color: AppColors.fontColor,
                                         ),
                                       ),
                                       TextSpan(
                                         text: ' 님 환영합니다',
                                         style: TextStyle(
-                                          fontSize: 20,
+                                          fontSize: 20.sp,
                                           fontWeight: FontWeight.w500,
                                           color: baseText,
                                         ),
@@ -301,51 +306,50 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                   ),
                                 ),
-
-                                const SizedBox(height: 10),
-
+                                SizedBox(height: 10.h),
                                 // 🔹 안내 문구
                                 Text(
                                   '투자성향분석을 진행하고 펀드 가입을 시작해보세요!',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     color: baseText.withOpacity(0.7),
                                     fontWeight: FontWeight.w600,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
-
-                                const SizedBox(height: 16),
-
-                                // 🔹 맨 아래 꽉 찬 버튼
+                                SizedBox(height: 16.h),
+                                // 🔹 맨 아래 버튼
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pushNamed(AppRoutes.investType);
+                                    onPressed: () async {
+                                      if (widget.onStartInvestFlow != null) {
+                                        await widget.onStartInvestFlow!(); // ✅ 부모가 끝까지 처리
+                                      }
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      padding: EdgeInsets.symmetric(vertical: 10.h),
                                       backgroundColor: AppColors.primaryBlue,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(10.r),
                                       ),
                                     ),
-                                    child: const Text(
+                                    child: Text(
                                       '투자성향 분석하기',
-                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
                                     ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ]
-
+                        ],
                       ],
                     ),
                   ),
                 ),
+
 
 
                 /* 투자성향 카드 (이름/성향 + 화살표) */
