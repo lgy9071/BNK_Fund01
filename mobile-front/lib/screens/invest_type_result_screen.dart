@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/widgets/show_custom_confirm_dialog.dart';
 
 /// ===== 결과 모델 (백엔드 응답과 매핑) =====
 class InvestResultModel {
@@ -91,27 +92,18 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
       return;
     }
 
-    // ✅ 다이얼로그는 동의 여부만 반환
-    final bool? confirmed = await showDialog<bool>(
+    // ✅ 커스텀 팝업으로 교체
+    final bool? confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('재검사 정책 확인'),
-        content: const Text(
-          '• 투자성향 검사는 1년마다 재실시해야 합니다.\n'
-              '• 재검사는 하루에 한 번만 가능합니다.\n\n'
-              '위 정책을 확인하셨다면 계속 진행을 눌러주세요.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true), // ⬅️ 다이얼로그만 닫음
-            child: const Text('계속 진행'),
-          ),
-        ],
-      ),
+      title: '재검사 정책 확인',
+      message: '• 투자성향 검사는 1년마다 재실시해야 합니다\n'
+          '• 재검사는 하루에 한 번만 가능합니다\n\n'
+          '위 정책 확인 후 계속 진행을 눌러주세요',
+      confirmText: '계속 진행',
+      cancelText: '취소',
+      showCancel: true,
+      barrierDismissible: true, // 바깥 탭으로 닫히지 않게 (원하면 true로)
+      confirmColor: AppColors.primaryBlue, // 선택: 기본 색 쓰려면 지워도 됨
     );
 
     if (confirmed != true) return; // 동의 안 했으면 종료
