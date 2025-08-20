@@ -267,11 +267,8 @@ class _InvestResultScreenState extends State<InvestResultScreen> {
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => const MainScaffold()),
-                            (_) => false,
-                      );
+                      // ✅ true를 반환해서 LoadingScreen -> QuestionnaireScreen -> ConsentStepPage -> MainScaffold까지 전파
+                      Navigator.of(context).pop(true);
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primaryBlue,

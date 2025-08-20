@@ -256,7 +256,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   }
 
   Future<void> _submit() async {
-    Navigator.push(
+    final bool? needRefresh = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => LoadingScreen(
@@ -264,6 +264,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
             final payload = await _buildPayloadWithDbIds();
             final token = await storage.read(key: 'accessToken');
             final url = Uri.parse('${ApiConfig.baseUrl}/api/risk-test/submit');
+
             final res = await http.post(
               url,
               headers: {
@@ -272,13 +273,24 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
               },
               body: jsonEncode(payload),
             );
-            if (res.statusCode != 201) throw Exception("제출 실패");
+
+            if (res.statusCode != 201) {
+              throw Exception("제출 실패");
+            }
+            // onLoad은 결과 화면으로 넘어가기 전에 서버 응답을 준비해 주는 단계
+            // (필요 시 이 데이터를 결과 화면으로 전달)
             return jsonDecode(res.body) as Map<String, dynamic>;
           },
         ),
       ),
     );
+
+    // ✅ 결과 화면(완료 버튼)에서 Navigator.pop(true) 한 값이 여기로 올라옴
+    if (needRefresh == true && mounted) {
+      Navigator.of(context).pop(true); // ConsentStepPage -> MainScaffold까지 true 전파
+    }
   }
+
 
 
   @override

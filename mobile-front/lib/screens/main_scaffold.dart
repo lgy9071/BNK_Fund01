@@ -31,6 +31,9 @@ class _MainScaffoldState extends State<MainScaffold> {
   late List<Widget> _pages;
   String? _investTypeName; // 투자성향 이름 저장
 
+  /// ✅ 홈 강제 새로고침 트리거
+  int _homeRefreshTick = 0;
+
   final _myFunds = <Fund>[
     Fund(id: 1, name: '한국성장주식 A', rate: 3.2, balance: 5_500_000),
     Fund(id: 2, name: '글로벌채권 인덱스', rate: -1.1, balance: 4_000_000),
@@ -41,15 +44,30 @@ class _MainScaffoldState extends State<MainScaffold> {
   void _buildPages() {
     _pages = [
       HomeScreen(
+        key: ValueKey('home-$_homeRefreshTick'),
         myFunds: _myFunds,
-        investType: '공격 투자형',
-        userName: '뚜리',
-        accessToken: _initialAccessToken, // 중요: 여기로 전달
+        investType: _investTypeName ?? '공격 투자형',
+        userName: '@@',
+        accessToken: _initialAccessToken,
         userService: UserService(),
+        onStartInvestFlow: () async {
+          // ✅ bool?로 받기 (라우트 반환과 동일하게)
+          final bool? result = await Navigator.pushNamed<bool?>(
+            context,
+            AppRoutes.investType,
+          );
+
+          if (result == true) {
+            if (!mounted) return;
+            setState(() => _index = 0);  // 홈 탭으로 이동
+            _bumpHomeRefresh();          // 홈 강제 리로드 (Key 변경)
+            await _loadUserInfo();       // (선택) 서버 최신 데이터 재조회
+          }
+        },
       ),
       const MyFinanceScreen(),
       const FundListScreen(),
-      const SizedBox.shrink(), // 전체 메뉴 자리
+      const SizedBox.shrink(),
     ];
   }
 
@@ -57,7 +75,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   void initState() {
     super.initState();
     _initialAccessToken = widget.initialAccessToken; // ⬅ 생성자 값으로 세팅
-    _buildPages(); // 초기(토큰 null일 수 있음) 1회 구성  > 바로 페이지 구성
+    _buildPages(); // 초기(토큰 null일 수 있음) 1회 구성
     _loadUserInfo(); // ✅ 유저 정보 불러오기
   }
 
@@ -84,7 +102,12 @@ class _MainScaffoldState extends State<MainScaffold> {
     }
   }
 
-
+  void _bumpHomeRefresh() {
+    setState(() {
+      _homeRefreshTick++;
+      _buildPages(); // Key 반영을 위해 페이지 재구성
+    });
+  }
 
   Future<void> _openFullMenu() async {
     // 1) 라우트 인자로 받은 토큰 우선 사용
@@ -136,10 +159,19 @@ class _MainScaffoldState extends State<MainScaffold> {
                     Navigator.of(context, rootNavigator: true).pop();
                     setState(() => _index = 2);
                   },
-                  onGoInvestAnalysis: () {
+
+                  // ✅ 투자성향분석 진입도 await 해서 결과 처리
+                  onGoInvestAnalysis: () async {
                     Navigator.of(context, rootNavigator: true).pop();
-                    navigatorKey.currentState?.pushNamed('/invest-type');
+                    final result = await navigatorKey.currentState?.pushNamed(AppRoutes.investType);
+                    if (result == true) {
+                      // 완료 → 홈으로 이동 + 홈 리프레시 + 유저정보 갱신
+                      setState(() => _index = 0);
+                      _bumpHomeRefresh();
+                      _loadUserInfo();
+                    }
                   },
+
                   onGoFAQ: () {
                     Navigator.of(context, rootNavigator: true).pop();
                     navigatorKey.currentState?.pushNamed('/faq');
@@ -175,25 +207,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
-  // @override
-  // Widget build(BuildContext context) {
-  //   return ExitGuard(
-  //     child: Scaffold(
-  //       body: IndexedStack(index: _index, children: _pages),
-  //       backgroundColor: Colors.white,
-  //       bottomNavigationBar: CustomNavBar(
-  //         currentIndex: _index,
-  //         onTap: (i) {
-  //           if (i == 3) {
-  //             _openFullMenu();
-  //             return;
-  //           }
-  //           setState(() => _index = i);
-  //         },
-  //       ),
-  //     ),
-  //   );
-  // }
   @override
   Widget build(BuildContext context) {
     return ExitGuard(
@@ -208,20 +221,36 @@ class _MainScaffoldState extends State<MainScaffold> {
               return;
             }
 
-            if (i == 2) { // 👉 펀드 가입 탭
+            // ✅ 같은 탭 재탭 → 홈 리로드
+            if (_index == i) {
+              if (i == 0) {
+                _bumpHomeRefresh();
+              }
+              return; // 다른 탭도 필요하면 개별 tick 추가
+            }
+
+            // 👉 펀드 가입 탭 가드
+            if (i == 2) {
               if (_investTypeName == null || _investTypeName!.isEmpty) {
-                final result = await showAppConfirmDialog(
+                final go = await showAppConfirmDialog(
                   context: context,
                   title: "안내",
                   message: "펀드 가입을 위해서는 투자성향 \n분석이 필요합니다 진행하시겠습니까?",
                   confirmText: "분석진행",
                   cancelText: "취소",
                   confirmColor: AppColors.primaryBlue,
-                  onConfirm: () {
-                    Navigator.pushNamed(context, AppRoutes.investType);
-                  },
                 );
-                return; // 🚫 펀드 가입 탭 화면 이동 막음
+                if (go == true) {
+                  // ✅ 분석 화면으로 이동 후 결과 기다림
+                  final result = await Navigator.pushNamed(context, AppRoutes.investType);
+                  if (result == true) {
+                    // 완료 → 홈으로 이동 + 홈 리프레시 + 유저정보 갱신
+                    setState(() => _index = 0);
+                    _bumpHomeRefresh();
+                    _loadUserInfo();
+                  }
+                }
+                return; // 🚫 이 흐름에서는 기본 이동 막음
               }
             }
 
@@ -231,5 +260,4 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
     );
   }
-
 }

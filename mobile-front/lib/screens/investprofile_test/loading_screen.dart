@@ -26,26 +26,31 @@ class _LoadingScreenState extends State<LoadingScreen> {
       setState(() => progress = 0.2);
 
       final result = await widget.onLoad();
-
       if (!mounted) return;
 
       setState(() => progress = 1.0);
 
-      // 🔥 최소 800ms 정도 기다려서 UI 안정화 시간 확보
+      // UI 안정화용 약간의 대기
       await Future.delayed(const Duration(milliseconds: 800));
-
       if (!mounted) return;
-      Navigator.pushReplacementNamed(
+
+      // 🔁 결과 화면을 push하고, 완료 시 반환되는 bool?을 기다림
+      final bool? needRefresh = await Navigator.pushNamed<bool>(
         context,
         AppRoutes.investResult,
-        arguments: result,
+        arguments: result, // 서버 응답 전달
       );
+
+      if (!mounted) return;
+
+      // ✅ 결과 화면에서 pop(true)면, 여기서도 pop(true)로 상위까지 전파
+      Navigator.of(context).pop(needRefresh == true);
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context);
+      // 실패 시 false로 반환(전파), 필요하면 에러 처리 UI 추가
+      Navigator.of(context).pop(false);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -64,12 +69,12 @@ class _LoadingScreenState extends State<LoadingScreen> {
               builder: (context, value, _) {
                 return SizedBox(
                   width: barWidth,
-                  height: barHeight + 40, // 바 + 러너 공간
+                  height: barHeight + 40,
                   child: Stack(
                     clipBehavior: Clip.none,
                     alignment: Alignment.centerLeft,
                     children: [
-                      // 회색 배경 바
+                      // 배경 바
                       Container(
                         width: barWidth,
                         height: barHeight,
@@ -78,8 +83,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-
-                      // ✅ 그라데이션 진행 바
+                      // 진행 바
                       Container(
                         width: barWidth * value,
                         height: barHeight,
@@ -95,11 +99,10 @@ class _LoadingScreenState extends State<LoadingScreen> {
                           ),
                         ),
                       ),
-
-                      // ✅ 러너 (바 중앙 선을 따라 달림)
+                      // 러너 이미지
                       Positioned(
                         left: (barWidth - 40) * value,
-                        top: (barHeight / 2) - 20, // 중앙 맞춤 (이미지 높이 40 기준)
+                        top: (barHeight / 2) - 20,
                         child: Image.asset(
                           "assets/images/runner.png",
                           width: 40,
@@ -111,10 +114,11 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 );
               },
             ),
-
-
             const SizedBox(height: 20),
-            const Text("분석 중입니다...", style: TextStyle(fontSize: 18, color: AppColors.fontColor)),
+            const Text(
+              "분석 중입니다...",
+              style: TextStyle(fontSize: 18, color: AppColors.fontColor),
+            ),
           ],
         ),
       ),
