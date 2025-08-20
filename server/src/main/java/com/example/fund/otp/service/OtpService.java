@@ -1,6 +1,6 @@
-package com.example.fund.account.service;
+package com.example.fund.otp.service;
 
-import com.example.fund.account.store.OtpStore;
+import com.example.fund.otp.store.OtpStore;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;

@@ -1,4 +1,4 @@
-package com.example.fund.account.store;
+package com.example.fund.otp.store;
 
 import java.time.Instant;
 import java.util.Map;

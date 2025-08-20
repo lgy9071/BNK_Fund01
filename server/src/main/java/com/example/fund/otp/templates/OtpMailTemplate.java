@@ -1,4 +1,4 @@
-package com.example.fund.account.templates;
+package com.example.fund.otp.templates;
 
 public class OtpMailTemplate {
     public static String text(String otp) {
