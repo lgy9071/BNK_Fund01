@@ -6,14 +6,21 @@ import com.example.fund.fund.dto.FundProductDocDto;
 import com.example.fund.fund.dto.FundProductView;
 import com.example.fund.fund.entity_fund.Fund;
 import com.example.fund.fund.entity_fund.FundDocument;
-import com.example.fund.fund.repository_fund.*;
+import com.example.fund.fund.repository_fund.FundRepository;
+import com.example.fund.fund.repository_fund.FundStatusDailyRepository;
+import com.example.fund.fund.repository_fund.FundReturnRepository;
+import com.example.fund.fund.repository_fund.FundAssetSummaryRepository;
+import com.example.fund.fund.repository_fund.FundFeeInfoRepository;
+import com.example.fund.fund.repository_fund.FundProductRepository;
+import com.example.fund.fund.repository_fund.FundDocumentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,16 +43,12 @@ public class FundDetailService {
         Fund f = fundRepository.findByFundId(fundId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "펀드를 찾을 수 없습니다. fundId=" + fundId));
 
-        // ⬇️ 상품 없으면 404 (status 필터까지 걸고 싶으면 equalsIgnoreCase로 체크)
-        fundProductRepository.findTopByFund_FundIdOrderByProductIdDesc(fundId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "상품이 등록된 펀드만 조회 가능합니다."));
-
         var latestStatus = fundStatusDailyRepository.findTopByFund_FundIdOrderByBaseDateDesc(fundId).orElse(null);
         var latestReturn = fundReturnRepository.findTopByFund_FundIdOrderByBaseDateDesc(fundId).orElse(null);
         var latestAsset  = fundAssetSummaryRepository.findTopByFund_FundIdOrderByBaseDateDesc(fundId).orElse(null);
         var fee          = fundFeeInfoRepository.findTopByFund_FundId(fundId).orElse(null);
 
-        // ── 상품/문서 조회 (있으면 productView에 담아 둔 뒤 DTO 빌드에 포함)
+        // ── 상품/문서 조회 (있으면 productView에 담고 DTO에 포함)
         FundProductView productView = fundProductRepository
                 .findTopByFund_FundIdOrderByProductIdDesc(fundId)
                 .map(p -> {
@@ -69,7 +72,7 @@ public class FundDetailService {
                 .aum(
                         latestStatus == null || latestStatus.getNavTotal() == null
                                 ? null
-                                : latestStatus.getNavTotal().intValue()   // Integer에 맞춤
+                                : latestStatus.getNavTotal().intValue()   // DTO가 Integer라서 intValue()
                 )
                 .return1m(latestReturn == null ? null : latestReturn.getReturn1m())
                 .return3m(latestReturn == null ? null : latestReturn.getReturn3m())
@@ -78,21 +81,32 @@ public class FundDetailService {
                 .domesticStock(latestAsset == null ? null : latestAsset.getStockRatio())
                 .domesticBond(latestAsset == null ? null : latestAsset.getBondRatio())
                 .liquidity(latestAsset == null ? null : latestAsset.getCashRatio())
-                .product(productView)
+                .product(productView) // 여기로 product + docs 내려감
                 .build();
 
         return ApiResponse.success(dto);
     }
 
+    /**
+     * FundDocument에서 파일명/경로를 읽어 정적 URL로 만들어 docs에 추가
+     * - DB에 filePath가 있으면 그대로 사용(앞에 '/' 없으면 붙임)
+     * - 없으면 fileName을 사용해서 /fund_document/{encodedFileName} 생성
+     */
     private void addDoc(List<FundProductDocDto> out, Long docId, String type) {
         if (docId == null) return;
+
         FundDocument d = fundDocumentRepository.findById(docId).orElse(null);
-
         String fileName = (d != null) ? d.getFileName()  : null;
-        String path     = (d != null) ? d.getFilePath()  : null;
-        out.add(new FundProductDocDto(docId, type, fileName, path));
+        String filePath = (d != null) ? d.getFilePath()  : null; // getPath() 아님
 
-        // 만약 엔티티가 docTitle/filePath 라면 위 두 줄을 getDocTitle/getFilePath 로 바꾸세요.
+        String path = null;
+        if (filePath != null && !filePath.isBlank()) {
+            path = filePath.startsWith("/") ? filePath : ("/" + filePath);
+        } else if (fileName != null && !fileName.isBlank()) {
+            String encoded = UriUtils.encodePath(fileName, StandardCharsets.UTF_8);
+            path = "/fund_document/" + encoded; // 정적 폴더
+        }
+
         out.add(new FundProductDocDto(docId, type, fileName, path));
     }
 }

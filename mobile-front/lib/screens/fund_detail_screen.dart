@@ -6,6 +6,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:mobile_front/core/services/fund_service.dart';
 import 'package:mobile_front/models/fund_detail_net.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+import 'package:mobile_front/core/constants/api.dart'; // ApiConfig.baseUrl 사용
+
 /// ───────────────── colors
 const tossBlue = Color(0xFF0064FF);
 const tossBlue500 = Color(0xFF0064FF);
@@ -209,7 +212,13 @@ FundDetail toUiDetail(FundDetailNet d) {
       cash: d.cashRatio ?? 0,
       etc: d.etcRatio ?? 0,
     ),
-    docs: const [],
+    // 네트워크 docs -> UI docs
+    docs: d.docs.map((x) => FundDocument(
+      type: x.type,
+      fileName: x.fileName ?? '',
+      path: x.path ?? '',          // '/fund_document/...' 또는 절대 URL
+      uploadedAt: latestDate,      // 업로드일 없으면 임시로 latestDate
+    )).toList(),
   );
 }
 
@@ -1227,7 +1236,31 @@ class _DocsCard extends StatelessWidget {
                 title: Text(d.type),
                 subtitle: Text('${d.fileName} · 업로드 ${fmtDate(d.uploadedAt)}'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () { /* TODO: 파일 열기 */ },
+                // 공시자료 받기
+                onTap: () async {
+                  final raw = d.path; // 예: '/fund_document/PROSPECTUS_투자설명서.pdf'
+                  if (raw.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('파일 경로가 없습니다.')),
+                    );
+                    return;
+                  }
+
+                  final base = ApiConfig.baseUrl; // 예: http://10.0.2.2:8090
+                  final full = raw.startsWith('http')
+                      ? raw
+                      : raw.startsWith('/')
+                      ? '$base$raw'
+                      : '$base/$raw';
+
+                  final ok = await launchUrl(Uri.parse(full), mode: LaunchMode.externalApplication);
+                  if (!ok && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('파일을 열 수 없습니다.')),
+                    );
+                  }
+                },
+
               )),
             ],
           ),
