@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface FundRepository extends JpaRepository<Fund, String> {
@@ -19,6 +18,24 @@ public interface FundRepository extends JpaRepository<Fund, String> {
 
     @Query("SELECT f.riskLevel FROM Fund f WHERE f.fundId = :fundId")
     Optional<Integer> findRiskLevelByFundId(@Param("fundId") String fundId);
+
+    // 펀드명 검색(리스트 검색용)
+    Page<Fund> findByFundNameContainingIgnoreCase(String keyword, Pageable pageable);
+
+    @Query("""
+    select f from Fund f
+    where exists (
+        select 1 from FundProduct fp
+        where fp.fund = f
+          and (:status is null or fp.status = :status)
+    )
+    and (:keyword is null or :keyword = '' or lower(f.fundName) like lower(concat('%', :keyword, '%')))
+    """)
+    Page<Fund> findAllHavingProduct(
+            @Param("keyword") String keyword,
+            @Param("status") String status,
+            Pageable pageable
+    );
 }
 
 /*

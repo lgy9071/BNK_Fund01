@@ -18,4 +18,7 @@ public interface FundReturnRepository extends JpaRepository<FundReturn, Long> {
     /** 여러 fundId에 대한 FundReturn 배치로 조회 (N+1 문제 해결) */
     @Query("SELECT fr FROM FundReturn fr WHERE fr.fund.fundId IN :fundIds")
     List<FundReturn> findByFund_FundIdIn(@Param("fundIds") List<String> fundIds);
+
+    // 최신 기준일 1건
+    Optional<FundReturn> findTopByFund_FundIdOrderByBaseDateDesc(String fundId);
 }

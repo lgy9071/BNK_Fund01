@@ -27,7 +27,7 @@ class UserService {
 
   Future<UserProfile> getMe(String accessToken) async {
     final uri = Uri.parse(ApiConfig.userMe);
-    debugPrint('[GET] $uri');                        // 👈 요청 로그
+    debugPrint('[GET] $uri');                        // 요청 로그
     debugPrint('Authorization: Bearer ${accessToken.substring(0, math.min(12, accessToken.length))}...');
 
     final res = await _client.get(
@@ -35,7 +35,7 @@ class UserService {
       headers: {'Authorization': 'Bearer $accessToken'},
     );
 
-    debugPrint('↳ status: ${res.statusCode}');       // 👈 응답 로그
+    debugPrint('↳ status: ${res.statusCode}');       // 응답 로그
     debugPrint('↳ body: ${res.body}');
 
     if (res.statusCode != 200) {
