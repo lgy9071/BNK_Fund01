@@ -30,4 +30,7 @@ class ApiConfig {
   // otp 번호 비교 요청
   static const String otpVerify = '$baseUrl/otp/verify';
 
+  // 펀드 API
+  static const String funds = '$baseUrl/api/funds';
+  static String fundDetail(String fundId) => '$baseUrl/api/funds/$fundId';
 }
