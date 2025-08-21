@@ -254,6 +254,10 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
       final res = await _svc.getFundDetail(widget.fundId);
       final net = res.data;
       if (net == null) throw Exception('상세 데이터가 없습니다.');
+
+      // 디버그 한스푼
+      debugPrint('[detail] docs.len=${net.docs.length} firstPath=${net.docs.isNotEmpty ? net.docs.first.path : "-"}');
+
       setState(() => data = toUiDetail(net));
     } catch (e) {
       if (!mounted) return;

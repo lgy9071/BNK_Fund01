@@ -1,10 +1,10 @@
 import 'dart:convert';
 
-/// 백엔드 상세 DTO와 1:1 매핑 모델 (네트워크 전용)
+/// 공시자료(네트워크 모델)
 class FundDocNet {
-  final String type;         // "SUMMARY" | "PROSPECTUS" | "TERMS"
-  final String? fileName;    // 서버에서 내려준 원본 파일명(옵션)
-  final String? path;        // "/fund_document/....pdf" 또는 절대 URL
+  final String type;      // "SUMMARY" | "PROSPECTUS" | "TERMS"
+  final String? fileName; // 원본 파일명
+  final String? path;     // "/fund_document/..." 또는 절대 URL
 
   FundDocNet({required this.type, this.fileName, this.path});
 
@@ -15,10 +15,12 @@ class FundDocNet {
   );
 }
 
+/// 상세(네트워크 모델) — 백엔드 DTO와 1:1
 class FundDetailNet {
   final String fundId;
   final String fundName;
-  final String? fundType, fundDivision, investmentRegion, salesRegionType, managementCompany, fundStatus;
+  final String? fundType, fundDivision, investmentRegion, salesRegionType,
+      managementCompany, fundStatus;
   final int? riskLevel;
   final String? issueDate;
   final double? minSubscriptionAmount;
@@ -32,7 +34,7 @@ class FundDetailNet {
 
   final double? totalFee, ter;
 
-  // product.docs
+  /// product.docs 를 평탄화해서 넣는다
   final List<FundDocNet> docs;
 
   FundDetailNet({
@@ -76,16 +78,33 @@ class FundDetailNet {
     return int.tryParse(v.toString());
   }
 
+  /// ---- 안전한 docs 파서 (제네릭 불일치/문자열 JSON까지 처리)
+  static List<FundDocNet> _parseDocs(dynamic v) {
+    if (v is List) {
+      return v.map((e) {
+        if (e is Map) {
+          return FundDocNet.fromJson(Map<String, dynamic>.from(e));
+        }
+        if (e is String) {
+          try {
+            final dec = json.decode(e);
+            if (dec is Map) {
+              return FundDocNet.fromJson(Map<String, dynamic>.from(dec));
+            }
+          } catch (_) {}
+        }
+        return null;
+      }).whereType<FundDocNet>().toList();
+    }
+    return const <FundDocNet>[];
+  }
+
   factory FundDetailNet.fromJson(Map<String, dynamic> j) {
     double? dnum(dynamic v) => (v as num?)?.toDouble();
 
     // product.docs 파싱
-    final product = j['product'] as Map<String, dynamic>?;
-    final docsJson = (product?['docs'] as List?) ?? const [];
-    final docs = docsJson
-        .whereType<Map<String, dynamic>>()
-        .map((e) => FundDocNet.fromJson(e))
-        .toList();
+    final product = j['product'];
+    final docs = (product is Map) ? _parseDocs(product['docs']) : const <FundDocNet>[];
 
     return FundDetailNet(
       fundId: j['fundId']?.toString() ?? '',
@@ -113,7 +132,7 @@ class FundDetailNet {
       etcRatio: dnum(j['etcRatio']),
       totalFee: dnum(j['totalFee']),
       ter: dnum(j['ter'] ?? j['totalExpenseRatio']),
-      docs: docs, // 여기 담김
+      docs: docs,
     );
   }
 }

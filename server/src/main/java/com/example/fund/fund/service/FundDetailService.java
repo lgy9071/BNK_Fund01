@@ -43,6 +43,16 @@ public class FundDetailService {
         Fund f = fundRepository.findByFundId(fundId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "펀드를 찾을 수 없습니다. fundId=" + fundId));
 
+        // 1) 제품 로드 전용 로그
+        var pOpt = fundProductRepository.findTopByFund_FundIdOrderByProductIdDesc(fundId);
+        if (pOpt.isEmpty()) {
+            log.warn("NO PRODUCT row for fundId={}", fundId);
+        } else {
+            var p = pOpt.get();
+            log.info("productId={}, status={}, summaryDocId={}, prospectusDocId={}, termsDocId={}",
+                    p.getProductId(), p.getStatus(), p.getSummaryDocId(), p.getProspectusDocId(), p.getTermsDocId());
+        }
+
         var latestStatus = fundStatusDailyRepository.findTopByFund_FundIdOrderByBaseDateDesc(fundId).orElse(null);
         var latestReturn = fundReturnRepository.findTopByFund_FundIdOrderByBaseDateDesc(fundId).orElse(null);
         var latestAsset  = fundAssetSummaryRepository.findTopByFund_FundIdOrderByBaseDateDesc(fundId).orElse(null);
@@ -56,6 +66,7 @@ public class FundDetailService {
                     addDoc(docs, p.getSummaryDocId(),    "SUMMARY");
                     addDoc(docs, p.getProspectusDocId(), "PROSPECTUS");
                     addDoc(docs, p.getTermsDocId(),      "TERMS");
+                    log.info("built docs size={}", docs.size());   // 2) 최종 docs 개수 로그
                     return new FundProductView(p.getProductId(), p.getStatus(), docs);
                 })
                 .orElse(null);
