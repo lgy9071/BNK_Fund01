@@ -10,17 +10,18 @@ import 'fund_detail_screen.dart';
 
 /// 브랜드 컬러
 const tossBlue = Color(0xFF0064FF);
+Color pastel(Color base) => Color.lerp(Colors.white, base, 0.12)!;
 
-/// UI용 리스트 아이템(기존 JoinFund 대체/확장)
+/// UI용 리스트 아이템
 class JoinFund {
-  final int id;            // UI 식별용(int)
-  final String fundId;     // 서버의 실제 ID(String)
-  final String name;       // 펀드명
-  final String subName;    // 운용사 등 서브텍스트
-  final String type;       // 분류 표기(펀드 타입)
+  final int id;
+  final String fundId;
+  final String name;
+  final String subName;
+  final String type;       // 주식형/채권형/혼합형 등
   final DateTime? launchedAt;
   final double return1m, return3m, return12m;
-  final List<String> badges;
+  final List<String> badges; // 위험(2등급), 투자신탁 등
 
   JoinFund({
     required this.id,
@@ -36,17 +37,16 @@ class JoinFund {
   });
 }
 
-/// FundListItem → JoinFund 변환
+/// DTO → UI 모델
 JoinFund _joinFundFromDto(FundListItem f) {
   DateTime? _parse(String? s) {
     if (s == null || s.isEmpty) return null;
     final p = s.split('-').map(int.parse).toList();
     return DateTime(p[0], p[1], p[2]);
   }
-
   return JoinFund(
-    id: f.fundId.hashCode,          // 화면용 ID(int)
-    fundId: f.fundId,               // 서버 호출용 실제 ID(String)
+    id: f.fundId.hashCode,
+    fundId: f.fundId,
     name: f.fundName,
     subName: f.managementCompany ?? '',
     type: f.fundType ?? '펀드',
@@ -63,7 +63,7 @@ JoinFund _joinFundFromDto(FundListItem f) {
 
 /// 날짜 포맷
 String _fmtDate(DateTime d) =>
-    '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+    '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}' ;
 
 /// 검색 디바운서
 class _Debouncer {
@@ -74,41 +74,93 @@ class _Debouncer {
   void dispose() => _t?.cancel();
 }
 
+/// 배지 중 '위험'이 아닌 것(투자신탁 등) 우선, 없으면 type
+String _divisionOf(JoinFund f) {
+  final nonRisk = f.badges.firstWhere((b) => !b.startsWith('위험'), orElse: () => '');
+  return nonRisk.isNotEmpty ? nonRisk : f.type;
+}
+
+/// 슬라이드 + 페이드(위→아래로 살짝)
+class __SlideFade extends StatelessWidget {
+  final Animation<double> t;       // 0~1
+  final Widget child;
+  final double dy;                 // 시작 Y오프셋(아래가 +)
+  const __SlideFade({super.key, required this.t, required this.child, this.dy = 0.08});
+  @override
+  Widget build(BuildContext context) {
+    final slide = Tween<Offset>(begin: Offset(0, -dy), end: Offset.zero)
+        .animate(CurvedAnimation(parent: t, curve: Curves.easeOutCubic));
+    final fade  = CurvedAnimation(parent: t, curve: Curves.easeOut);
+    return FadeTransition(opacity: fade, child: SlideTransition(position: slide, child: child));
+  }
+}
+
 class FundListScreen extends StatefulWidget {
   const FundListScreen({super.key});
   @override
   State<FundListScreen> createState() => _FundListScreenState();
 }
 
-class _FundListScreenState extends State<FundListScreen> {
+class _FundListScreenState extends State<FundListScreen> with TickerProviderStateMixin {
   final _svc = FundService();
   final _searchCtrl = TextEditingController();
   final _debouncer = _Debouncer(const Duration(milliseconds: 350));
+
+  // ⚠️ 컨트롤러는 내부 ListView에 연결 (NestedScrollView엔 연결하지 않음)
   final _scroll = ScrollController();
+  bool _showHeader = true; // 헤더 노출 제어용 플래그
 
   List<JoinFund> _items = [];
   PaginationInfo? _page;
   bool _loading = false;
   bool _initialized = false;
 
-  // ====== 필터 상태 ======
-  int _tabIndex = 0;                 // 0: 유형별, 1: 추가
-  String? _selType;                  // fundType
-  int? _selRisk;                     // 1~5
-  String? _selCompany;               // 운용사명
+  // 유형 칩 상태
+  String _selType = '전체';
   static const _typeChips = ['전체', '주식형', '채권형', '혼합형'];
-  static const _riskChips = ['전체', '1등급', '2등급', '3등급', '4등급', '5등급'];
-  List<String> _companyChips = ['전체']; // 로드 후 동적 구성
+  final chipIconPaths = <String, String>{
+    '전체'  : 'assets/icons/ic_all.png',
+    '주식형': 'assets/icons/ic_equity.png',
+    '채권형': 'assets/icons/ic_bond.png',
+    '혼합형': 'assets/icons/ic_mix.png',
+  };
+
+  // 헤더 애니메이션(제목 → 검색 → 칩)
+  late final AnimationController _hdrCtl;
+  late final Animation<double> _tTitle, _tSearch, _tChips;
+
+  // 리스트 스태거 애니메이션(첫 페이지 진입 시 카드가 차례대로)
+  late final AnimationController _listCtl;
+  int _firstPageCount = 0;
+  bool _animateFirstPage = true;
 
   @override
   void initState() {
     super.initState();
+
+    // 헤더 스태거
+    _hdrCtl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _tTitle  = CurvedAnimation(parent: _hdrCtl, curve: const Interval(0.00, 0.45, curve: Curves.easeOut));
+    _tSearch = CurvedAnimation(parent: _hdrCtl, curve: const Interval(0.18, 0.75, curve: Curves.easeOut));
+    _tChips  = CurvedAnimation(parent: _hdrCtl, curve: const Interval(0.45, 1.00, curve: Curves.easeOut));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _hdrCtl.forward());
+
+    // 리스트 스태거
+    _listCtl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+
     _load(page: 0);
+
+    // 무한 스크롤
     _scroll.addListener(() {
+      // 목록 끝쪽 페이징
       if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 120) {
-        if (!_loading && (_page?.hasNext ?? false)) {
-          _load(page: (_page!.page + 1));
-        }
+        if (!_loading && (_page?.hasNext ?? false)) _load(page: (_page!.page + 1));
+      }
+
+      // 헤더 보임/숨김 토글 (offset이 거의 0일 때만 보이도록)
+      final shouldShow = _scroll.hasClients ? _scroll.offset < 24.0 : true;
+      if (shouldShow != _showHeader && mounted) {
+        setState(() => _showHeader = shouldShow);
       }
     });
   }
@@ -118,6 +170,8 @@ class _FundListScreenState extends State<FundListScreen> {
     _searchCtrl.dispose();
     _debouncer.dispose();
     _scroll.dispose();
+    _hdrCtl.dispose();
+    _listCtl.dispose();
     super.dispose();
   }
 
@@ -128,34 +182,28 @@ class _FundListScreenState extends State<FundListScreen> {
         keyword: _searchCtrl.text.trim(),
         page: page,
         size: 10,
-        fundType: _selType == null || _selType == '전체' ? null : _selType,
-        riskLevel: _selRisk,
-        company: _selCompany == null || _selCompany == '전체' ? null : _selCompany,
+        fundType: _selType == '전체' ? null : _selType,
+        riskLevel: null,
+        company: null,
       );
 
       var list = (res.data ?? []).map(_joinFundFromDto).toList();
-
-      // 서버가 일부 필터 미지원일 경우를 대비해 클라에서 한 번 더 보정
-      list = _applyClientFilter(list);
+      if (_selType != '전체') list = list.where((e) => e.type == _selType).toList();
 
       if (page == 0) {
         _items = list;
-
-        // 운용사 칩 채우기(상위 12개)
-        final s = <String>{};
-        for (final it in _items) {
-          if (it.subName.isNotEmpty) s.add(it.subName);
-        }
-        _companyChips = ['전체', ...s.take(12)];
+        _firstPageCount = _items.length;
+        _animateFirstPage = true;
+        _listCtl.reset();
+        WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _listCtl.forward(); });
       } else {
         _items.addAll(list);
+        _animateFirstPage = false; // 페이지 추가분은 애니메이션 없이
       }
       _page = res.pagination;
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('목록 로드 실패: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('목록 로드 실패: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -166,256 +214,305 @@ class _FundListScreenState extends State<FundListScreen> {
     }
   }
 
-  List<JoinFund> _applyClientFilter(List<JoinFund> list) {
-    var out = list;
-    if (_selType != null && _selType != '전체') {
-      out = out.where((e) => e.type == _selType).toList();
-    }
-    if (_selRisk != null) {
-      out = out.where((e) {
-        final m = RegExp(r'\((\d)\)').firstMatch(e.badges.join());
-        final risk = m != null ? int.tryParse(m.group(1)!) : null;
-        return risk == _selRisk;
-      }).toList();
-    }
-    if (_selCompany != null && _selCompany != '전체') {
-      out = out.where((e) => e.subName == _selCompany).toList();
-    }
-    return out;
-  }
-
   TextStyle _ret(double v) => TextStyle(
     fontSize: 20,
     color: v >= 0 ? Colors.red : Colors.blue,
     fontWeight: FontWeight.w800,
   );
 
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      initialIndex: _tabIndex,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('펀드 찾기'),
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(160),
-            child: Column(
-              children: [
-                // 검색창
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Card(
-                    color: Colors.transparent,
-                    surfaceTintColor: Colors.transparent,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: TextField(
-                        controller: _searchCtrl,
-                        onChanged: (_) => _debouncer.run(() => _load(page: 0)),
-                        onSubmitted: (_) => _load(page: 0),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: '펀드를 검색해보세요',
-                          suffixIcon: const Icon(Icons.search, color: tossBlue),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(color: tossBlue, width: 1.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(color: tossBlue, width: 1.6),
-                            borderRadius: BorderRadius.circular(10),
+  Color _chipBg(String t) {
+    if (t.startsWith('위험')) return pastel(Colors.orange);
+    if (t.contains('주식')) return pastel(tossBlue);
+    if (t.contains('채권')) return pastel(Colors.green);
+    if (t.contains('혼합')) return pastel(Colors.purple);
+    return pastel(Colors.grey);
+  }
+
+  Widget _badgeChip(String text) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(color: _chipBg(text), borderRadius: BorderRadius.circular(8)),
+    child: Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+  );
+
+  Widget _buildHeader(double headerH) {
+    return SafeArea(
+      bottom: false,
+      child: SizedBox(
+        height: headerH,
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            Expanded(
+              child: Align(
+                alignment: const Alignment(0, -0.25), // 가운데 기준 살짝 위
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 1) 제목
+                      __SlideFade(
+                        t: _tTitle,
+                        child: const Text(
+                          '펀드 찾기',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.4),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // 2) 검색바 (폭 축소 & 높이 얇게)
+                      __SlideFade(
+                        t: _tSearch,
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: FractionallySizedBox(
+                            widthFactor: 0.86,
+                            child: TextField(
+                              controller: _searchCtrl,
+                              onChanged: (_) => _debouncer.run(() => _load(page: 0)),
+                              onSubmitted: (_) => _load(page: 0),
+                              textInputAction: TextInputAction.search,
+                              decoration: InputDecoration(
+                                hintText: '펀드를 검색해보세요',
+                                prefixIcon: const Icon(Icons.search, color: tossBlue),
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                filled: true,
+                                fillColor: Colors.white,
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: const BorderSide(color: tossBlue, width: 1.2),
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: const BorderSide(color: tossBlue, width: 1.6),
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ),
-
-                // 탭바
-                TabBar(
-                  labelColor: tossBlue,
-                  unselectedLabelColor: Colors.black54,
-                  indicatorColor: tossBlue,
-                  onTap: (i) => setState(() => _tabIndex = i),
-                  tabs: const [
-                    Tab(text: '유형별'),
-                    Tab(text: '추가'),
-                  ],
-                ),
-
-                // 칩 영역
-                SizedBox(
-                  height: 56,
-                  child: TabBarView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      // 유형별
-                      _ChipsRow(
-                        items: _typeChips,
-                        selected: _selType ?? '전체',
-                        onSelected: (v) {
-                          setState(() => _selType = v == '전체' ? null : v);
-                          _load(page: 0);
-                        },
-                        icon: Icons.category,
-                      ),
-                      // 추가(위험등급 + 운용사)
-                      ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          _ChipGroup(
-                            label: '위험등급',
-                            items: _riskChips,
-                            selected: _selRisk?.toString() ?? '전체',
-                            onSelected: (t) {
-                              setState(() => _selRisk = t == '전체' ? null : int.parse(t[0]));
-                              _load(page: 0);
+                      const SizedBox(height: 18),
+                      // 3) 유형 칩 (라벨 없이 칩만)
+                      __SlideFade(
+                        t: _tChips,
+                        child: SizedBox(
+                          height: 44,
+                          child: _ChipsRow(
+                            items: _typeChips,
+                            selected: _selType,
+                            onSelected: (v) { setState(() => _selType = v); _load(page: 0); },
+                            leadingBuilder: (t, sel) {
+                              final path = chipIconPaths[t];
+                              if (path == null) {
+                                return Icon(Icons.category, size: 16, color: sel ? tossBlue : Colors.black87);
+                              }
+                              return Image.asset(
+                                path, width: 16, height: 16, filterQuality: FilterQuality.medium,
+                                // color: sel ? tossBlue : Colors.black87,
+                                // colorBlendMode: BlendMode.srcIn,
+                              );
                             },
                           ),
-                          const SizedBox(width: 12),
-                          _ChipGroup(
-                            label: '운용사',
-                            items: _companyChips,
-                            selected: _selCompany ?? '전체',
-                            onSelected: (t) {
-                              setState(() => _selCompany = t == '전체' ? null : t);
-                              _load(page: 0);
-                            },
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
+      ),
+    );
+  }
 
-        body: !_initialized && _loading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-          onRefresh: () => _load(page: 0),
-          child: ListView.separated(
-            controller: _scroll,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            itemCount: _items.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (ctx, i) {
-              if (i == _items.length) {
-                if (_loading) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                if (!(_page?.hasNext ?? false)) {
-                  return const SizedBox(height: 24);
-                }
-                return const SizedBox.shrink();
-              }
+  @override
+  Widget build(BuildContext context) {
+    // 상단 1/3, 목록 2/3 비율
+    final screenH = MediaQuery.of(context).size.height;
+    final headerH = (screenH * 0.33).clamp(220.0, 380.0);
 
-              final f = _items[i];
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: LayoutBuilder(
+        builder: (context, _) {
+          final screenH = MediaQuery.of(context).size.height;
+          final headerH = (screenH * 0.33).clamp(220.0, 380.0);
 
-              return _Pressable(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Material(
-                    color: Colors.white,
-                    surfaceTintColor: Colors.transparent,
-                    child: InkWell(
-                      onTap: () async {
-                        HapticFeedback.lightImpact();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => FundDetailScreen(
-                              fundId: f.fundId,
-                              title: f.name,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // 상단: 유형 칩
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: tossBlue.withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(8),
+          return AnimatedBuilder(
+            animation: _scroll,
+            builder: (context, __) {
+              final offset = _scroll.hasClients ? _scroll.offset : 0.0;
+              // 헤더가 위로 이동하는 거리(0 ~ headerH)
+              final y = offset.clamp(0.0, headerH);
+
+              // 헤더 노출 비율 t: 1(완전 노출) ~ 0(완전 숨김)
+              final t = (1.0 - (y / headerH)).clamp(0.0, 1.0);
+
+              // 첫 카드 위 파스텔 배경 노출 여백(최대 20 → 0)
+              const double kRevealGapMax = 20.0;
+              final revealGap = kRevealGapMax * t;
+
+              // 헤더가 올라간 만큼 + 추가 여백 + 기본여백(8)
+              final topPad = 45.0 + (headerH - y) + revealGap;
+
+              return Stack(
+                children: [
+                  // ① 리스트(항상 전체 화면)
+                  Positioned.fill(
+                    child: (!_initialized && _loading)
+                        ? const Center(child: CircularProgressIndicator())
+                        : RefreshIndicator(
+                      onRefresh: () => _load(page: 0),
+                      child: Container(
+                        color: pastel(tossBlue),
+                        child: ListView.separated(
+                          controller: _scroll,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(16, topPad, 16, 16),
+                          itemCount: _items.length + 1,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (ctx, i) {
+                            if (i == _items.length) {
+                              if (_loading) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(child: CircularProgressIndicator()),
+                                );
+                              }
+                              if (!(_page?.hasNext ?? false)) return const SizedBox(height: 24);
+                              return const SizedBox.shrink();
+                            }
+
+                            final f = _items[i];
+
+                            Animation<double> it;
+                            if (_animateFirstPage && i < _firstPageCount) {
+                              final start = (i * 0.06).clamp(0.0, 0.9);
+                              final end = (start + 0.4).clamp(0.0, 1.0);
+                              it = CurvedAnimation(parent: _listCtl, curve: Interval(start, end, curve: Curves.easeOut));
+                            } else {
+                              it = const AlwaysStoppedAnimation(1.0);
+                            }
+
+                            final card = _Pressable(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: Material(
+                                  color: Colors.white,
+                                  surfaceTintColor: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {
+                                      HapticFeedback.lightImpact();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => FundDetailScreen(
+                                            fundId: f.fundId,
+                                            title: f.name,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: tossBlue.withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  _divisionOf(f),
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    color: tossBlue,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                              const Spacer(),
+                                              if (f.launchedAt != null)
+                                                Text('설정일 ${_fmtDate(f.launchedAt!)}',
+                                                    style: const TextStyle(fontSize: 12)),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            f.name,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            f.subName,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Row(
+                                            children: [
+                                              Wrap(
+                                                spacing: 6,
+                                                runSpacing: 6,
+                                                children: [
+                                                  if (f.badges.any((b) => b.startsWith('위험')))
+                                                    _badgeChip(f.badges.firstWhere((b) => b.startsWith('위험'))),
+                                                  _badgeChip(f.type),
+                                                ],
+                                              ),
+                                              const Spacer(),
+                                              const Text('1개월 수익률',
+                                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                              const SizedBox(width: 8),
+                                              Text('${f.return1m.toStringAsFixed(2)}%', style: _ret(f.return1m)),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                  child: Text(f.type, style: const TextStyle(fontSize: 10, color: tossBlue)),
                                 ),
-                                const Spacer(),
-                                if (f.launchedAt != null)
-                                  Text('설정일 ${_fmtDate(f.launchedAt!)}', style: const TextStyle(fontSize: 12)),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-
-                            // 제목/서브
-                            Text(
-                              f.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              f.subName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                fontSize: 12,
                               ),
-                            ),
-                            const SizedBox(height: 8),
+                            );
 
-                            // 수익률
-                            Row(
-                              children: [
-                                const Text('1개월 수익률', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                                const SizedBox(width: 8),
-                                Text('${f.return1m.toStringAsFixed(2)}%', style: _ret(f.return1m)),
-                                const Spacer(),
-                                Wrap(
-                                  spacing: 4,
-                                  children: f.badges.map((b) {
-                                    return Chip(
-                                      label: Text(b, style: const TextStyle(fontSize: 11)),
-                                      backgroundColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(.3),
-                                      visualDensity: VisualDensity.compact,
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
-                          ],
+                            return __SlideFade(t: it, dy: .06, child: card);
+                          },
                         ),
                       ),
                     ),
                   ),
-                ),
+
+                  // ② 헤더(흰 배경) — 스크롤에 맞춰 "그냥 위로" 올라가게만
+                  Positioned(
+                    top: -y,
+                    left: 0,
+                    right: 0,
+                    child: IgnorePointer(
+                      ignoring: y >= headerH - 1,
+                      child: Container(
+                        color: Colors.white,
+                        child: _buildHeader(headerH),
+                      ),
+                    ),
+                  ),
+                ],
               );
             },
-          ),
-        ),
+          );
+
+        },
       ),
     );
   }
@@ -445,8 +542,8 @@ class _PressableState extends State<_Pressable> {
           duration: const Duration(milliseconds: 110),
           decoration: BoxDecoration(
             boxShadow: _down
-                ? [BoxShadow(color: Colors.black.withOpacity(.03), blurRadius: 4, offset: const Offset(0, 2))]
-                : [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 10, offset: const Offset(0, 6))],
+                ? [BoxShadow(color: Colors.black.withOpacity(.03), blurRadius: 4, offset: Offset(0, 2))]
+                : [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 10, offset: Offset(0, 6))],
           ),
           child: widget.child,
         ),
@@ -455,13 +552,25 @@ class _PressableState extends State<_Pressable> {
   }
 }
 
-// ───────────── 칩 공용 위젯
+/// 칩 공용 위젯
 class _ChipsRow extends StatelessWidget {
   final List<String> items;
   final String selected;
   final void Function(String) onSelected;
-  final IconData icon;
-  const _ChipsRow({required this.items, required this.selected, required this.onSelected, required this.icon});
+
+  // 항목별 왼쪽 아이콘(위젯) 커스텀 빌더
+  final Widget Function(String item, bool selected)? leadingBuilder;
+
+  // (옵션) 기본 아이콘 - leadingBuilder가 없을 때만 사용
+  final IconData? icon;
+
+  const _ChipsRow({
+    required this.items,
+    required this.selected,
+    required this.onSelected,
+    this.leadingBuilder,
+    this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -470,55 +579,32 @@ class _ChipsRow extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       itemBuilder: (_, i) {
         final t = items[i];
-        final sel = selected == t || (selected == '전체' && t == '전체');
+        final sel = selected == t;
+
+        final Widget leading = leadingBuilder != null
+            ? leadingBuilder!(t, sel)
+            : Icon(icon ?? Icons.category, size: 16, color: sel ? tossBlue : Colors.black87);
+
         return ChoiceChip(
-          label: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 16, color: sel ? tossBlue : Colors.black87),
-            const SizedBox(width: 6), Text(t),
-          ]),
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              leading,
+              const SizedBox(width: 6),
+              Text(t),
+            ],
+          ),
           selected: sel,
           onSelected: (_) => onSelected(t),
           selectedColor: tossBlue.withOpacity(.12),
           backgroundColor: Colors.white,
           side: BorderSide(color: sel ? tossBlue : Colors.black26),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         );
       },
       separatorBuilder: (_, __) => const SizedBox(width: 8),
       itemCount: items.length,
-    );
-  }
-}
-
-class _ChipGroup extends StatelessWidget {
-  final String label;
-  final List<String> items;
-  final String selected;
-  final void Function(String) onSelected;
-  const _ChipGroup({required this.label, required this.items, required this.selected, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(width: 6),
-        ...items.map((t) {
-          final sel = selected == t || (selected == '전체' && t == '전체');
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(t),
-              selected: sel,
-              onSelected: (_) => onSelected(t),
-              selectedColor: tossBlue.withOpacity(.12),
-              backgroundColor: Colors.white,
-              side: BorderSide(color: sel ? tossBlue : Colors.black26),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          );
-        }),
-      ],
     );
   }
 }
