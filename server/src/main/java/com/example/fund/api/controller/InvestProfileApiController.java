@@ -1,5 +1,7 @@
 package com.example.fund.api.controller;
 
+import java.time.LocalDate;
+
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,10 +63,15 @@ public class InvestProfileApiController {
 
     @GetMapping("/eligibility")
     public InvestEligibilityResponse eligibility(@CurrentUid Integer uid) {
-        System.out.println("eligubility: " + investProfileApiService.hasAnalyzedToday(uid));
+        boolean analyzedToday = investProfileApiService.hasAnalyzedToday(uid);
+        LocalDate nextDateKst = investProfileApiService.nextAvailableDateKst(uid);
+
+        System.out.println("result: " + analyzedToday);
+        System.out.println("nextDateKst: " + nextDateKst);
         return new InvestEligibilityResponse(
-                investProfileApiService.hasAnalyzedToday(uid) ? false : true,
-                investProfileApiService.hasAnalyzedToday(uid) ? "오늘은 이미 투자성향 분석을 완료하셨습니다." : null);
+                !analyzedToday,
+                analyzedToday ? "오늘은 이미 투자성향 분석을 완료하셨습니다." : null,
+                nextDateKst.toString());
     }
 
     @PostMapping("/submit-legacy")
@@ -80,6 +87,10 @@ public class InvestProfileApiController {
         return investProfileApiService.getLatestSummary(uid);
     }
 
-    public record InvestEligibilityResponse(boolean allowed, String reason) {
+    public record InvestEligibilityResponse(
+            boolean allowed, // 기존: 재분석 가능 여부
+            String reason, // 기존: 메시지
+            String nextAvailableAt // 추가: "2025-08-22" 같은 ISO-8601 날짜 문자열
+    ) {
     }
 }

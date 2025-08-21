@@ -5,6 +5,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.fund.api.dto.investTest.RiskOptionDto;
@@ -40,7 +42,6 @@ import com.example.fund.user.entity.User;
 import com.example.fund.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -96,13 +97,47 @@ public class InvestProfileApiService {
         return p.map(this::toView);
     }
 
+    // public boolean hasAnalyzedToday(Integer userId) {
+    // Optional<InvestProfileResult> opt =
+    // resultRepository.findByUser_UserId(userId);
+    // if (opt.isPresent()) {
+    // LocalDate lastDate = opt.get().getAnalysisDate().toLocalDate();
+    // return lastDate.isEqual(LocalDate.now()); // 오늘이면 true
+    // }
+    // return false;
+    // }
+
+    // InvestProfileApiService.java
+
+    @Transactional(readOnly = true)
     public boolean hasAnalyzedToday(Integer userId) {
-        Optional<InvestProfileResult> opt = resultRepository.findByUser_UserId(userId);
-        if (opt.isPresent()) {
-            LocalDate lastDate = opt.get().getAnalysisDate().toLocalDate();
-            return lastDate.isEqual(LocalDate.now()); // 오늘이면 true
-        }
-        return false;
+        final ZoneId KST = ZoneId.of("Asia/Seoul");
+
+        return resultRepository.findTopByUser_UserIdOrderByAnalysisDateDesc(userId)
+                .map(r -> {
+                    // DB 저장 타임존이 UTC면 ZoneOffset.UTC 로 교체하세요.
+                    LocalDate analyzedKst = r.getAnalysisDate()
+                            .atZone(ZoneId.systemDefault())
+                            .withZoneSameInstant(KST)
+                            .toLocalDate();
+                    LocalDate todayKst = LocalDate.now(KST);
+                    return analyzedKst.isEqual(todayKst); // 오늘이면 true(= 재분석 불가)
+                })
+                .orElse(false);
+    }
+
+    /** 다음 재검사 가능일(자정 기준). 기록 없으면 '오늘' */
+    @Transactional(readOnly = true)
+    public LocalDate nextAvailableDateKst(Integer userId) {
+        final ZoneId KST = ZoneId.of("Asia/Seoul");
+
+        return resultRepository.findTopByUser_UserIdOrderByAnalysisDateDesc(userId)
+                .map(r -> r.getAnalysisDate()
+                        .atZone(ZoneId.systemDefault())
+                        .withZoneSameInstant(KST)
+                        .toLocalDate()
+                        .plusDays(1))
+                .orElse(LocalDate.now(KST));
     }
 
     public InvestTypeResponse getLatestSummary(int uid) {

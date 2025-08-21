@@ -17,9 +17,7 @@ import '../main.dart' show navigatorKey;
 import 'package:mobile_front/core/services/user_service.dart';
 
 class MainScaffold extends StatefulWidget {
-  final String? initialAccessToken;
-
-  const MainScaffold({super.key, this.initialAccessToken});
+  const MainScaffold({super.key});
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -27,11 +25,11 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _index = 0;
-  String? _initialAccessToken; // 라우트로 받은 토큰 저장
+  String? _accessToken; // 항상 SecureStorage에서 로드
   late List<Widget> _pages;
   String? _investTypeName; // 투자성향 이름 저장
 
-  /// ✅ 홈 강제 새로고침 트리거
+  /// 홈 강제 새로고침 트리거 (값이 바뀌면 HomeScreen Key가 바뀌어 재생성됨)
   int _homeRefreshTick = 0;
 
   final _myFunds = <Fund>[
@@ -41,6 +39,13 @@ class _MainScaffoldState extends State<MainScaffold> {
     Fund(id: 4, name: '친환경 인프라 펀드', rate: 1.7, balance: 2_800_000),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _buildPages();      // 초기 페이지 구성 (토큰 null일 수 있음)
+    _loadUserInfo();    // SecureStorage에서 토큰 읽고 /me 호출
+  }
+
   void _buildPages() {
     _pages = [
       HomeScreen(
@@ -48,20 +53,15 @@ class _MainScaffoldState extends State<MainScaffold> {
         myFunds: _myFunds,
         investType: _investTypeName ?? '공격 투자형',
         userName: '@@',
-        accessToken: _initialAccessToken,
+        accessToken: _accessToken,      // 항상 storage에서 읽은 토큰 사용
         userService: UserService(),
         onStartInvestFlow: () async {
-          // ✅ bool?로 받기 (라우트 반환과 동일하게)
-          final bool? result = await Navigator.pushNamed<bool?>(
-            context,
-            AppRoutes.investType,
-          );
-
+          final bool? result = await Navigator.pushNamed<bool?>(context, AppRoutes.investType);
           if (result == true) {
             if (!mounted) return;
-            setState(() => _index = 0);  // 홈 탭으로 이동
-            _bumpHomeRefresh();          // 홈 강제 리로드 (Key 변경)
-            await _loadUserInfo();       // (선택) 서버 최신 데이터 재조회
+            setState(() => _index = 0);   // 홈 탭으로 이동
+            _bumpHomeRefresh();           // 홈 강제 리로드 (Key 변경)
+            await _loadUserInfo();        // 서버 최신 데이터 재조회
           }
         },
       ),
@@ -71,31 +71,26 @@ class _MainScaffoldState extends State<MainScaffold> {
     ];
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _initialAccessToken = widget.initialAccessToken; // ⬅ 생성자 값으로 세팅
-    _buildPages(); // 초기(토큰 null일 수 있음) 1회 구성
-    _loadUserInfo(); // ✅ 유저 정보 불러오기
-  }
-
   Future<void> _loadUserInfo() async {
-    String? token = _initialAccessToken;
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'accessToken');
 
     if (token == null || token.isEmpty) {
-      const storage = FlutterSecureStorage();
-      token = await storage.read(key: 'accessToken');
+      debugPrint("MainScaffold: no accessToken in storage");
+      setState(() {
+        _accessToken = null;
+        _buildPages();
+      });
+      return;
     }
-
-    if (token == null || token.isEmpty) return;
 
     try {
       final svc = UserService();
       final me = await svc.getMe(token);
       setState(() {
+        _accessToken = token; // 🔥 토큰 상태 저장
         _investTypeName = me.typename.isNotEmpty ? me.typename : null;
-        _initialAccessToken = token;
-        _buildPages(); // 🔥 HomeScreen을 새로운 데이터로 다시 구성
+        _bumpHomeRefresh();   // 🔥 토큰 로드 이후 홈을 재생성해서 HomeScreen이 새 토큰으로 초기화되도록
       });
     } catch (e) {
       debugPrint("MainScaffold.getMe failed: $e");
@@ -103,23 +98,18 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   void _bumpHomeRefresh() {
-    setState(() {
-      _homeRefreshTick++;
-      _buildPages(); // Key 반영을 위해 페이지 재구성
-    });
+    _homeRefreshTick++;
+    _buildPages(); // Key 반영을 위해 페이지 재구성
   }
 
   Future<void> _openFullMenu() async {
-    // 1) 라우트 인자로 받은 토큰 우선 사용
-    String? accessToken = _initialAccessToken;
-
-    // 2) 없으면(앱 재시작 등) 스토리지에서 보조로 읽기
+    // 우선 상태의 토큰 사용, 없으면 스토리지 보조 조회
+    String? accessToken = _accessToken;
     if (accessToken == null || accessToken.isEmpty) {
       const storage = FlutterSecureStorage();
       accessToken = await storage.read(key: 'accessToken');
     }
 
-    // 디버그
     final pre = (accessToken == null || accessToken.isEmpty)
         ? 'null'
         : accessToken.substring(0, math.min(12, accessToken.length));
@@ -148,30 +138,42 @@ class _MainScaffoldState extends State<MainScaffold> {
                 child: FullMenuOverlay(
                   userName: '이유저',
                   userId: '@user01',
-                  accessToken: accessToken,      // ⬅ 여기로도 전달
-                  userService: UserService(),    // (선택) 주입
-
+                  accessToken: accessToken,   // 메뉴 오버레이 기능에 토큰 전달
+                  userService: UserService(),
                   onGoFundMain: () {
                     Navigator.of(context, rootNavigator: true).pop();
                     setState(() => _index = 0);
                   },
-                  onGoFundJoin: () {
-                    Navigator.of(context, rootNavigator: true).pop();
-                    setState(() => _index = 2);
+                  onGoFundJoin: () async {
+                    if (_investTypeName == null || _investTypeName!.isEmpty) {
+                      final go = await showAppConfirmDialog(
+                        context: context,
+                        title: "안내",
+                        message: "펀드 가입을 위해서는 투자성향 \n분석이 필요합니다 진행하시겠습니까?",
+                        confirmText: "분석진행",
+                        cancelText: "취소",
+                        confirmColor: AppColors.primaryBlue,
+                      );
+                      if (go == true) {
+                        final result = await Navigator.pushNamed(context, AppRoutes.investType);
+                        if (result == true) {
+                          setState(() => _index = 0);
+                          _bumpHomeRefresh();
+                          _loadUserInfo();
+                        }
+                      }
+                      return;
+                    }
                   },
-
-                  // ✅ 투자성향분석 진입도 await 해서 결과 처리
                   onGoInvestAnalysis: () async {
                     Navigator.of(context, rootNavigator: true).pop();
                     final result = await navigatorKey.currentState?.pushNamed(AppRoutes.investType);
                     if (result == true) {
-                      // 완료 → 홈으로 이동 + 홈 리프레시 + 유저정보 갱신
                       setState(() => _index = 0);
                       _bumpHomeRefresh();
                       _loadUserInfo();
                     }
                   },
-
                   onGoFAQ: () {
                     Navigator.of(context, rootNavigator: true).pop();
                     navigatorKey.currentState?.pushNamed('/faq');
@@ -221,15 +223,15 @@ class _MainScaffoldState extends State<MainScaffold> {
               return;
             }
 
-            // ✅ 같은 탭 재탭 → 홈 리로드
+            // 같은 탭 재탭 → 홈 리로드
             if (_index == i) {
               if (i == 0) {
                 _bumpHomeRefresh();
               }
-              return; // 다른 탭도 필요하면 개별 tick 추가
+              return;
             }
 
-            // 👉 펀드 가입 탭 가드
+            // 펀드 가입 탭 가드
             if (i == 2) {
               if (_investTypeName == null || _investTypeName!.isEmpty) {
                 final go = await showAppConfirmDialog(
@@ -241,16 +243,14 @@ class _MainScaffoldState extends State<MainScaffold> {
                   confirmColor: AppColors.primaryBlue,
                 );
                 if (go == true) {
-                  // ✅ 분석 화면으로 이동 후 결과 기다림
                   final result = await Navigator.pushNamed(context, AppRoutes.investType);
                   if (result == true) {
-                    // 완료 → 홈으로 이동 + 홈 리프레시 + 유저정보 갱신
                     setState(() => _index = 0);
                     _bumpHomeRefresh();
                     _loadUserInfo();
                   }
                 }
-                return; // 🚫 이 흐름에서는 기본 이동 막음
+                return;
               }
             }
 

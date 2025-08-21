@@ -3,13 +3,13 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_front/core/constants/api.dart';
 
-/// /api/risk-test/result/latest 의 응답 모델
+/// /api/risk-test/result/latest 응답 모델 (서버의 grade/createdAt도 유연 파싱)
 class InvestResultModel {
   final int resultId;
   final int totalScore;
-  final String typeName;       // 서버의 grade를 매핑
-  final String description;    // description 그대로 사용
-  final DateTime analysisDate; // 서버의 createdAt/analysisDate를 매핑
+  final String typeName;       // grade 매핑
+  final String description;    // description
+  final DateTime analysisDate; // analysisDate 또는 createdAt
 
   const InvestResultModel({
     required this.resultId,
@@ -19,32 +19,27 @@ class InvestResultModel {
     required this.analysisDate,
   });
 
-  /// 유연 파싱: 평면/중첩/대체 키 모두 지원
   factory InvestResultModel.fromJson(Map<String, dynamic> j) {
     final resultId = _readInt(j, ['resultId', 'id']) ?? 0;
     final totalScore = _readInt(j, ['totalScore', 'score']) ?? 0;
 
-    // ✅ typeName 후보: typeName, type.name, type.typeName, grade
     final typeName =
         _readString(j, ['typeName']) ??
             _readStringIn(j, ['type', 'name']) ??
             _readStringIn(j, ['type', 'typeName']) ??
-            _readString(j, ['grade']) ??                           // ← 여기 추가
+            _readString(j, ['grade']) ??
             '알 수 없음';
 
-    // 설명: description 또는 type.description
     final description =
         _readString(j, ['description']) ??
             _readStringIn(j, ['type', 'description']) ??
             '';
 
-    // ✅ 날짜 후보: analysisDate, createdAt
     final analysisAtStr =
         _readString(j, ['analysisDate']) ??
-            _readString(j, ['createdAt']);                         // ← 여기 추가
-    final analysisAt = analysisAtStr != null
-        ? DateTime.tryParse(analysisAtStr)
-        : null;
+            _readString(j, ['createdAt']);
+    final analysisAt =
+    analysisAtStr != null ? DateTime.tryParse(analysisAtStr)?.toLocal() : null;
 
     return InvestResultModel(
       resultId: resultId,
@@ -90,20 +85,47 @@ class InvestResultModel {
   }
 }
 
-/// /api/risk-test/eligibility 의 응답 모델
+/// /api/risk-test/eligibility 응답 모델
+/// 서버 DTO: record InvestEligibilityResponse(boolean allowed, String reason[, String nextAvailableAt])
 class InvestEligibilityResponse {
-  final bool canReanalyze;
-  final String? message;
+  final bool canReanalyze;     // <- 서버 allowed 매핑
+  final String? message;       // <- 서버 reason 매핑
+  final DateTime? nextAvailableAt; // 선택적
 
-  const InvestEligibilityResponse({
+  InvestEligibilityResponse({
     required this.canReanalyze,
-    required this.message,
+    this.message,
+    this.nextAvailableAt,
   });
 
   factory InvestEligibilityResponse.fromJson(Map<String, dynamic> j) {
+    bool _readBool(dynamic v) {
+      if (v is bool) return v;
+      if (v is num) return v != 0;
+      if (v is String) {
+        final s = v.toLowerCase().trim();
+        if (s == 'true' || s == 'yes' || s == 'y') return true;
+        if (s == 'false' || s == 'no' || s == 'n') return false;
+      }
+      return false;
+    }
+
+    // ✅ allowed(서버) → canReanalyze(클라이언트)
+    final can = j.containsKey('allowed')
+        ? _readBool(j['allowed'])
+        : _readBool(j['canReanalyze']); // 호환
+
+    // ✅ reason(서버) → message(클라이언트)
+    final msg = (j['reason'] as String?) ?? (j['message'] as String?);
+
+    // 선택: nextAvailableAt 지원(없어도 null)
+    final nextStr = j['nextAvailableAt'] as String?;
+    final nextAt = nextStr != null ? DateTime.tryParse(nextStr)?.toLocal() : null;
+
     return InvestEligibilityResponse(
-      canReanalyze: j['canReanalyze'] as bool? ?? false,
-      message: j['message'] as String?,
+      canReanalyze: can,
+      message: msg,
+      nextAvailableAt: nextAt,
     );
   }
 }
