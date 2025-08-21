@@ -27,6 +27,7 @@ class AppRoutes {
   static const String questionnaire = '/questionnaire'; // 설문 화면
   static const String investTest = '/invest-test';      // 동의 -> 설문 진입
   static const String investResult = '/invest-result';  // 결과 화면
+  static const String otp = '/otp';
 }
 
 class AppRouter {

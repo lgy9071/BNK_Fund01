@@ -65,7 +65,10 @@ class _MainScaffoldState extends State<MainScaffold> {
           }
         },
       ),
-      const MyFinanceScreen(),
+      MyFinanceScreen(
+        accessToken: _initialAccessToken,
+        userService: UserService(),
+      ),
       const FundListScreen(),
       const SizedBox.shrink(),
     ];

@@ -55,7 +55,7 @@ dependencies {
 	// AI
 	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 
-	// smtp : send email
+	// SMTP
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 
 	// Lombok

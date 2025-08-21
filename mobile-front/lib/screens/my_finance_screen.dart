@@ -2,6 +2,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/core/services/user_service.dart';
 import 'package:mobile_front/screens/opt/opt_screen.dart';
 import 'package:mobile_front/widgets/common_button.dart';
 import '../models/fund.dart';
@@ -17,7 +18,15 @@ class BankAccount {
 }
 
 class MyFinanceScreen extends StatefulWidget {
-  const MyFinanceScreen({super.key});
+  final String? accessToken;
+  final UserService? userService;
+
+  const MyFinanceScreen({
+    super.key,
+    this.accessToken,
+    this.userService,
+  });
+
   @override
   State<MyFinanceScreen> createState() => _MyFinanceScreenState();
 }
@@ -143,7 +152,12 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const OptScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => OptScreen(
+                      accessToken: widget.accessToken,    // ← 토큰 전달
+                      userService: widget.userService,    // ← 서비스 전달
+                    ),
+                  ),
                 );
               },
             ),
