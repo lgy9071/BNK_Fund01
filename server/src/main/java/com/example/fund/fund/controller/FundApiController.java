@@ -1,35 +1,24 @@
 package com.example.fund.fund.controller;
 
-import java.net.MalformedURLException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import com.example.fund.fund.dto.*;
-import org.springframework.core.io.UrlResource;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import com.example.fund.fund.service.FundDetailService;
+import com.example.fund.fund.service.FundQueryService;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.example.fund.fund.entity.Fund;
-import com.example.fund.fund.entity.FundDocument;
-import com.example.fund.fund.entity.InvestProfileResult;
-import com.example.fund.fund.repository.FundDocumentRepository;
-import com.example.fund.fund.repository.FundRepository;
-import com.example.fund.fund.repository.InvestProfileResultRepository;
+import com.example.fund.fund.entity_fund_etc.InvestProfileResult;
+import com.example.fund.fund.repository_fund.FundDocumentRepository;
+import com.example.fund.fund.repository_fund.FundRepository;
+import com.example.fund.fund.repository_fund_etc.InvestProfileResultRepository;
 import com.example.fund.fund.service.FundService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.example.fund.fund.dto.ApiResponse;
 
 @Slf4j
 @RestController
@@ -45,9 +34,28 @@ public class FundApiController {
     private static final int MIN_INVEST_TYPE = 1;
     private static final int MAX_INVEST_TYPE = 5;
 
-    /**
-     * 투자 성향에 따른 펀드 목록 - REST API
-     */
+    private final FundQueryService fundQueryService;
+    private final FundDetailService fundDetailService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<FundListResponseDTO>>> list(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        ApiResponse<List<FundListResponseDTO>> body =
+                fundQueryService.getFunds(keyword, page, size);
+        return ResponseEntity.ok(body); // ResponseEntity는 컨트롤러에서만
+    }
+
+    @GetMapping("/{fundId}")
+    public ResponseEntity<ApiResponse<FundDetailResponseDTO>> detail(@PathVariable String fundId) {
+        ApiResponse<FundDetailResponseDTO> body =
+                fundDetailService.getFundDetail(fundId);
+        return ResponseEntity.ok(body);
+    }
+
+    /** 투자 성향에 따른 펀드 목록 - REST API */
     /*
         {
           "success": true,
@@ -65,6 +73,7 @@ public class FundApiController {
           }
         }
     */
+    /*
     @GetMapping("/list")
     public ResponseEntity<ApiResponse<FundListResponse>> getFundList(
             @RequestParam(defaultValue = "1") int page,
@@ -153,161 +162,14 @@ public class FundApiController {
                     ));
         }
     }
-
-    /**
-     * 투자 성향에 따른 배포된 펀드 목록 - REST API
-     */
-    /*
-        {
-          "success": true,
-          "data": [...],
-          "investType": 3,
-          "investTypeName": "위험 중립형",
-          "pagination": {
-            "page": 1,
-            "limit": 10,
-            "total": 50,
-            "totalPages": 5,
-            "hasNext": true,
-            "hasPrev": false,
-            "currentItems": 10
-          }
-        }
     */
-    @GetMapping("/list-policy")
-    public ResponseEntity<ApiResponse<FundListResponse>> getFundList_policy(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam int investType,
-            @RequestParam(required = false) List<String> risk,      // 위험등급 필터
-            @RequestParam(required = false) List<String> type,      // 펀드유형 필터
-            @RequestParam(required = false) List<String> region     // 투자지역 필터
-    ) {
-        try {
-            // 투자성향 유효성 검사
-            if (investType < MIN_INVEST_TYPE || investType > MAX_INVEST_TYPE) {
-                return ResponseEntity.badRequest()
-                        .body(ApiResponse.failure(
-                                "투자 성향은 1~5 사이의 값이어야 합니다.",
-                                "INVALID_INVESTMENT_TYPE"
-                        ));
-            }
 
-            // 페이지 설정
-            Pageable pageable = PageRequest.of(page, size, Sort.by("policyId").descending());
-
-            // 데이터 조회
-            Page<FundPolicyResponseDTO> fundPage = fundService.findWithFilters_policy(investType, risk, type, region, pageable);
-
-            // 투자성향 이름 조회
-            String investTypeName = getInvestTypeName(investType);
-
-            // 응답 데이터 구성
-            FundListResponse fundListResponse = FundListResponse.builder()
-                    .funds(fundPage.getContent())
-                    .investType(investType)
-                    .investTypeName(investTypeName)
-                    .build();
-
-            // 페이지 정보 생성
-            PaginationInfo paginationInfo = PaginationInfo.from(fundPage, page);
-
-            // 성공 응답 반환
-            String responseMessage = String.format("펀드 %d개를 조회", fundPage.getNumberOfElements());
-
-            return ResponseEntity.ok(
-                    ApiResponse.success(
-                            fundListResponse,
-                            responseMessage,
-                            paginationInfo
-                    )
-            );
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.failure(e.getMessage(), "INVALID_PARAMETER"));
-
-        } catch (Exception e) {
-            System.out.println(e);
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.failure(
-                            "서버 오류",
-                            "INTERNAL_SERVER_ERROR"
-                    ));
-        }
-    }
-
-
-    /**
-     * 투자 성향에 따른 수익률 BEST 펀드 목록 - REST API
-     */
-    /*
-        {
-          "success": true,
-          "data": [...],
-          "investType": 3,
-          "investTypeName": "위험 중립형",
-        }
-    */
-    @GetMapping("/best-return")
-    public ResponseEntity<ApiResponse<FundListResponse>> getBestReturnFundList(
-            @RequestParam int investType
-    ) {
-        try {
-            // 1. 투자성향 유효성 검사
-            if (investType < MIN_INVEST_TYPE || investType > MAX_INVEST_TYPE) {
-                return ResponseEntity.badRequest()
-                        .body(ApiResponse.failure(
-                                "투자 성향은 1~5 사이의 값이어야 합니다.",
-                                "INVALID_INVESTMENT_TYPE"
-                        ));
-            }
-
-            // 최대 10개 조회
-            Pageable pageable = PageRequest.of(0, 10);
-
-            // 데이터 조회
-            List<FundPolicyResponseDTO> fundList = fundService.findBestReturn(investType, pageable);
-
-            // 투자 성향 조회
-            String investTypeName = getInvestTypeName(investType);
-
-            // 6. 응답 데이터 구성
-            FundListResponse fundListResponse = FundListResponse.builder()
-                    .funds(fundList)
-                    .investType(investType)
-                    .investTypeName(investTypeName)
-                    .build();
-
-            // 성공 응답 메세지
-            String responseMessage = String.format("%s에 맞는 수익률 펀드 %d개를 조회했습니다.", investTypeName, fundList.size());
-
-            return ResponseEntity.ok(
-                    ApiResponse.success(
-                            fundListResponse,
-                            responseMessage
-                    )
-            );
-
-        } catch (IllegalArgumentException e) {
-            log.warn("잘못된 입력값: investType={}, error={}", investType, e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.failure(e.getMessage(), "INVALID_PARAMETER"));
-        } catch (Exception e) {
-            log.error("펀드 수익률 BEST 목록 조회 중 오류 발생");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.failure(
-                            "서버 오류가 발생했습니다.",
-                            "INTERNAL_SERVER_ERROR"
-                    ));
-        }
-    }
 
     /** 펀드 상세 정보 제공 - REST API */
+    /*
     @GetMapping("/detail/{fundId}")
     public ResponseEntity<ApiResponse<?>> getFund(
-            @PathVariable("fundId") Long fundId,
+            @PathVariable("fundId") String fundId,
             @RequestParam(required = false) Integer investType  // 현재 사용 안함
     ) {
         try {
@@ -343,10 +205,9 @@ public class FundApiController {
                     .body(ApiResponse.failure("서버 오류가 발생했습니다.", "INTERNAL_ERROR"));
         }
     }
+    */
 
-    /**
-     * 사용자 투자성향 조회 API
-     */
+    /** 사용자 투자성향 조회 API */
     /*
         // 투자성향이 있는 경우
         {
@@ -408,9 +269,7 @@ public class FundApiController {
         }
     }
 
-    /**
-     * 투자성향 이름 반환
-     */
+    /** 투자성향 이름 반환 */
     private String getInvestTypeName(int investType) {
         return switch (investType) {
             case 1 -> "안정형";
@@ -425,6 +284,7 @@ public class FundApiController {
     // ====================================================================================================
 
     /* 펀드 이름으로 검색  API */
+    /*
     @GetMapping("/search")
     public ResponseEntity<List<Map<String, Object>>> searchFund(@RequestParam("name") String name) {
         List<Fund> funds = fundRepository.findByFundNameContainingIgnoreCase(name);
@@ -438,14 +298,19 @@ public class FundApiController {
 
         return ResponseEntity.ok(result);
     }
+    */
 
+    /** 배포로 등록된 데이터 List만 보여주는 api */
+    /*
     @GetMapping("/search/available")
     public ResponseEntity<List<Fund>> getFundsWithoutPolicy() {
         List<Fund> result = fundRepository.findFundsNotInFundPolicy();
         return ResponseEntity.ok(result);
     }
+    */
 
     /* 공시파일 다운로드 */
+    /*
     @GetMapping("/files/document/{id}")
     public ResponseEntity<org.springframework.core.io.Resource> downloadFundDocument(@PathVariable("id") Long id) {
         FundDocument document = fundDocumentRepository.findById(id)
@@ -479,10 +344,12 @@ public class FundApiController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(resource);
     }
+    */
 
     /**
      * 펀드 상세 데이터 조회 - REST API - ?
      */
+    /*
     @GetMapping("/{fundId}")
     public ResponseEntity<?> getFundDetail(
             @PathVariable("fundId") Long fundId,
@@ -501,5 +368,6 @@ public class FundApiController {
             return ResponseEntity.notFound().build();
         }
     }
+    */
 
 }

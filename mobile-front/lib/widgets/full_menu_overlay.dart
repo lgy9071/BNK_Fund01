@@ -1,8 +1,15 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_front/core/constants/colors.dart';
-
 import '../core/actions/auth_actions.dart';
+import '../screens/fund_mbti_flow.dart';
+
+//서버에서 내정보를 가져오기 위한 의존성
+import 'package:mobile_front/core/services/user_service.dart';
+import 'package:mobile_front/models/user_profile.dart';
+//import 'package:mobile_front/utils/session_manager.dart';
 
 const tossBlue = Color(0xFF0064FF);
 Color pastel(Color c) => c.withOpacity(.12);
@@ -10,6 +17,9 @@ Color pastel(Color c) => c.withOpacity(.12);
 class FullMenuOverlay extends StatefulWidget {
   final String userName;
   final String userId;
+
+  final UserService? userService;
+  final String? accessToken;
 
   final VoidCallback onGoFundMain;
   final VoidCallback onGoFundJoin;
@@ -23,6 +33,7 @@ class FullMenuOverlay extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onAsk;
   final VoidCallback onMyQna;
+  final VoidCallback onFundStatus;
 
   const FullMenuOverlay({
     super.key,
@@ -38,6 +49,10 @@ class FullMenuOverlay extends StatefulWidget {
     required this.onLogout,
     required this.onAsk,
     required this.onMyQna,
+    required this.onFundStatus,
+
+    this.userService,
+    this.accessToken,
   });
 
   @override
@@ -48,10 +63,38 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
   double _dragAccum = 0;
   static const _kDismissThreshold = 80;
 
+  // 프로필 비동기 로딩 Future
+  Future<UserProfile?>? _meFuture;
+
   @override
   void initState() {
     super.initState();
     _applySystemBars();
+    _meFuture = _loadMe(); // API 호출 시작
+  }
+
+  // SessionManager가 있으면 토큰을 얻어 사용, 실패해도 안전 폴백
+  Future<UserProfile?> _loadMe() async {
+    try {
+      final svc = widget.userService ?? UserService();
+      // 1) 우선 주입된 토큰 사용
+      String? token = widget.accessToken;
+
+      // 디버그용
+      debugPrint('FullMenuOverlay.accessToken? ${
+          token == null ? "null" : token.substring(0, math.min(12, token.length)) + "..."
+      }');
+
+      if (token == null || token.isEmpty) return null; // 토큰 없으면 패스
+
+      // UserService가 token을 받는 시그니처라면 ↓ 사용
+      return await svc.getMe(token);
+
+      // 만약 UserService가 내부에서 dio(세션매니저)를 쓰는 형태라면:
+      // return await svc.getMe();
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -71,7 +114,7 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
     ));
   }
 
-  // 필요 없으면 이 복원 로직은 제거해도 됩니다(앱 전역에서 관리 시)
+  // 필요 없으면 이 복원 로직은 제거(앱 전역에서 관리 시)
   void _restoreSystemBars() {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -84,6 +127,11 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
 
   void _maybePop() => Navigator.of(context, rootNavigator: true).pop();
 
+  // 터치/스크롤 시 세션 리셋(세션 매니저 없으면 조용히 무시)
+  void _pingSession() {
+    // no-op: SessionManager 싱글톤이 없으므로 아무 것도 하지 않음
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,8 +142,10 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
+              onTapDown: (_) => _pingSession(),
               onHorizontalDragUpdate: (d) {
                 _dragAccum += d.delta.dx;
+                _pingSession();
                 if (_dragAccum > _kDismissThreshold) _maybePop();
               },
               onHorizontalDragEnd: (_) => _dragAccum = 0,
@@ -104,31 +154,96 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ProfileCard(
-                      userName: widget.userName,
-                      userId: widget.userId,
-                      onLogout: widget.onLogout,
-                      onAsk: widget.onAsk,
-                      onMyQna: widget.onMyQna,
+                    // 내정보 불러오기(FutureBuilder, 실패 시 props 폴백)
+                    FutureBuilder<UserProfile?>(
+                      future: _meFuture,
+                      builder: (_, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                          );
+                        }
+                        if (snap.hasError) {
+                          debugPrint('getMe error: ${snap.error}');   // 콘솔 출력
+                          // 에러여도 props 폴백으로 계속 진행
+                        }
+
+                        final data = snap.data;
+                        final name  = (data != null && data.name.isNotEmpty)  ? data.name  : widget.userName;
+                        final idTxt = (data != null && data.email.isNotEmpty) ? data.email : widget.userId;
+
+                        return _ProfileCard(
+                          userName: name,
+                          userId: idTxt,
+                          onLogout: widget.onLogout,
+                          onAsk: widget.onAsk,
+                          onMyQna: widget.onMyQna,
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
 
                     const _SectionTitle(title: '펀드 메뉴'),
                     const SizedBox(height: 8),
                     _MenuList(items: [
-                      _MenuItemData(icon: Icons.home_outlined, title: '펀드 메인', onTap: widget.onGoFundMain),
-                      _MenuItemData(icon: Icons.playlist_add,  title: '펀드 가입', onTap: widget.onGoFundJoin),
-                      _MenuItemData(icon: Icons.analytics,     title: '투자성향분석', onTap: widget.onGoInvestAnalysis),
+                      _MenuItemData(
+                        title: '펀드 가입',
+                        onTap: widget.onGoFundJoin,
+                        assetPath: 'assets/icons/ic_join.png',
+                      ),
+                      _MenuItemData(
+                        title: '투자성향분석',
+                        onTap: widget.onGoInvestAnalysis,
+                        assetPath: 'assets/icons/ic_analytics.png',
+                      ),
                     ]),
                     const SizedBox(height: 20),
 
-                    const _SectionTitle(title: '자료실'),
+                    const _SectionTitle(title: '고객 지원 메뉴'),
                     const SizedBox(height: 8),
                     _MenuList(items: [
-                      _MenuItemData(icon: Icons.help_outline,   title: 'FAQ',            onTap: widget.onGoFAQ),
-                      _MenuItemData(icon: Icons.menu_book,      title: '펀드 이용 가이드',  onTap: widget.onGoGuide),
-                      _MenuItemData(icon: Icons.psychology_alt, title: '펀드 MBTI',       onTap: widget.onGoMbti),
-                      _MenuItemData(icon: Icons.forum_outlined, title: '펀토방',           onTap: widget.onGoForum),
+                      _MenuItemData(
+                        title: 'FAQ',
+                        onTap: widget.onGoFAQ,
+                        assetPath: 'assets/icons/ic_faq.png',
+                      ),
+                      _MenuItemData(
+                        title: '펀드 이용 가이드',
+                        onTap: widget.onGoGuide,
+                        assetPath: 'assets/icons/ic_guide.png',
+                      ),
+                      _MenuItemData(
+                        title: '펀드 시황',
+                        onTap: widget.onFundStatus,
+                        assetPath: 'assets/icons/ic_news.png',
+                      ),
+                      _MenuItemData(
+                        title: '펀드 MBTI',
+                        onTap: () {
+                          // root 네비게이터를 먼저 잡아두고
+                          final nav = Navigator.of(context, rootNavigator: true);
+
+                          // 오버레이 닫기
+                          nav.pop();
+
+                          // 다음 프레임에 MBTI 화면으로 이동
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            nav.push(
+                              MaterialPageRoute(builder: (_) => const FundMbtiFlowScreen()),
+                            );
+                          });
+                        },
+                        assetPath: 'assets/icons/ic_mbti.png',
+                      ),
+                      _MenuItemData(
+                        title: '펀토방',
+                        onTap: widget.onGoForum,
+                        assetPath: 'assets/icons/ic_forum.png',
+                      ),
                     ]),
                   ],
                 ),
@@ -136,14 +251,26 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
             ),
           ),
 
-          // 닫기 버튼
           Positioned(
-            right: 8,
             top: 8,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: AppColors.fontColor),
-              onPressed: _maybePop,
-              tooltip: '닫기',
+            left: 8,
+            right: 8,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // 홈 버튼
+                IconButton(
+                  icon: const Icon(Icons.home_outlined, color: AppColors.fontColor),
+                  tooltip: '홈',
+                  onPressed: widget.onGoFundMain,
+                ),
+                // 닫기 버튼
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.fontColor),
+                  tooltip: '닫기',
+                  onPressed: _maybePop,
+                ),
+              ],
             ),
           ),
         ],
@@ -169,8 +296,12 @@ class _ProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: pastel(tossBlue),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all( // 테두리 라인 추가
+          color: Colors.grey.withOpacity(.3),
+          width: 1,
+        ),
       ),
       child: Card(
         color: Colors.white,
@@ -347,10 +478,15 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _MenuItemData {
-  final IconData icon;
   final String title;
   final VoidCallback onTap;
-  _MenuItemData({required this.icon, required this.title, required this.onTap});
+  final String assetPath;
+
+  _MenuItemData({
+    required this.title,
+    required this.onTap,
+    required this.assetPath
+  });
 }
 
 class _MenuList extends StatelessWidget {
@@ -361,31 +497,27 @@ class _MenuList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: pastel(tossBlue),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Card(
         color: Colors.white,
-        elevation: 0,
-        margin: const EdgeInsets.all(6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.withOpacity(.3), width: 1),
+      ),
+      //
+      child: Padding(
+        padding: const EdgeInsets.all(6),
         child: Column(
           children: [
             for (int i = 0; i < items.length; i++) ...[
               ListTile(
-                leading: Icon(items[i].icon,
-                    color: AppColors.fontColor.withOpacity(.87)),
+                leading: Image.asset(
+                  items[i].assetPath,
+                  width: 26, height: 26, fit: BoxFit.contain,
+                ),
                 title: Text(
                   items[i].title,
-                  style: const TextStyle(
-                    color: AppColors.fontColor,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: AppColors.fontColor, fontSize: 16),
                 ),
-                trailing: Icon(
-                  Icons.chevron_right,
-                  color: AppColors.fontColor.withOpacity(.54),
-                ),
+                trailing: Icon(Icons.chevron_right,
+                    color: AppColors.fontColor.withOpacity(.54)),
                 onTap: items[i].onTap,
                 contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
@@ -393,11 +525,8 @@ class _MenuList extends StatelessWidget {
               if (i != items.length - 1)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: Colors.grey.withOpacity(.25),
-                  ),
+                  child: Divider(height: 1, thickness: 1,
+                      color: Colors.grey.withOpacity(.25)),
                 ),
             ],
           ],

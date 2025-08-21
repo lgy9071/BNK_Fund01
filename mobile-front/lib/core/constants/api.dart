@@ -19,4 +19,17 @@ class ApiConfig {
 
   // logout
   static const String logout = '$baseUrl/api/auth/logout';
+
+  //마이페이지 카드용 프로필
+  static const String userMe = '$baseUrl/api/users/me';
+
+  // otp 번호 요청
+  static const String otpRequest = '$baseUrl/otp/request';
+
+  // otp 번호 비교 요청
+  static const String otpVerify = '$baseUrl/otp/verify';
+
+  // 펀드 API
+  static const String funds = '$baseUrl/api/funds';
+  static String fundDetail(String fundId) => '$baseUrl/api/funds/$fundId';
 }

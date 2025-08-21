@@ -2,6 +2,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/core/services/user_service.dart';
+import 'package:mobile_front/screens/opt/opt_screen.dart';
+import 'package:mobile_front/widgets/common_button.dart';
 import '../models/fund.dart';
 
 const tossBlue = Color(0xFF0064FF);
@@ -15,7 +18,15 @@ class BankAccount {
 }
 
 class MyFinanceScreen extends StatefulWidget {
-  const MyFinanceScreen({super.key});
+  final String? accessToken;
+  final UserService? userService;
+
+  const MyFinanceScreen({
+    super.key,
+    this.accessToken,
+    this.userService,
+  });
+
   @override
   State<MyFinanceScreen> createState() => _MyFinanceScreenState();
 }
@@ -127,12 +138,30 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
             // 입출금 계좌 — 2개씩 슬라이드
             const _SectionHeader(title: '입출금 계좌'),
             const SizedBox(height: 8),
+            /*
             _SlidingCardSection<BankAccount>(
               items: _accounts,
               pageSize: 2,
               indicatorActive: AppColors.fontColor,
               itemBuilder: (ctx, a) => _AccountCard(a: a),
             ),
+            */
+            // 펀드 계좌 개설 버튼 추가
+            CommonButton(
+              text: '입출금 계좌 개설',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => OptScreen(
+                      accessToken: widget.accessToken,
+                      userService: widget.userService,
+                    ),
+                  ),
+                );
+              },
+            ),
+
 
             const SizedBox(height: 24),
 

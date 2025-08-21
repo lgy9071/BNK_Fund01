@@ -1,65 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/core/services/invest_result_service.dart';
+import 'package:mobile_front/widgets/show_custom_confirm_dialog.dart';
 
-/// ===== 결과 모델 (백엔드 응답과 매핑) =====
-class InvestResultModel {
-  final String userId;
-  final DateTime analysisDate;
-  final int totalScore;
-  final int typeId;
-  final String typeName;
-  final String typeDescription;
-
-  // 선택(있으면 표시)
-  final String? investorName;
-  final String? investHorizon;
-  final String? goal;
-  final String? experience;
-
-  const InvestResultModel({
-    required this.userId,
-    required this.analysisDate,
-    required this.totalScore,
-    required this.typeId,
-    required this.typeName,
-    required this.typeDescription,
-    this.investorName,
-    this.investHorizon,
-    this.goal,
-    this.experience,
-  });
-
-  factory InvestResultModel.fromJson(Map<String, dynamic> j) {
-    return InvestResultModel(
-      userId: j['userId'],
-      analysisDate: DateTime.parse(j['analysisDate']),
-      totalScore: j['totalScore'],
-      typeId: j['type']['id'],
-      typeName: j['type']['name'],
-      typeDescription: j['type']['description'],
-      investorName: j['investorName'],
-      investHorizon: j['investHorizon'],
-      goal: j['goal'],
-      experience: j['experience'],
-    );
-  }
-}
-
-/// ===== 스크린 =====
 class InvestTypeResultScreen extends StatefulWidget {
   /// 최신 분석 결과 (없으면 null)
   final InvestResultModel? result;
 
-  /// 마지막 재검사 시각 (하루 1회 제한 체크용)
-  final DateTime? lastRetestAt;
+  /// 재분석 가능 여부(서버 판단만 사용)
+  final InvestEligibilityResponse eligibility;
 
-  /// 분석/재분석 시작 콜백
-  final VoidCallback? onStartAssessment;
+  /// 분석/재분석 시작 콜백 (설문 라우팅)
+  final Future<bool?> Function()? onStartAssessment;
 
   const InvestTypeResultScreen({
     super.key,
-    this.result,
-    this.lastRetestAt,
+    required this.result,
+    required this.eligibility,
     this.onStartAssessment,
   });
 
@@ -74,47 +31,63 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
   String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  bool _isSameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
+  DateTime _calcNextAvailableDate({
+    DateTime? serverNext,
+    DateTime? lastAnalyzedAt,
+  }) {
+    if (serverNext != null) {
+      final d = DateTime(serverNext.year, serverNext.month, serverNext.day);
+      return d;
+    }
+    if (lastAnalyzedAt != null) {
+      final la = lastAnalyzedAt.toLocal();
+      return DateTime(la.year, la.month, la.day).add(const Duration(days: 1));
+    }
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+  }
 
   Future<void> _handleStartAssessment(BuildContext context) async {
-    final now = DateTime.now();
-    final alreadyToday =
-        widget.lastRetestAt != null && _isSameDay(widget.lastRetestAt!, now);
-    if (alreadyToday) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('오늘은 이미 재검사를 진행하셨습니다. 내일 다시 시도해주세요.')),
-      );
+    final isFirstTime = widget.result == null; // ✅ 결과가 없으면 최초 분석
+
+    // 재분석일 때만 제한 적용
+    if (!isFirstTime && !widget.eligibility.canReanalyze) {
+      final msg = widget.eligibility.message ?? '오늘은 재검사가 제한됩니다.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       return;
     }
 
-    await showDialog(
+    // 정책 확인 팝업 (최초/재분석 공통)
+    final bool? confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('재검사 정책 확인'),
-        content: const Text(
-            '• 투자성향 검사는 1년마다 재실시해야 합니다.\n'
-                '• 재검사는 하루에 한 번만 가능합니다.\n\n'
-                '위 정책을 확인하셨다면 계속 진행을 눌러주세요.'
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              if (widget.onStartAssessment != null) {
-                widget.onStartAssessment!();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('재검사를 시작합니다. 라우팅을 연결해주세요.')),
-                );
-              }
-            },
-            child: const Text('계속 진행'),
-          ),
-        ],
-      ),
+      title: isFirstTime ? '분석 시작 안내' : '재검사 정책 확인',
+      message: isFirstTime
+          ? '• 투자성향 검사는 1년마다 재실시해야 합니다\n'
+          '• 최초 분석 완료 후 결과가 표시됩니다\n\n'
+          '계속 진행하시겠습니까?'
+          : '• 투자성향 검사는 1년마다 재실시해야 합니다\n'
+          '• 재분석은 하루에 한 번만 가능합니다\n\n'
+          '위 정책 확인 후 계속 진행을 눌러주세요',
+      confirmText: '계속 진행',
+      cancelText: '취소',
+      showCancel: true,
+      barrierDismissible: true,
+      confirmColor: AppColors.primaryBlue,
     );
+
+    if (confirmed != true) return;
+
+    if (widget.onStartAssessment != null) {
+      final bool? ok = await widget.onStartAssessment!(); // 설문 진입
+      if (ok == true && mounted) {
+        Navigator.of(context).pop(true); // 도입부 닫고 상위로 true 전파(새로고침 신호)
+      }
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isFirstTime ? '분석을 시작합니다. 라우팅을 연결해주세요.' : '재검사를 시작합니다. 라우팅을 연결해주세요.')),
+      );
+    }
   }
 
   @override
@@ -125,10 +98,11 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('투자성향 결과'),
+        title: const Text('투자성향분석'),
+        centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: base,
-        elevation: 0.5,
+        elevation: 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -144,28 +118,22 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
                 _EmptyDataCard(onStart: () => _handleStartAssessment(context)),
               ] else ...[
                 _InfoCard(children: [
-                  _pair('사용자', r.investorName ?? r.userId),
                   _pair('등급결정일자', _ymd(r.analysisDate)),
-                  _pair('총점', '${r.totalScore}점'),
+                  _pair('총점', '${((r.totalScore/65)*100).round()} 점'), //점수 100점 만점 기준으로 변환
                   _pair('투자성향', r.typeName),
-                  if (r.investHorizon != null) _pair('투자기간', r.investHorizon!),
-                  if (r.goal != null) _pair('투자목표', r.goal!),
-                  if (r.experience != null) _pair('투자경험', r.experience!),
                 ]),
-                const SizedBox(height: 8),
-                _ResultGraphCard(riskType: r.typeName),
-                // 유형 설명 안내
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    r.typeDescription,
-                    style: TextStyle(color: AppColors.fontColor.withOpacity(.8)),
-                  ),
-                ),
+                const SizedBox(height: 17),
+                const _SectionTitle('투자성향상세'),
+                _ResultGraphCard(riskType: r.typeName, description: r.description,),
               ],
 
-              const SizedBox(height: 16),
-              _PolicyNotice(assessedAt: r?.analysisDate, lastRetestAt: widget.lastRetestAt),
+              const SizedBox(height: 18),
+              // ✅ 정책 안내 박스(오늘 가능 여부는 eligibility로만 표시)
+              _PolicyNotice(
+                assessedAt: r?.analysisDate,
+                todayBlocked: r != null && !widget.eligibility.canReanalyze, // 최초 분석일 땐 표시 의미 X
+                serverMessage: r != null ? widget.eligibility.message : null,
+              ),
 
               const SizedBox(height: 24),
 
@@ -195,26 +163,61 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
 
               const SizedBox(height: 32),
 
-              // ===== 하단 버튼: 결과가 있을 때만 재분석 시작 =====
-              if (r != null)
+              // ===== 하단 버튼: 결과가 있을 때만 재분석 시작 (정책은 eligibility로 제어)
+              if (r != null) ...[
                 Center(
                   child: SizedBox(
-                    width: 200,
-                    height: 44,
+                    width: double.infinity, // 전체 폭
+                    height: 48,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0064FF),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(30),
                         ),
                       ),
-                      onPressed: () => _handleStartAssessment(context),
-                      child: const Text('재분석 시작',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      onPressed: widget.eligibility.canReanalyze
+                          ? () => _handleStartAssessment(context)
+                          : null,
+                      child: const Text(
+                        '재분석',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+                      ),
                     ),
                   ),
                 ),
+
+                // 🚫 불가 시 문구 추가 (재검사 가능일자 표시)
+                if (!widget.eligibility.canReanalyze) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.center,
+                    child: Column(
+                      children: [
+                        Text('오늘은 이미 투자성향 분석을 완료하였습니다',
+                          style: TextStyle(
+                          color: AppColors.fontColor.withOpacity(.9),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                          textAlign: TextAlign.center,),
+                        SizedBox(height: 3,),
+                        Text(
+                          '재분석 가능일자: ${_ymd(_calcNextAvailableDate(serverNext: widget.eligibility.nextAvailableAt, lastAnalyzedAt: r.analysisDate))}',
+                          style: TextStyle(
+                            color: AppColors.fontColor.withOpacity(.7),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+
 
               const SizedBox(height: 40),
             ],
@@ -284,7 +287,8 @@ class _InfoCard extends StatelessWidget {
 
 class _ResultGraphCard extends StatelessWidget {
   final String riskType;
-  const _ResultGraphCard({required this.riskType});
+  final String description;
+  const _ResultGraphCard({required this.riskType, required this.description});
 
   int _indexOfType(String t) {
     const order = ['안정형', '안정추구형', '위험중립형', '적극투자형', '공격투자형'];
@@ -306,14 +310,19 @@ class _ResultGraphCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(riskType,
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.fontColor)),
+          Text(
+            riskType,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.fontColor,
+            ),
+          ),
           const SizedBox(height: 12),
           _RiskPositionBar(activeIndex: idx),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            '시장평균 대비 변동성 수용수준과 손실 감내 정도를 바탕으로 산출된 결과입니다.',
+            description,
             style: TextStyle(color: AppColors.fontColor.withOpacity(.8)),
           ),
         ],
@@ -522,61 +531,31 @@ class _NoticeBox extends StatelessWidget {
   }
 }
 
-/// 텍스트 전체 탭 + 우측 화살표 아이콘
-class _ExpandableHeader extends StatelessWidget {
-  final String title;
-  final bool expanded;
-  final VoidCallback onToggle;
-  const _ExpandableHeader({
-    required this.title,
-    required this.expanded,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onToggle,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            Expanded(child: _SectionTitle(title)),
-            Icon(expanded ? Icons.expand_less : Icons.expand_more),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 정책 안내 + 다음 정기 재검사일/오늘 가능 여부 표시
+/// 정책 안내 + 다음 정기 재검사일/오늘 가능 여부 표시(서버 응답만 반영)
 class _PolicyNotice extends StatelessWidget {
   final DateTime? assessedAt;
-  final DateTime? lastRetestAt;
-  const _PolicyNotice({required this.assessedAt, required this.lastRetestAt});
+  final bool todayBlocked;       // eligibility 기반(재분석일 때만 의미)
+  final String? serverMessage;   // 서버 메시지
+
+  const _PolicyNotice({
+    required this.assessedAt,
+    required this.todayBlocked,
+    required this.serverMessage,
+  });
 
   String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  bool _isSameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
-
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
     final nextAnnual = assessedAt != null
         ? DateTime(assessedAt!.year + 1, assessedAt!.month, assessedAt!.day)
         : null;
-    final todayBlocked = lastRetestAt != null && _isSameDay(lastRetestAt!, now);
 
     final lines = <String>[
-      '정책 안내',
       '• 투자성향 검사는 1년마다 재실시해야 합니다.'
-          '${nextAnnual != null ? ' (다음 정기 재검사일: ${_ymd(nextAnnual)})' : ''}',
-      '• 재검사는 하루에 한 번만 가능합니다.'
-          '${todayBlocked ? ' (오늘 재검사 불가: 이미 실시)' : ''}',
+          '${nextAnnual != null ? ' \n(다음 정기 재검사일: ${_ymd(nextAnnual)})' : ''}',
+      '• 재분석은 하루에 한 번만 가능합니다.',
     ];
 
     return _NoticeBox(text: lines.join('\n'));
@@ -600,11 +579,13 @@ class _EmptyDataCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('투자성향 데이터가 없습니다.',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.fontColor)),
+          const Text(
+            '투자성향 데이터가 없습니다.',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.fontColor),
+          ),
           const SizedBox(height: 8),
           Text(
-            '분석을 먼저 진행해주세요. 분석 완료 후 개인별 결과(그래프/정보)가 표시됩니다.\n'
+            '분석을 먼저 진행해주세요. 분석 완료 후 개인별 결과\n(그래프/정보)가 표시됩니다.\n'
                 '아래의 “투자위험지도/투자유형안내”는 가이드로 언제든 확인할 수 있습니다.',
             style: TextStyle(color: AppColors.fontColor.withOpacity(.85)),
           ),
@@ -612,12 +593,43 @@ class _EmptyDataCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: FilledButton.icon(
-              onPressed: onStart,
+              onPressed: onStart, // ✅ 최초 분석은 항상 가능 (서버 제한 체크 안 함)
               icon: const Icon(Icons.play_arrow, size: 18),
               label: const Text('분석 시작'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ExpandableHeader extends StatelessWidget {
+  final String title;
+  final bool expanded;
+  final VoidCallback onToggle;
+  const _ExpandableHeader({
+    required this.title,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Expanded(child: _SectionTitle(title)),
+            Icon(expanded ? Icons.expand_less : Icons.expand_more),
+          ],
+        ),
       ),
     );
   }

@@ -1,35 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mobile_front/core/constants/colors.dart';
-import 'package:mobile_front/screens/faq_screen.dart';
-import 'package:mobile_front/screens/fund_guide_screen.dart';
-import 'package:mobile_front/screens/home_screen.dart';
-import 'package:mobile_front/screens/login_screen.dart';
-import 'package:mobile_front/screens/qna_compose_screen.dart';
-import 'package:mobile_front/screens/qna_list_screen.dart';
-import 'package:mobile_front/screens/splash_screen.dart';
-import 'package:mobile_front/core/routes/routes.dart';
-import 'package:mobile_front/screens/main_scaffold.dart';
-import 'package:mobile_front/core/services/invest_result_service.dart';
-import 'package:mobile_front/screens/invest_type_result_loader.dart';
-import 'package:mobile_front/core/constants/api.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-// 추가: 전역 세션 매니저/키 & API 경로
+import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/utils/session_manager.dart';
 
-// 전역 내비게이터 키 (다이얼로그/스낵바, 라우팅에 사용)
+// 전역 키/세션
 final navigatorKey = GlobalKey<NavigatorState>();
-
-// 전역 세션 매니저 (10분 무동작 타이머 + 30초 경고/연장 + 자동복구)
 final sessionManager = SessionManager(
   extendUrl: ApiConfig.extend,
-  refreshUrl: ApiConfig.refresh,
   navigatorKey: navigatorKey,
 );
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MyApp()); // ✅ 여기서는 MyApp만
 }
 
 class MyApp extends StatefulWidget {
@@ -43,55 +30,50 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Splash Demo',
-      debugShowCheckedModeBanner: false,
-      themeMode: _mode,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryBlue),
+    // ✅ ScreenUtilInit를 MaterialApp "바깥"에 둔다.
+    return ScreenUtilInit(
+      designSize: const Size(411.4, 891.4), // 너 폰에서 찍힌 dp
+      minTextAdapt: true,
+      splitScreenMode: true,
+        builder: (context, child) {
+          final mq = MediaQuery.of(context);
+          final clamped = mq.textScaler.clamp(minScaleFactor: 0.9, maxScaleFactor: 1.1);
+          return MediaQuery(
+            data: mq.copyWith(textScaler: clamped),
+            child: MaterialApp(
+              title: 'Splash Demo',
+              debugShowCheckedModeBanner: false,
+              navigatorKey: navigatorKey,
+              themeMode: _mode,
+              theme: ThemeData(
+                useMaterial3: true,
+                colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryBlue),
+                scaffoldBackgroundColor: AppColors.bg,
+                appBarTheme: const AppBarTheme(
+                  backgroundColor: AppColors.bg,
+                  foregroundColor: AppColors.fontColor,
+                  elevation: 0,
+                  systemOverlayStyle: SystemUiOverlayStyle(
+                    statusBarColor: AppColors.bg,
+                    statusBarIconBrightness: Brightness.dark,
+                    statusBarBrightness: Brightness.light,
+                  ),
+                ),
+                textTheme: ThemeData.light().textTheme.apply(
+                  bodyColor: AppColors.fontColor,
+                  displayColor: AppColors.fontColor,
+                ),
+                textSelectionTheme: const TextSelectionThemeData(
+                  cursorColor: AppColors.primaryBlue,
+                  selectionHandleColor: Color(0xFF00067D),
+                ),
+              ),
+              onGenerateRoute: AppRouter.onGenerateRoute,
+              initialRoute: AppRoutes.splash,
+            ),
+          );
+        }
 
-        scaffoldBackgroundColor: AppColors.bg,           // 전체 배경
-        appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.bg,
-          foregroundColor: AppColors.fontColor,
-          elevation: 0,
-          systemOverlayStyle: SystemUiOverlayStyle(
-            statusBarColor: AppColors.bg,
-            statusBarIconBrightness: Brightness.dark,
-            statusBarBrightness: Brightness.light,
-          ),
-        ),
-
-        // 기본 텍스트 색을 0xFF383E56로 통일
-        textTheme: ThemeData.light().textTheme.apply(
-          bodyColor: AppColors.fontColor,
-          displayColor: AppColors.fontColor,
-        ),
-
-        textSelectionTheme: const TextSelectionThemeData(
-          cursorColor: AppColors.primaryBlue,
-          selectionHandleColor: Color(0xFF00067D),
-        ),
-      ),
-
-      navigatorKey: navigatorKey,
-      routes: {
-        AppRoutes.login: (_) => const LoginScreen(),
-        AppRoutes.home: (_) => const MainScaffold(),
-        AppRoutes.splash: (_) => const SplashScreen(),
-        AppRoutes.qnaCompose: (_) => const QnaComposeScreen(),
-        AppRoutes.qnaList: (_) => const QnaListScreen(),
-        AppRoutes.faq: (_) => const FaqScreen(),
-        AppRoutes.guide: (_) => const FundGuideScreen(),
-        AppRoutes.investType: (_) => InvestTypeResultLoader(
-          userId: 1, // 본인의 USER_ID로 교체 (테스트는 1 같은 실제 존재 id)
-          service: InvestResultService(baseUrl: ApiConfig.baseUrl),
-          lastRetestAt: null, // 필요하면 상태에서 넣기
-        ),
-      },
-      onGenerateRoute: AppRouter.onGenerateRoute,
-      initialRoute: AppRoutes.splash,
     );
   }
 }

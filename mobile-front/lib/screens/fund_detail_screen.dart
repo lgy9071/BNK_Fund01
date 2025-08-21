@@ -1,16 +1,18 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../screens/fund_join_screen.dart' show JoinFund;
-import 'package:mobile_front/utils/badge_colors.dart';
+
+import 'package:mobile_front/core/services/fund_service.dart';
+import 'package:mobile_front/models/fund_detail_net.dart';
+
+import 'package:url_launcher/url_launcher.dart';
+import 'package:mobile_front/core/constants/api.dart'; // ApiConfig.baseUrl 사용
 
 /// ───────────────── colors
 const tossBlue = Color(0xFF0064FF);
-const tossBlueDark = Color(0xFF1133AA);
-const violet = Color(0xFF6E3AFF);
-const violetSoft = Color(0xFFEEE7FF);
-
 const tossBlue500 = Color(0xFF0064FF);
 const tossBlue400 = Color(0xFF2D6BFF);
 const tossBlue300 = Color(0xFF5A8CFF);
@@ -18,14 +20,44 @@ const tossBlue200 = Color(0xFF9CC1FF);
 const tossBlue100 = Color(0xFFD7E6FF);
 const blueSoft = Color(0xFFE9F1FF);
 
+final _manInt = NumberFormat('#,##0', 'ko_KR'); // 만원 단위 정수 표기
+String fmtMan(num won) => '${_manInt.format((won / 10000).round())} 만원';
+
 final _won = NumberFormat('#,##0.##', 'ko_KR');
 String fmtWon(num v) => '${_won.format(v)} 원';
 String fmtPercent(num v, {int digits = 1}) => '${v.toStringAsFixed(digits)}%';
 String fmtDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-String fmtAumFromMm(double mm) => '${_won.format(mm / 100)} 억원';
 
-/// ───────────────── data view models (요약) ※ 기존 구조 유지
+/// ────────────── 문서 열기 URL 조합(세그먼트 단위 인코딩)
+Uri _buildDocUri(String base, String raw) {
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return Uri.parse(raw);
+  }
+  final alreadyEncoded = RegExp(r'%[0-9A-Fa-f]{2}').hasMatch(raw);
+  final withSlash = raw.startsWith('/') ? raw : '/$raw';
+  if (alreadyEncoded) return Uri.parse('${ApiConfig.baseUrl}$withSlash');
+
+  final b = Uri.parse(base);
+  final trimmed = withSlash.substring(1);
+  final segs = trimmed.split('/').where((s) => s.isNotEmpty).toList();
+  return Uri(
+    scheme: b.scheme,
+    host: b.host,
+    port: b.hasPort ? b.port : null,
+    pathSegments: [...b.pathSegments.where((s) => s.isNotEmpty), ...segs],
+  );
+}
+
+/// ───────────────── 리스트 화면에서 넘어오는 최소 정보
+class JoinFund {
+  final int id;
+  final String fundId;
+  final String name;
+  JoinFund({required this.id, required this.fundId, required this.name});
+}
+
+/// ───────────────── 네트워크 → UI용 상세 모델
 class FundBasic {
   final String fundId, fundName, fundType, fundDivision, investmentRegion,
       salesRegionType, groupCode, shortCode, fundClass, publicType,
@@ -135,158 +167,152 @@ class FundDetail {
     required this.asset,
     required this.docs,
   });
+}
 
-  factory FundDetail.demo(String name) => FundDetail(
+/// FundDetailNet → FundDetail 변환(날짜 보정 포함)
+FundDetail toUiDetail(FundDetailNet d) {
+  DateTime _parse(String? s) {
+    if (s == null || s.isEmpty) return DateTime.now();
+    final p = s.split('-').map(int.parse).toList();
+    final dt = DateTime(p[0], p[1], p[2]);
+    return dt.year < 2000 ? DateTime.now() : dt; // 1907 같은 과거값 보정
+  }
+
+  final latestDate = _parse(d.latestBaseDate ?? d.issueDate);
+  final riskText = d.riskLevel == null ? '위험 미정' : '위험(${d.riskLevel}등급)';
+
+  return FundDetail(
     basic: FundBasic(
-      fundId: 'K55207BU7140',
-      fundName: name,
-      fundType: '주식형',
-      fundDivision: '투자신탁',
-      investmentRegion: '국내',
-      salesRegionType: '국내위탁',
-      groupCode: '12111712301011111ZZ2',
-      shortCode: 'BU714',
-      issueDate: DateTime(2005, 8, 10),
+      fundId: d.fundId,
+      fundName: d.fundName,
+      fundType: d.fundType ?? '-',
+      fundDivision: d.fundDivision ?? '-',
+      investmentRegion: d.investmentRegion ?? '-',
+      salesRegionType: d.salesRegionType ?? '-',
+      groupCode: '',
+      shortCode: '',
+      issueDate: _parse(d.issueDate),
       initialNavPrice: 1000,
       trustTerm: 0,
       accountingPeriod: 0,
-      fundClass: '종류형 CLASS',
-      publicType: '공모',
-      addUnitType: '추가형',
-      fundStatus: '운용중',
-      riskGrade: '매우 높은 위험(1)', // 예시 포맷
-      performanceDisclosure: '(주식고)일반',
-      managementCompany: '교보악사자산운용',
+      fundClass: '-',
+      publicType: '-',
+      addUnitType: '-',
+      fundStatus: d.fundStatus ?? '-',
+      riskGrade: riskText,
+      performanceDisclosure: '-',
+      managementCompany: d.managementCompany ?? '-',
     ),
     fee: FundFeeInfo(
-      baseDate: DateTime(2025, 6, 30),
-      managementFee: 0.26,
-      salesFee: 0.02,
-      adminFee: 0.01,
-      trustFee: 0.03,
-      totalFee: 0.32,
-      ter: 0.3228,
+      baseDate: latestDate,
+      managementFee: 0,
+      salesFee: 0,
+      adminFee: 0,
+      trustFee: 0,
+      totalFee: d.totalFee ?? 0,
+      ter: d.ter ?? 0,
       frontLoadFee: 0,
       rearLoadFee: 0,
     ),
     daily: FundStatusDaily(
-      baseDate: DateTime(2025, 8, 1),
-      navTotalMm: 146653,
-      originalPrincipalMm: 12975,
-      navPrice: 831.93,
-      navChange1d: 13.7717,
-      navChangeRate1d: 1.02,
-      navChange1w: -20.5464,
-      navChangeRate1w: -1.48,
+      baseDate: latestDate,
+      navTotalMm: d.navTotal ?? 0,
+      originalPrincipalMm: d.originalPrincipal ?? 0,
+      navPrice: d.navPrice ?? 0,
+      navChange1d: 0,
+      navChangeRate1d: 0,
+      navChange1w: 0,
+      navChangeRate1w: 0,
     ),
     ret: FundReturn(
-      baseDate: DateTime(2025, 8, 1),
-      r1m: 0.85,
-      r3m: 1.02,
-      r6m: 1.95,
-      r12m: 3.80,
+      baseDate: latestDate,
+      r1m: d.return1m ?? 0,
+      r3m: d.return3m ?? 0,
+      r6m: d.return6m ?? 0,
+      r12m: d.return12m ?? 0,
     ),
     asset: FundAssetSummary(
-      baseDate: DateTime(2025, 8, 1),
-      stock: 55,
-      bond: 25,
-      cash: 5,
-      etc: 15,
+      baseDate: latestDate,
+      stock: d.stockRatio ?? 0,
+      bond: d.bondRatio ?? 0,
+      cash: d.cashRatio ?? 0,
+      etc: d.etcRatio ?? 0,
     ),
-    docs: [
-      FundDocument(
-        type: '간이투자설명서',
-        fileName: 'P_20250715_v1.pdf',
-        path: '/docs/K55207BU7140/',
-        uploadedAt: DateTime(2025, 7, 15, 10, 32, 54),
-      ),
-      FundDocument(
-        type: '투자설명서',
-        fileName: 'T_20250715_v1.pdf',
-        path: '/docs/K55207BU7140/',
-        uploadedAt: DateTime(2025, 7, 15, 10, 33, 10),
-      ),
-    ],
+    docs: d.docs
+        .map((x) => FundDocument(
+      type: x.type,
+      fileName: x.fileName ?? '',
+      path: x.path ?? '',
+      uploadedAt: latestDate,
+    ))
+        .toList(),
   );
 }
 
-/// ───────────────── screen
-enum _TimeTab { m1, m3, m6, y1, y3 }
-
+/// ───────────────── 화면 본체 ─────────────────
 class FundDetailScreen extends StatefulWidget {
-  final JoinFund fund;
-  const FundDetailScreen({super.key, required this.fund});
+  final String fundId;
+  final String? title;
+  const FundDetailScreen({super.key, required this.fundId, this.title});
 
   @override
   State<FundDetailScreen> createState() => _FundDetailScreenState();
 }
 
-/// 차트 기간 선택 탭 (1개월/3개월/6개월/1년/3년)
-class _PeriodTabs extends StatelessWidget {
-  final _TimeTab tab;
-  final ValueChanged<_TimeTab> onChanged;
-  const _PeriodTabs({required this.tab, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    const items = [
-      (_TimeTab.m1, '1개월'),
-      (_TimeTab.m3, '3개월'),
-      (_TimeTab.m6, '6개월'),
-      (_TimeTab.y1, '1년'),
-      (_TimeTab.y3, '3년'),
-    ];
-
-    return Row(
-      children: items.map((e) {
-        final selected = tab == e.$1;
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                side: BorderSide(color: selected ? Colors.white : Colors.white30),
-                backgroundColor: selected ? Colors.white : const Color(0xFF2C5DE6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () => onChanged(e.$1),
-              child: Text(
-                e.$2,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: selected ? tossBlue : Colors.white,
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
 class _FundDetailScreenState extends State<FundDetailScreen> {
-  late final FundDetail data = FundDetail.demo(widget.fund.name);
-  _TimeTab _tab = _TimeTab.m3;
+  final _svc = FundService();
+  final _scrollCtl = ScrollController();
 
-  // 간편 적립식 카드 상태
+  FundDetail? data;
   int _years = 1;
   int _monthly = 500000; // 50만원
 
   @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await _svc.getFundDetail(widget.fundId);
+      final net = res.data;
+      if (net == null) throw Exception('상세 데이터가 없습니다.');
+      setState(() => data = toUiDetail(net));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('상세 로드 실패: $e')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollCtl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isUp = data.daily.navChangeRate1d >= 0;
+    if (data == null) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final isUp = data!.daily.navChangeRate1d >= 0;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(
-          data.basic.fundName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        title: const Text('상품 정보', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -294,9 +320,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
           child: FilledButton(
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             onPressed: () {},
             child: const Text('가입하기', style: TextStyle(fontSize: 18)),
@@ -304,134 +328,150 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
         ),
       ),
       body: SingleChildScrollView(
+        controller: _scrollCtl,
         child: Column(
           children: [
-            // ───── HERO : 라인 차트 섹션
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [tossBlue, tossBlueDark],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-              ),
+            // ───── 상단: 펀드명 + 꺾은선 그래프
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${data.basic.investmentRegion} · ${data.basic.fundType}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                  const SizedBox(height: 6),
-                  const Text('수익률 그래프',
-                      style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 10),
-
-                  Card(
-                    elevation: .8,
-                    color: isDark ? const Color(0xFFEFF4FF) : Colors.white,
-                    surfaceTintColor: isDark ? const Color(0xFFEFF4FF) : Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-                      child: SizedBox(
-                        height: 180,
-                        child: Stack(
-                          children: [
-                            LineChart(_lineDataFor(_tab)),
-                            Align(
-                              alignment: Alignment.bottomRight,
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 6, bottom: 2),
-                                child: Text('*${_tabLabel(_tab)} 수익률',
-                                    style: const TextStyle(fontSize: 10, color: Colors.black45)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  Text(
+                    data!.basic.fundName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${data!.basic.investmentRegion} · ${data!.basic.fundType}',
+                    style: const TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 12),
+                  Card(
+                    elevation: .8,
+                    color: Colors.white,
+                    surfaceTintColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    child: const Padding(
+                      padding: EdgeInsets.fromLTRB(10, 14, 10, 12),
+                      child: SizedBox(height: 220, child: _ReturnLineChart()),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
 
-                  _PeriodTabs(tab: _tab, onChanged: (t) => setState(() => _tab = t)),
-                  const SizedBox(height: 12),
-
-                  // 그래프 하단 핵심정보 2개만
+                  // 파란 테두리 없이, 기존 2카드로 분리
                   _KeyFactsRow(
-                    navPrice: data.daily.navPrice,
-                    navChangeRate1d: data.daily.navChangeRate1d,
-                    riskText: data.basic.riskGrade,
+                    navPrice: data!.daily.navPrice,
+                    navChangeRate1d: data!.daily.navChangeRate1d,
+                    riskText: data!.basic.riskGrade,
                     isUp: isUp,
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 22),
 
-            // 간편 적립식 참고 카드
-            _SimpleDcaCard(
-              years: _years,
-              monthly: _monthly,
-              onYears: (y) => setState(() => _years = y),
-              onMonthly: (m) => setState(() => _monthly = m),
-              assumedAnnualReturn: data.ret.r12m / 100.0, // 대략 1년 수익률 사용
+            // 이하 순차 리빌 애니메이션
+            RevealOnScroll(
+              controller: _scrollCtl,
+              child: _SimpleDcaCard(
+                years: _years,
+                monthly: _monthly,
+                onYears: (y) => setState(() => _years = y),
+                onMonthly: (m) => setState(() => _monthly = m),
+                assumedAnnualReturn: data!.ret.r12m / 100.0,
+              ),
             ),
 
             const SizedBox(height: 12),
 
-            // 위험수준 — 도넛 + 표
-            _RiskCard(riskText: data.basic.riskGrade),
-
-            const SizedBox(height: 12),
-
-            // 자산 구성 — 도넛 + 표
-            _AssetCard(asset: data.asset),
-
-            const SizedBox(height: 12),
-
-            // 주식/채권 보유 비중 — 표
-            _StockBondTable(stockPct: data.asset.stock, bondPct: data.asset.bond, baseDate: data.asset.baseDate),
-
-            const SizedBox(height: 12),
-
-            // 보수 및 수수료 — 카드형
-            _FeeCards(fee: data.fee),
-
-            const SizedBox(height: 12),
-
-            // 상품정보 카드
-            _InfoCard(
-              title: '상품 정보',
-              rows: [
-                ('펀드 ID', data.basic.fundId),
-                ('상품명', data.basic.fundName),
-                ('상품분류', data.basic.fundType),
-                ('구분', data.basic.fundDivision),
-                ('투자지역', data.basic.investmentRegion),
-                ('설정일', fmtDate(data.basic.issueDate)),
-                ('운용사', data.basic.managementCompany),
-                ('위험 등급', data.basic.riskGrade),
-              ],
+            RevealOnScroll(
+              controller: _scrollCtl,
+              delay: const Duration(milliseconds: 60),
+              child: _RiskCard(riskText: data!.basic.riskGrade),
             ),
 
-            // 매입/환매 프로세스 카드
-            _ProcessCard(),
+            const SizedBox(height: 12),
 
-            //공시자료
-            _DocsCard(docs: data.docs),
+            RevealOnScroll(
+              controller: _scrollCtl,
+              delay: const Duration(milliseconds: 120),
+              child: _AssetCard(asset: data!.asset),
+            ),
 
             const SizedBox(height: 12),
 
-            // 확인사항(디스클레이머)
-            const _NoticeCard(
-              items: [
-                '집합투자증권을 취득하시기 전에 투자대상, 보수, 수수료 및 환매방법 등에 관하여 (간이)투자설명서를 반드시 읽어보시기 바랍니다.',
-                '원금손실이 발생할 수 있으며, 그 손실은 투자자에게 귀속됩니다.',
-                '과거의 수익률이 미래의 수익률을 보장하지 않습니다.',
-              ],
+            RevealOnScroll(
+              controller: _scrollCtl,
+              delay: const Duration(milliseconds: 180),
+              child: _StockBondTable(
+                stockPct: data!.asset.stock,
+                bondPct: data!.asset.bond,
+                baseDate: data!.asset.baseDate,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            RevealOnScroll(
+              controller: _scrollCtl,
+              delay: const Duration(milliseconds: 240),
+              child: _FeeCards(
+                fee: FundFeeInfo(
+                  baseDate: data!.fee.baseDate,
+                  managementFee: data!.fee.managementFee,
+                  salesFee: data!.fee.salesFee,
+                  adminFee: data!.fee.adminFee,
+                  trustFee: data!.fee.trustFee,
+                  totalFee: data!.fee.totalFee,
+                  ter: data!.fee.ter,
+                  frontLoadFee: data!.fee.frontLoadFee,
+                  rearLoadFee: data!.fee.rearLoadFee,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            RevealOnScroll(
+              controller: _scrollCtl,
+              delay: const Duration(milliseconds: 300),
+              child: _InfoCard(
+                title: '상품 정보',
+                rows: [
+                  ('펀드 ID', data!.basic.fundId),
+                  ('상품명', data!.basic.fundName),
+                  ('상품분류', data!.basic.fundType),
+                  ('구분', data!.basic.fundDivision),
+                  ('투자지역', data!.basic.investmentRegion),
+                  ('설정일', fmtDate(data!.basic.issueDate)),
+                  ('운용사', data!.basic.managementCompany),
+                  ('위험 등급', data!.basic.riskGrade),
+                ],
+              ),
+            ),
+
+            RevealOnScroll(
+              controller: _scrollCtl,
+              delay: const Duration(milliseconds: 360),
+              child: _DocsCard(docs: data!.docs),
+            ),
+
+            const SizedBox(height: 12),
+
+            RevealOnScroll(
+              controller: _scrollCtl,
+              delay: const Duration(milliseconds: 420),
+              child: const _NoticeCard(
+                items: [
+                  '집합투자증권을 취득하시기 전에 투자대상, 보수, 수수료 및 환매방법 등에 관하여 (간이)투자설명서를 반드시 읽어보시기 바랍니다.',
+                  '원금손실이 발생할 수 있으며, 그 손실은 투자자에게 귀속됩니다.',
+                  '과거의 수익률이 미래의 수익률을 보장하지 않습니다.',
+                ],
+              ),
             ),
 
             const SizedBox(height: 110),
@@ -440,103 +480,162 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
       ),
     );
   }
-
-  /// 라인 차트 데이터(기간 탭별)
-  LineChartData _lineDataFor(_TimeTab tab) {
-    final spots = _spotsForRange(tab);
-    final ys = spots.map((e) => e.y);
-    final minY = ys.reduce(math.min);
-    final maxY = ys.reduce(math.max);
-
-    return LineChartData(
-      gridData: const FlGridData(show: false),
-      titlesData: FlTitlesData(
-        leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 26,
-            getTitlesWidget: (v, _) {
-              if (v == 0) return const Text('초', style: TextStyle(fontSize: 10));
-              if (v == spots.last.x) return const Text('지금', style: TextStyle(fontSize: 10));
-              return const SizedBox.shrink();
-            },
-          ),
-        ),
-      ),
-      minX: 0,
-      maxX: spots.last.x,
-      minY: minY * 0.995,
-      maxY: maxY * 1.005,
-      borderData: FlBorderData(show: false),
-      lineTouchData: const LineTouchData(handleBuiltInTouches: true),
-      lineBarsData: [
-        LineChartBarData(
-          isCurved: true,
-          barWidth: 2.5,
-          spots: spots,
-          color: Colors.red,
-          dotData: const FlDotData(show: false),
-          belowBarData: BarAreaData(
-            show: true,
-            gradient: LinearGradient(
-              colors: [Colors.red.withOpacity(.35), Colors.red.withOpacity(0.03)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// 기간별 라인 샘플 데이터
-  List<FlSpot> _spotsForRange(_TimeTab t) {
-    final n = switch (t) { _TimeTab.m1 => 30, _TimeTab.m3 => 90, _TimeTab.m6 => 180, _TimeTab.y1 => 365, _TimeTab.y3 => 365 * 3 };
-    final targetPct = switch (t) {
-      _TimeTab.m1 => data.ret.r1m,
-      _TimeTab.m3 => data.ret.r3m,
-      _TimeTab.m6 => data.ret.r6m,
-      _TimeTab.y1 => data.ret.r12m,
-      _TimeTab.y3 => data.ret.r12m * 3, // 임시
-    } / 100.0;
-
-    final start = 1.0;
-    final end = 1.0 + targetPct;
-    final List<FlSpot> out = [];
-    for (int i = 0; i <= n; i++) {
-      final t01 = i / n;
-      final base = start + (end - start) * (3 * t01 * t01 - 2 * t01 * t01 * t01);
-      final wiggle = 0.005 * math.sin(i / 8.0) + 0.003 * math.cos(i / 5.0);
-      final y = (base + wiggle).clamp(0.9, 1.5);
-      out.add(FlSpot(i.toDouble(), y));
-    }
-    return out;
-  }
-
-  String _tabLabel(_TimeTab t) =>
-      switch (t) { _TimeTab.m1 => '1개월', _TimeTab.m3 => '3개월', _TimeTab.m6 => '6개월', _TimeTab.y1 => '1년', _TimeTab.y3 => '3년' };
 }
 
-/// ───────────────── widgets
+/// ──────────────── 꺾은선 그래프 (입장 애니메이션 + X축 균등)
+class _ReturnLineChart extends StatefulWidget {
+  const _ReturnLineChart();
+
+  @override
+  State<_ReturnLineChart> createState() => _ReturnLineChartState();
+}
+
+class _ReturnLineChartState extends State<_ReturnLineChart>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctl =
+  AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+  late final Animation<double> _curve =
+  CurvedAnimation(parent: _ctl, curve: Curves.easeOutCubic);
+
+  List<double> _fetchReturns() {
+    final parent = context.findAncestorStateOfType<_FundDetailScreenState>();
+    if (parent?.data == null) return [0, 0, 0, 0];
+    final r = parent!.data!.ret;
+    return [r.r1m, r.r3m, r.r6m, r.r12m];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ctl.forward());
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vals = _fetchReturns(); // [%]
+    double minVal = vals.reduce(math.min);
+    double maxVal = vals.reduce(math.max);
+    if (minVal == maxVal) {
+      minVal -= 5;
+      maxVal += 5;
+    }
+    final span = (maxVal - minVal).abs();
+    final pad = span * 0.20 + 1;
+    final double minY = math.min(0.0, minVal - pad);
+    final double maxY = math.max(0.0, maxVal + pad);
+
+    // 균등 간격: 0=1M, 1=3M, 2=6M, 3=1Y
+    List<FlSpot> _spots(double t) =>
+        List<FlSpot>.generate(4, (i) => FlSpot(i.toDouble(), vals[i] * t));
+
+    String _label(int i) => switch (i) { 0 => '1M', 1 => '3M', 2 => '6M', _ => '1Y' };
+
+    double _intervalY() {
+      final s = (maxY - minY).abs();
+      if (s <= 10) return 2;
+      if (s <= 20) return 5;
+      if (s <= 40) return 10;
+      return 20;
+    }
+
+    return AnimatedBuilder(
+      animation: _curve,
+      builder: (_, __) {
+        final t = _curve.value;
+        return LineChart(
+          LineChartData(
+            minX: 0, maxX: 3,
+            minY: minY, maxY: maxY,
+            backgroundColor: Colors.white,
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              drawHorizontalLine: true,
+              horizontalInterval: _intervalY(),
+              getDrawingHorizontalLine: (v) => FlLine(
+                color: v == 0 ? Colors.black38 : Colors.black12,
+                strokeWidth: v == 0 ? 1.4 : 1,
+              ),
+            ),
+            borderData: FlBorderData(show: false),
+            titlesData: FlTitlesData(
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (v, _) => Text('${v.toStringAsFixed(0)}%'),
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 26,
+                  interval: 1, // 0,1,2,3만
+                  getTitlesWidget: (v, _) {
+                    final i = v.round();
+                    if (i < 0 || i > 3 || v != i.toDouble()) return const SizedBox.shrink();
+                    return Text(_label(i), style: const TextStyle(fontWeight: FontWeight.w700));
+                  },
+                ),
+              ),
+            ),
+            extraLinesData: ExtraLinesData(horizontalLines: [
+              HorizontalLine(y: 0, color: Colors.black38, strokeWidth: 1.2),
+            ]),
+            lineTouchData: const LineTouchData(handleBuiltInTouches: true),
+            lineBarsData: [
+              LineChartBarData(
+                isCurved: true,
+                barWidth: 3,
+                spots: _spots(t),
+                gradient: const LinearGradient(colors: [tossBlue300, tossBlue]),
+                dotData: const FlDotData(show: true),
+                belowBarData: BarAreaData(
+                  show: true,
+                  gradient: LinearGradient(
+                    colors: [tossBlue.withOpacity(.22), tossBlue.withOpacity(0.0)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
 
 /// 그래프 아래 핵심 2카드
+class _KeyBoxStyle {
+  final bool shadow;
+  const _KeyBoxStyle({this.shadow = true});
+}
+
 class _KeyFactsRow extends StatelessWidget {
   final double navPrice;
   final double navChangeRate1d;
   final String riskText;
   final bool isUp;
+  final _KeyBoxStyle boxedStyle;
   const _KeyFactsRow({
     required this.navPrice,
     required this.navChangeRate1d,
     required this.riskText,
     required this.isUp,
+    this.boxedStyle = const _KeyBoxStyle(),
   });
 
   int _riskLevelFromText(String s) {
-    // “매우 높은 위험(1)” “낮은 위험(5)” 등 숫자 추출 (없으면 3)
     final m = RegExp(r'\((\d)\)').firstMatch(s);
     return m != null ? int.parse(m.group(1)!) : 3;
   }
@@ -544,51 +643,88 @@ class _KeyFactsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final level = _riskLevelFromText(riskText).clamp(1, 5);
+    final boxDecoration = BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: boxedStyle.shadow
+          ? [
+        BoxShadow(
+          color: Colors.black.withOpacity(.06),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+        )
+      ]
+          : null,
+    );
+
     return Row(
       children: [
+        // 기준가
         Expanded(
           child: Container(
-            height: 92,
+            height: 100,
             margin: const EdgeInsets.only(right: 6),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 6, offset: const Offset(0, 2))],
-            ),
+            decoration: boxDecoration,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('기준가(전일대비)', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                const Text(
+                  '기준가 (전일대비)',
+                  style: TextStyle(fontSize: 15, color: Colors.black54),
+                  textAlign: TextAlign.center,
+                ),
                 const Spacer(),
                 Row(
                   children: [
-                    Text((isUp ? '▲' : '▼') + ' ${navChangeRate1d.toStringAsFixed(2)} ',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: isUp ? Colors.red : Colors.blue)),
-                    const SizedBox(width: 6),
-                    Flexible(child: Text('${_won.format(navPrice)} 원', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900))),
+                    Text(
+                      (isUp ? '▲' : '▼') + ' ${navChangeRate1d.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: isUp ? Colors.red : Colors.blue,
+                      ),
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      height: 28,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '${_won.format(navPrice)} 원',
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
         ),
+        // 위험수준
         Expanded(
           child: Container(
-            height: 92,
+            height: 100,
             margin: const EdgeInsets.only(left: 6),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 6, offset: const Offset(0, 2))],
-            ),
+            decoration: boxDecoration,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('위험수준', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                const Text(
+                  '위험수준',
+                  style: TextStyle(fontSize: 15, color: Colors.black54, fontWeight: FontWeight.w500),
+                ),
                 const Spacer(),
-                Text('레벨 $level', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('레벨', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 6),
+                    Text('$level', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                  ],
+                ),
               ],
             ),
           ),
@@ -598,7 +734,7 @@ class _KeyFactsRow extends StatelessWidget {
   }
 }
 
-/// 간편 적립식 참고 카드
+/// 간편 적립식 카드
 class _SimpleDcaCard extends StatelessWidget {
   final int years;
   final int monthly; // 원
@@ -625,8 +761,9 @@ class _SimpleDcaCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFE9F1FF),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black12),
         ),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         child: Column(
@@ -696,7 +833,9 @@ class _DD<T> extends StatelessWidget {
           value: value,
           underline: const SizedBox.shrink(),
           items: items.map((e) => DropdownMenuItem(value: e, child: Text(labelBuilder(e)))).toList(),
-          onChanged: (v) { if (v != null) onChanged(v); },
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
         ),
       ),
     );
@@ -719,36 +858,57 @@ class _RiskCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('위험수준', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text('위험수준', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               Row(
                 children: [
                   SizedBox(
-                    width: 140, height: 140,
-                    child: PieChart(PieChartData(
-                      centerSpaceRadius: 46,
-                      sectionsSpace: 2,
-                      sections: [
-                        PieChartSectionData(value: level.toDouble(), color: Colors.red, radius: 18, title: ''),
-                        PieChartSectionData(value: (5 - level).toDouble(), color: Colors.grey[300], radius: 18, title: ''),
-                      ],
-                    )),
+                    width: 140,
+                    height: 170,
+                    child: PieChart(
+                      PieChartData(
+                        centerSpaceRadius: 46,
+                        sectionsSpace: 2,
+                        sections: [
+                          PieChartSectionData(value: level.toDouble(), color: Colors.red, radius: 18, title: ''),
+                          PieChartSectionData(value: (5 - level).toDouble(), color: Colors.grey[300], radius: 18, title: ''),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: DataTable(
-                      headingRowHeight: 28, dataRowMinHeight: 32, dataRowMaxHeight: 36,
-                      columns: const [DataColumn(label: Text('항목')), DataColumn(label: Text('값'))],
+                      columnSpacing: 24, // 줄바꿈 방지 여유
+                      headingRowHeight: 28,
+                      dataRowMinHeight: 32,
+                      dataRowMaxHeight: 36,
+                      columns: const [
+                        DataColumn(label: Text('항목')),
+                        DataColumn(label: Text('값')),
+                      ],
                       rows: [
-                        DataRow(cells: [const DataCell(Text('적용기간')), const DataCell(Text('1년'))]),
-                        DataRow(cells: [const DataCell(Text('위험레벨(1~5)')), DataCell(Text('$level'))]),
-                        DataRow(cells: [const DataCell(Text('설명')), DataCell(Text(riskText))]),
+                        DataRow(cells: [
+                          const DataCell(Text('적용기간')),
+                          const DataCell(Text('1년', maxLines: 1, softWrap: false)), // "1 년" 줄바꿈 방지
+                        ]),
+                        DataRow(cells: [
+                          const DataCell(Text('위험레벨(1~5)')),
+                          DataCell(Text('$level')),
+                        ]),
+                        DataRow(cells: [
+                          const DataCell(Text('설명')),
+                          DataCell(Text(riskText)),
+                        ]),
                       ],
                     ),
                   ),
@@ -772,6 +932,8 @@ class _AssetCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
@@ -779,7 +941,7 @@ class _AssetCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('자산 구성 비율', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text('자산 구성 비율', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
               const SizedBox(height: 40),
               LayoutBuilder(
                 builder: (context, c) {
@@ -789,17 +951,20 @@ class _AssetCard extends StatelessWidget {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        PieChart(PieChartData(
-                          centerSpaceRadius: size * 0.42,
-                          sectionsSpace: 2,
-                          sections: _pieSections(asset, size),
-                        )),
+                        PieChart(
+                          PieChartData(
+                            centerSpaceRadius: size * 0.42,
+                            sectionsSpace: 2,
+                            sections: _pieSections(asset, size),
+                          ),
+                        ),
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('기준', style: TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w600)),
                             Text(fmtDate(asset.baseDate),
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                            const Text('기준',
+                                style: TextStyle(fontSize: 16, color: Colors.black54, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ],
@@ -845,7 +1010,7 @@ List<PieChartSectionData> _pieSections(FundAssetSummary a, double size) {
       color: it.$3,
       radius: (size * 0.26) + (isMax ? 8 : 0),
       title: '${it.$1}\n${it.$2.toStringAsFixed(1)}%',
-      titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+      titleStyle: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
       titlePositionPercentageOffset: .48,
       badgePositionPercentageOffset: 1.0,
     );
@@ -860,9 +1025,9 @@ class _AssetTable extends StatelessWidget {
 
   double _valByKey(String k) => switch (k) {
     'stock' => asset.stock,
-    'bond'  => asset.bond,
-    'cash'  => asset.cash,
-    _       => asset.etc,
+    'bond' => asset.bond,
+    'cash' => asset.cash,
+    _ => asset.etc,
   };
 
   @override
@@ -904,26 +1069,47 @@ class _StockBondTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('주식 및 채권 보유 비중', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              DataTable(
-                headingRowHeight: 32,
-                dataRowMinHeight: 32,
-                dataRowMaxHeight: 36,
-                columns: const [DataColumn(label: Text('자산')), DataColumn(label: Text('비중')), DataColumn(label: Text('기준일'))],
-                rows: [
-                  DataRow(cells: [const DataCell(Text('주식')), DataCell(Text('${stockPct.toStringAsFixed(1)}%')), DataCell(Text(fmtDate(baseDate)))]),
-                  DataRow(cells: [const DataCell(Text('채권')), DataCell(Text('${bondPct.toStringAsFixed(1)}%')), DataCell(Text(fmtDate(baseDate)))]),
-                ],
-              ),
-            ],
+      child: SizedBox(
+        width: double.infinity,
+        child: Card(
+          color: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: .6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('주식 및 채권 보유 비중', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: DataTable(
+                    headingRowHeight: 35,
+                    dataRowMinHeight: 32,
+                    dataRowMaxHeight: 36,
+                    columns: const [
+                      DataColumn(label: Text('자산')),
+                      DataColumn(label: Text('비중')),
+                      DataColumn(label: Text('기준일'))
+                    ],
+                    rows: [
+                      DataRow(cells: [
+                        const DataCell(Text('주식')),
+                        DataCell(Text('${stockPct.toStringAsFixed(1)}%')),
+                        DataCell(Text(fmtDate(baseDate)))
+                      ]),
+                      DataRow(cells: [
+                        const DataCell(Text('채권')),
+                        DataCell(Text('${bondPct.toStringAsFixed(1)}%')),
+                        DataCell(Text(fmtDate(baseDate)))
+                      ]),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -931,7 +1117,7 @@ class _StockBondTable extends StatelessWidget {
   }
 }
 
-/// 보수 및 수수료 — 3블록 카드
+/// 보수 및 수수료 — 3블록 카드 (가운데 블록 기존 색 유지)
 class _FeeCards extends StatelessWidget {
   final FundFeeInfo fee;
   const _FeeCards({required this.fee});
@@ -940,25 +1126,30 @@ class _FeeCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget block(String title, List<(String, String)> rows) {
+    Widget block(
+        String title,
+        List<(String, String)> rows, {
+          Color bg = Colors.white,
+          Color borderColor = Colors.black12,
+        }) {
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: blueSoft,
+          color: bg,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: tossBlue.withOpacity(.25)),
+          border: Border.all(color: borderColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: tossBlue,)),
+            Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: tossBlue)),
             const SizedBox(height: 8),
             ...rows.map((e) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: Text(e.$1, style: const TextStyle(height: 1.2))), // 라벨
+                  Expanded(child: Text(e.$1, style: const TextStyle(height: 1.2))),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -966,7 +1157,7 @@ class _FeeCards extends StatelessWidget {
                       textAlign: TextAlign.right,
                       style: const TextStyle(fontWeight: FontWeight.w700, height: 1.2),
                     ),
-                  ), // 값
+                  ),
                 ],
               ),
             )),
@@ -977,64 +1168,67 @@ class _FeeCards extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: LayoutBuilder(
-            builder: (context, c) {
-              final isNarrow = c.maxWidth < 360; // 폭 좁으면 세로로
-              final children = [
-                block('매입할 때', [
-                  ('선취판매수수료', _feeText(fee.frontLoadFee)),
-                ]),
-                block('투자기간동안', [
-                  ('총 보수(연)', fmtPercent(fee.totalFee, digits: 3)),
-                  ('총비용비율(TER)', fmtPercent(fee.ter, digits: 4)),
-                  // 긴 항목들을 4줄로 분리해 깨짐 방지
-                  ('운용보수', fmtPercent(fee.managementFee, digits: 3)),
-                  ('판매보수', fmtPercent(fee.salesFee, digits: 3)),
-                  ('일반사무관리보수', fmtPercent(fee.adminFee, digits: 3)),
-                  ('수탁보수', fmtPercent(fee.trustFee, digits: 3)),
-                ]),
-                block('환매할 때', [
-                  ('후취판매수수료', _feeText(fee.rearLoadFee)),
-                  ('환매수수료', '수수료없음'),
-                ]),
-              ];
+      child: SizedBox(
+        width: double.infinity,
+        child: Card(
+          color: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: .6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final isNarrow = c.maxWidth < 360;
+                final children = [
+                  block('매입할 때', [
+                    ('선취판매수수료', _feeText(fee.frontLoadFee)),
+                  ], bg: blueSoft, borderColor: tossBlue.withOpacity(.25)),
+                  block('투자기간동안', [
+                    ('총 보수(연)', fmtPercent(fee.totalFee, digits: 3)),
+                    ('총비용비율(TER)', fmtPercent(fee.ter, digits: 4)),
+                    ('운용보수', fmtPercent(fee.managementFee, digits: 3)),
+                    ('판매보수', fmtPercent(fee.salesFee, digits: 3)),
+                    ('일반사무관리보수', fmtPercent(fee.adminFee, digits: 3)),
+                    ('수탁보수', fmtPercent(fee.trustFee, digits: 3)),
+                  ], bg: blueSoft, borderColor: tossBlue.withOpacity(.25)),
+                  block('환매할 때', [
+                    ('후취판매수수료', _feeText(fee.rearLoadFee)),
+                    ('환매수수료', '수수료없음'),
+                  ], bg: blueSoft, borderColor: tossBlue.withOpacity(.25)),
+                ];
 
-              if (isNarrow) {
-                // 세로 스택
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 12),
-                    ...children.expand((w) => [w, const SizedBox(height: 8)]).toList()..removeLast(),
-                  ],
-                );
-              } else {
-                // 가로 + 간격
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(child: children[0]),
-                        const SizedBox(width: 8),
-                        Expanded(child: children[1]),
-                        const SizedBox(width: 8),
-                        Expanded(child: children[2]),
-                      ],
-                    ),
-                  ],
-                );
-              }
-            },
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}',
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 12),
+                      ...children.expand((w) => [w, const SizedBox(height: 8)]).toList()..removeLast(),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('보수 및 수수료 · 기준 ${fmtDate(fee.baseDate)}',
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(child: children[0]),
+                          const SizedBox(width: 8),
+                          Expanded(child: children[1]),
+                          const SizedBox(width: 8),
+                          Expanded(child: children[2]),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+              },
+            ),
           ),
         ),
       ),
@@ -1053,6 +1247,9 @@ class _InfoCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Card(
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
@@ -1083,6 +1280,12 @@ class _InfoCard extends StatelessWidget {
 }
 
 /// 공시자료 카드
+class FundDocumentUI {
+  final String type, fileName, path;
+  final DateTime uploadedAt;
+  FundDocumentUI({required this.type, required this.fileName, required this.path, required this.uploadedAt});
+}
+
 class _DocsCard extends StatelessWidget {
   final List<FundDocument> docs;
   const _DocsCard({required this.docs});
@@ -1092,6 +1295,9 @@ class _DocsCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Card(
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
@@ -1100,89 +1306,37 @@ class _DocsCard extends StatelessWidget {
             children: [
               const Text('공시자료', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
+              if (docs.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('등록된 공시자료가 없습니다.', style: TextStyle(color: Colors.black54)),
+                ),
               ...docs.map((d) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.description_outlined),
                 title: Text(d.type),
                 subtitle: Text('${d.fileName} · 업로드 ${fmtDate(d.uploadedAt)}'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () { /* TODO: 파일 열기 */ },
+                onTap: () async {
+                  final raw = d.path;
+                  if (raw.isEmpty) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('파일 경로가 없습니다.')),
+                      );
+                    }
+                    return;
+                  }
+                  final base = ApiConfig.baseUrl;
+                  final uri = _buildDocUri(base, raw);
+                  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  if (!ok && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('파일을 열 수 없습니다.')),
+                    );
+                  }
+                },
               )),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 매입/환매 프로세스 카드(간단 버전)
-class _ProcessCard extends StatelessWidget {
-  const _ProcessCard();
-
-  Widget _chip(String t) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    decoration: BoxDecoration(color: const Color(0xFFE8F0FF), borderRadius: BorderRadius.circular(10)),
-    child: Text(t, style: const TextStyle(fontWeight: FontWeight.w700)),
-  );
-
-  Widget _col(String title, List<(String, List<String>)> groups) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: const Color(0xFFE9F1FF), borderRadius: BorderRadius.circular(14)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: tossBlue)),
-            const SizedBox(height: 10),
-            ...groups.map((g) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Icon(g.$1.contains('이전') ? Icons.wb_sunny_outlined : Icons.nightlight_round, size: 18, color: tossBlue),
-                    const SizedBox(width: 6),
-                    Text(g.$1, style: const TextStyle(fontWeight: FontWeight.w700, color: tossBlue)),
-                  ]),
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 8, runSpacing: 8, children: g.$2.map(_chip).toList()),
-                ],
-              ),
-            )),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('매입/환매 프로세스', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _col('매입', [
-                    ('16시 이전', ['매입 신청일', '기준가 적용일', '매입일']),
-                    ('16시 경과후', ['매입 신청일', '기준가 적용일', '매입일']),
-                  ]),
-                  const SizedBox(width: 8),
-                  _col('환매', [
-                    ('16시 이전', ['환매 신청일', '기준가 적용일', '환매일']),
-                    ('16시 경과후', ['환매 신청일', '기준가 적용일', '환매일']),
-                  ]),
-                ],
-              ),
             ],
           ),
         ),
@@ -1223,6 +1377,78 @@ class _NoticeCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 스크롤 시 뷰포트에 들어오면 슬라이드+페이드로 나타나는 위젯
+class RevealOnScroll extends StatefulWidget {
+  final Widget child;
+  final ScrollController controller;
+  final Duration duration;
+  final Duration? delay;
+  final double triggerOffset;
+
+  const RevealOnScroll({
+    super.key,
+    required this.child,
+    required this.controller,
+    this.duration = const Duration(milliseconds: 380),
+    this.delay,
+    this.triggerOffset = 60,
+  });
+
+  @override
+  State<RevealOnScroll> createState() => _RevealOnScrollState();
+}
+
+class _RevealOnScrollState extends State<RevealOnScroll>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ac =
+  AnimationController(vsync: this, duration: widget.duration);
+  late final Animation<double> _curve =
+  CurvedAnimation(parent: _ac, curve: Curves.easeOutCubic);
+
+  bool _revealed = false;
+
+  void _tryReveal() {
+    if (_revealed) return;
+    final render = context.findRenderObject();
+    if (render is! RenderBox || !render.attached) return;
+
+    final pos = render.localToGlobal(Offset.zero);
+    final h = MediaQuery.of(context).size.height;
+    final visible = pos.dy < h - widget.triggerOffset;
+    if (visible) {
+      _revealed = true;
+      if (widget.delay != null) {
+        Future.delayed(widget.delay!, () => _ac.forward());
+      } else {
+        _ac.forward();
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _tryReveal());
+    widget.controller.addListener(_tryReveal);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_tryReveal);
+    _ac.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final slide = Tween<Offset>(begin: const Offset(0, .06), end: Offset.zero).animate(_curve);
+    return FadeTransition(
+      opacity: _curve,
+      child: SlideTransition(position: slide, child: widget.child),
     );
   }
 }

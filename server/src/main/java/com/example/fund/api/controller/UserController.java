@@ -1,10 +1,13 @@
 package com.example.fund.api.controller;
 
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,9 +15,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.fund.api.common.SignupRequest;
+import com.example.fund.api.dto.UserInfo;
 import com.example.fund.api.service.UserApiService;
+import com.example.fund.common.CurrentUid;
+import com.example.fund.user.entity.User;
+import com.example.fund.user.repository.UserRepository;
 
 //@CrossOrigin(origins = "http://10.71.200.224:8090")
 @CrossOrigin(origins = "*")
@@ -24,6 +32,9 @@ public class UserController {
 
     @Autowired
     private UserApiService userApiService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
@@ -40,4 +51,19 @@ public class UserController {
         boolean duplicate = userApiService.existsByUsername(username);
         return Map.of("duplicate", duplicate);
     }
+
+    @GetMapping("/me")
+    public UserInfo me(@CurrentUid Integer uid) {
+        User u = userApiService.getById(uid); // 사용자 조회
+        String typename = userApiService.getByTypeName(u);
+
+        return new UserInfo(
+                u.getUserId(), // Integer
+                u.getUsername(),
+                u.getName(),
+                u.getEmail(),
+                typename // 접속중인 User의 최근 투자성향결과 typeName
+        );
+    }
+
 }

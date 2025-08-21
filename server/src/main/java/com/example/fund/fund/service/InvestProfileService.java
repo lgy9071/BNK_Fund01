@@ -12,16 +12,16 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.example.fund.fund.entity.InvestProfileHistory;
-import com.example.fund.fund.entity.InvestProfileOption;
-import com.example.fund.fund.entity.InvestProfileQuestion;
-import com.example.fund.fund.entity.InvestProfileResult;
-import com.example.fund.fund.entity.InvestProfileType;
-import com.example.fund.fund.repository.InvestProfileHistoryRepository;
-import com.example.fund.fund.repository.InvestProfileOptionRepository;
-import com.example.fund.fund.repository.InvestProfileQuestionRepository;
-import com.example.fund.fund.repository.InvestProfileResultRepository;
-import com.example.fund.fund.repository.InvestProfileTypeRepository;
+import com.example.fund.fund.entity_fund_etc.InvestProfileHistory;
+import com.example.fund.fund.entity_fund_etc.InvestProfileOption;
+import com.example.fund.fund.entity_fund_etc.InvestProfileQuestion;
+import com.example.fund.fund.entity_fund_etc.InvestProfileResult;
+import com.example.fund.fund.entity_fund_etc.InvestProfileType;
+import com.example.fund.fund.repository_fund_etc.InvestProfileHistoryRepository;
+import com.example.fund.fund.repository_fund_etc.InvestProfileOptionRepository;
+import com.example.fund.fund.repository_fund_etc.InvestProfileQuestionRepository;
+import com.example.fund.fund.repository_fund_etc.InvestProfileResultRepository;
+import com.example.fund.fund.repository_fund_etc.InvestProfileTypeRepository;
 import com.example.fund.user.entity.User;
 import com.example.fund.user.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -33,8 +33,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class InvestProfileService {
-	
-	private final UserRepository userRepository;
+
+    private final UserRepository userRepository;
     private final InvestProfileQuestionRepository questionRepository;
     private final InvestProfileTypeRepository typeRepository;
     private final InvestProfileResultRepository resultRepository;
@@ -42,35 +42,36 @@ public class InvestProfileService {
     private final InvestProfileHistoryRepository historyRepository;
 
     public List<InvestProfileQuestion> findAllWithOptions() {
-        return questionRepository.findAllWithOptions();  // 아래에 나오는 커스텀 쿼리 사용
+        return questionRepository.findAllWithOptions(); // 아래에 나오는 커스텀 쿼리 사용
     }
 
     // 점수 총합을 기반으로 투자성향 유형명 리턴
     public InvestProfileResult analyzeAndSave(Integer userId, Map<String, String> paramMap) {
-    	int totalScore = 0;
-    	Map<String, Object> answerSnapshot = new LinkedHashMap<>();
-    	for(Map.Entry<String, String> entry : paramMap.entrySet()) {
-    		String key = entry.getKey(); //q0, q1 ..
-    		String value = entry.getValue();
-    		int questionNum = Integer.parseInt(key.replace("q", "")) + 1;
-    		
-    		// 체크박스 (복수 선택)
-    		if(key.equals("q8")) {
-    			String[] id = value.split(",");
-    			List<Integer> optionId = Arrays.stream(id).map(Integer::parseInt).collect(Collectors.toList());
-    			List<InvestProfileOption> options = optionRepository.findAllById(optionId);
-    			int sum = options.stream().mapToInt(InvestProfileOption::getScore).sum();
+        int totalScore = 0;
+        System.out.println(paramMap);
+        Map<String, Object> answerSnapshot = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : paramMap.entrySet()) {
+            String key = entry.getKey(); // q0, q1 ..
+            String value = entry.getValue();
+            int questionNum = Integer.parseInt(key.replace("q", "")) + 1;
+
+            // 체크박스 (복수 선택)
+            if (key.equals("q8")) {
+                String[] id = value.split(",");
+                List<Integer> optionId = Arrays.stream(id).map(Integer::parseInt).collect(Collectors.toList());
+                List<InvestProfileOption> options = optionRepository.findAllById(optionId);
+                int sum = options.stream().mapToInt(InvestProfileOption::getScore).sum();
                 totalScore += sum;
-    			List<Map<String, Object>> selectedList = options.stream()
-    				    .map(opt -> {
-    				        Map<String, Object> map = new HashMap<>();
-    				        map.put("selected_option", opt.getContent());
-    				        map.put("score", opt.getScore());
-    				        return map;
-    				    })
-    				    .collect(Collectors.toList());
-    			
-    			if (!options.isEmpty()) {
+                List<Map<String, Object>> selectedList = options.stream()
+                        .map(opt -> {
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("selected_option", opt.getContent());
+                            map.put("score", opt.getScore());
+                            return map;
+                        })
+                        .collect(Collectors.toList());
+
+                if (!options.isEmpty()) {
                     String questionText = options.get(0).getQuestion().getContent();
                     Map<String, Object> snapshotEntry = new LinkedHashMap<>();
                     snapshotEntry.put("question", questionText);
@@ -79,10 +80,10 @@ public class InvestProfileService {
 
                     answerSnapshot.put(String.valueOf(questionNum), snapshotEntry);
                 }
-    		}else {
-    			int optionId = Integer.parseInt(value);
+            } else {
+                int optionId = Integer.parseInt(value);
                 InvestProfileOption option = optionRepository.findById(optionId)
-                    .orElseThrow(() -> new RuntimeException("옵션 ID 오류: " + optionId));
+                        .orElseThrow(() -> new RuntimeException("옵션 ID 오류: " + optionId));
 
                 totalScore += option.getScore();
 
@@ -92,65 +93,65 @@ public class InvestProfileService {
                 snapshotEntry.put("score", option.getScore());
 
                 answerSnapshot.put(String.valueOf(questionNum), snapshotEntry);
-        		
-    		}
-    	}
-    	
-    	InvestProfileType type = typeRepository.findByScore(totalScore)
+
+            }
+        }
+
+        InvestProfileType type = typeRepository.findByScore(totalScore)
                 .orElseThrow(() -> new RuntimeException("적절한 투자성향 유형이 없습니다."));
-    	
-    	 User user = userRepository.findById(userId)
-                 .orElseThrow(() -> new RuntimeException("사용자 없음"));
 
-    	 // 스냅샷 JSON 변환
-    	   String snapshotJson;
-    	    try {
-    	        snapshotJson = new ObjectMapper().writeValueAsString(answerSnapshot);
-    	    } catch (JsonProcessingException e) {
-    	        throw new RuntimeException("JSON 변환 오류", e);
-    	    }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 없음"));
 
-    	    // 분석일
-    	    LocalDateTime analysisTime = LocalDateTime.now();
+        // 스냅샷 JSON 변환
+        String snapshotJson;
+        try {
+            snapshotJson = new ObjectMapper().writeValueAsString(answerSnapshot);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("JSON 변환 오류", e);
+        }
 
-    	    Optional<InvestProfileResult> existingResultOpt = resultRepository.findByUser_UserId(userId);
+        // 분석일
+        LocalDateTime analysisTime = LocalDateTime.now();
 
-    	    InvestProfileResult result;
+        Optional<InvestProfileResult> existingResultOpt = resultRepository.findByUser_UserId(userId);
 
-    	    if (existingResultOpt.isPresent()) {
-    	        // 기존 결과 UPDATE
-    	        result = existingResultOpt.get();
-    	    } else {
-    	        // 신규 INSERT
-    	        result = new InvestProfileResult();
-    	        result.setUser(user);
-    	    }
+        InvestProfileResult result;
 
-    	    result.setAnswerSnapshot(snapshotJson);
-    	    result.setTotalScore(totalScore);
-    	    result.setType(type);
-    	    result.setAnalysisDate(analysisTime);
-    	    // result.setSignedAt(...); // 필요 시 사용
+        if (existingResultOpt.isPresent()) {
+            // 기존 결과 UPDATE
+            result = existingResultOpt.get();
+        } else {
+            // 신규 INSERT
+            result = new InvestProfileResult();
+            result.setUser(user);
+        }
 
-    	    InvestProfileResult savedResult = resultRepository.save(result);
+        result.setAnswerSnapshot(snapshotJson);
+        result.setTotalScore(totalScore);
+        result.setType(type);
+        result.setAnalysisDate(analysisTime);
+        // result.setSignedAt(...); // 필요 시 사용
 
-    	    // 2. InvestProfileHistory 동시 저장
-    	    InvestProfileHistory history = new InvestProfileHistory();
-    	    history.setUser(user);
-    	    history.setAnswerSnapshot(snapshotJson);
-    	    history.setTotalScore(totalScore);
-    	    history.setType(type);
-    	    history.setAnalysisDate(analysisTime);
-    	    history.setSignedAt(savedResult.getSignedAt()); // 필요시 null 가능
+        InvestProfileResult savedResult = resultRepository.save(result);
 
-    	    historyRepository.save(history);
+        // 2. InvestProfileHistory 동시 저장
+        InvestProfileHistory history = new InvestProfileHistory();
+        history.setUser(user);
+        history.setAnswerSnapshot(snapshotJson);
+        history.setTotalScore(totalScore);
+        history.setType(type);
+        history.setAnalysisDate(analysisTime);
+        history.setSignedAt(savedResult.getSignedAt()); // 필요시 null 가능
 
-    	    return savedResult;
+        historyRepository.save(history);
+
+        return savedResult;
     }
-    
+
     public Optional<InvestProfileResult> getLatestResult(User user) {
         Optional<InvestProfileResult> resultOpt = resultRepository.findTopByUserOrderByAnalysisDateDesc(user);
-        
+
         if (resultOpt.isPresent()) {
             InvestProfileResult result = resultOpt.get();
             if (result.getAnalysisDate().plusDays(365).isBefore(LocalDateTime.now())) {
@@ -160,11 +161,12 @@ public class InvestProfileService {
 
         return resultOpt;
     }
-    
+
     public String extractAnswerText(String snapshotJson, String keyword) {
         try {
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> snapshot = mapper.readValue(snapshotJson, new TypeReference<>() {});
+            Map<String, Object> snapshot = mapper.readValue(snapshotJson, new TypeReference<>() {
+            });
             for (Object val : snapshot.values()) {
                 Map<String, Object> entry = (Map<String, Object>) val;
                 String question = entry.get("question").toString();
@@ -184,7 +186,7 @@ public class InvestProfileService {
         }
         return "&nbsp;";
     }
-    
+
     public boolean hasAnalyzedToday(Integer userId) {
         Optional<InvestProfileResult> opt = resultRepository.findByUser_UserId(userId);
 
@@ -196,4 +198,3 @@ public class InvestProfileService {
         return false;
     }
 }
-

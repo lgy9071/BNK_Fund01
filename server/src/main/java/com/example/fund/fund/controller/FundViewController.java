@@ -1,7 +1,7 @@
 package com.example.fund.fund.controller;
 
-import com.example.fund.fund.entity.InvestProfileResult;
-import com.example.fund.fund.repository.InvestProfileResultRepository;
+import com.example.fund.fund.entity_fund_etc.InvestProfileResult;
+import com.example.fund.fund.repository_fund_etc.InvestProfileResultRepository;
 import com.example.fund.fund.service.FundService;
 import com.example.fund.user.entity.User;
 import jakarta.servlet.http.HttpSession;
@@ -22,7 +22,6 @@ import java.util.Optional;
 public class FundViewController {
     private final InvestProfileResultRepository investProfileResultRepository;
     private final FundService fundService;
-
 
     /**
      * 투자 성향에 따른 펀드 목록
@@ -60,38 +59,6 @@ public class FundViewController {
     }
 
 
-    /**
-     * 투자 성향에 따른 배포된 펀드 목록
-     */
-    @GetMapping("/list-policy")
-    public String listPagePolicy(
-            HttpSession session,
-            Model model
-    ) {
-        User user = (User) session.getAttribute("user");
-
-        // 사용자 세션 여부 확인
-        if (user == null) {
-            return "redirect:/auth/login";      
-        }
-
-        // 투자 성향 존재 여부 확인
-        Integer userId = user.getUserId();
-        Optional<InvestProfileResult> investResult = investProfileResultRepository.findByUser_UserId(userId);
-
-        // 투자 성향 검사 필요
-        if(!investResult.isPresent()) {
-            return "redirect:/profile";
-        }
-
-        InvestProfileResult result = investResult.get();
-        Integer investType = result.getType().getTypeId().intValue();
-
-        model.addAttribute("userId", userId);
-        model.addAttribute("investType", investType);
-
-        return "fund/fundListPolicy";
-    }
 
 
     @GetMapping("/best-return")
@@ -127,7 +94,7 @@ public class FundViewController {
 
     @GetMapping("/{fundId}")  // 상세 페이지
     public String detailPage(
-            @PathVariable Long fundId,
+            @PathVariable String fundId,
             HttpSession session,
             Model model
     ) {

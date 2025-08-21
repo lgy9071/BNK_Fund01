@@ -1,13 +1,20 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:convert';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/utils/exit_popup.dart';
 import '../core/routes/routes.dart';
 import '../models/fund.dart';
-import 'package:mobile_front/core/services/invest_result_service.dart';
-import 'package:mobile_front/screens/invest_type_result_loader.dart';
-import 'package:mobile_front/core/constants/api.dart';
+import 'package:mobile_front/core/services/user_service.dart';
+import 'package:mobile_front/models/user_profile.dart';
+
+/// pubspec.yaml 에 의존성 추가:
+/// flutter_secure_storage: ^9.2.2
 
 const tossBlue = Color(0xFF0064FF);
 Color pastel(Color c) => Color.lerp(Colors.white, c, 0.12)!;
@@ -23,6 +30,67 @@ class BgChoice {
 
   bool get isImage => image != null;
   bool get isGradient => c2 != null && image == null;
+
+  // ---- 직렬화/역직렬화 (secure storage용) ----
+  Map<String, dynamic> toJson() => {
+    'type': isImage
+        ? 'image'
+        : (isGradient ? 'gradient' : 'solid'),
+    'c1': c1?.value,
+    'c2': c2?.value,
+    'imagePath': image?.path,
+  };
+
+  static BgChoice fromJson(Map<String, dynamic> j) {
+    final type = (j['type'] as String?) ?? 'solid';
+    switch (type) {
+      case 'image':
+        final path = j['imagePath'] as String?;
+        if (path != null && File(path).existsSync()) {
+          return BgChoice.image(File(path));
+        }
+        // 이미지 파일이 사라졌으면 기본값으로 폴백
+        return BgChoice.solid(pastel(tossBlue));
+      case 'gradient':
+        return BgChoice.gradient(
+          Color((j['c1'] as num).toInt()),
+          Color((j['c2'] as num).toInt()),
+        );
+      default:
+        return BgChoice.solid(Color((j['c1'] as num).toInt()));
+    }
+  }
+}
+
+/* ===== Secure Storage 래퍼 ===== */
+class _DesignStorage {
+  static const _storage = FlutterSecureStorage();
+  static const _kBg = 'home_bg_choice_v1';
+  static const _kObscure = 'home_obscure_v1';
+
+  static Future<void> saveBg(BgChoice bg) async {
+    await _storage.write(key: _kBg, value: jsonEncode(bg.toJson()));
+  }
+
+  static Future<BgChoice?> loadBg() async {
+    final raw = await _storage.read(key: _kBg);
+    if (raw == null) return null;
+    try {
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      return BgChoice.fromJson(map);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> saveObscure(bool v) =>
+      _storage.write(key: _kObscure, value: v ? '1' : '0');
+
+  static Future<bool?> loadObscure() async {
+    final raw = await _storage.read(key: _kObscure);
+    if (raw == null) return null;
+    return raw == '1';
+  }
 }
 
 /* 배경 대비용 글자색 계산 */
@@ -43,11 +111,18 @@ class HomeScreen extends StatefulWidget {
   final List<Fund> myFunds;
   final String investType;
   final String userName;
+  final String? accessToken;
+  final UserService? userService;
+  final Future<void> Function()? onStartInvestFlow; // ✅ 추가: 투자성향분석 플로우 시작 콜백
+
   const HomeScreen({
     super.key,
     required this.myFunds,
     required this.investType,
     required this.userName,
+    this.accessToken,
+    this.userService,
+    this.onStartInvestFlow,
   });
 
   @override
@@ -60,10 +135,54 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _obscure = false;          // 금액 숨김
   bool _expandFunds = false;      // 더보기
   FundSort _sort = FundSort.amountDesc;
+  String? _displayName; // 서버에서 받은 이름 저장
+  String? _investTypeName; // 서버에서 받은 투자성향결과 띄우기
 
   // 디자인 커스텀은 ‘총 평가금액’ 카드에만 적용됨
   BgChoice _bg = BgChoice.solid(pastel(tossBlue));
   File? _bgImageFile;
+
+  //데이터 전달 받기 위한 클래스
+  @override
+  void initState() {
+    super.initState();
+    _restoreDesign(); // ⬅︎ secure storage에서 배경/숨김 복원
+    _loadMe();        // ⬅︎ 서버 프로필 로드
+  }
+
+  Future<void> _restoreDesign() async {
+    final savedBg = await _DesignStorage.loadBg();
+    final savedObscure = await _DesignStorage.loadObscure();
+    if (!mounted) return;
+    setState(() {
+      if (savedBg != null) {
+        _bg = savedBg;
+        _bgImageFile = savedBg.image;
+      }
+      if (savedObscure != null) {
+        _obscure = savedObscure;
+      }
+    });
+  }
+
+  Future<void> _loadMe() async {
+    final token = widget.accessToken;
+    if (token == null || token.isEmpty) return; // 토큰 없으면 패스
+    try {
+      final svc = widget.userService ?? UserService();
+      final me = await svc.getMe(token);
+      if (!mounted) return;
+      setState(() {
+        // name이 비어있지 않으면 화면에 반영
+        _displayName = me.name.isNotEmpty ? me.name : null;
+        _investTypeName = me.typename.isNotEmpty ? me.typename : null;
+      });
+    } catch (e) {
+      debugPrint('getMe failed: $e'); // 원인 확인용
+      // 실패 시 조용히 무시 (props 유지)
+    }
+  }
+  //데이터 전달 받기 위한 클래스2
 
   String _won(int v) =>
       '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원';
@@ -101,21 +220,27 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       builder: (_) => _DesignSheet(
         isObscure: _obscure,
-        onToggleObscure: (v) => setState(() => _obscure = v),
-        onPickPreset: (choice) {
+        onToggleObscure: (v) async {
+          setState(() => _obscure = v);
+          await _DesignStorage.saveObscure(v); // ✅ 저장
+        },
+        onPickPreset: (choice) async {
           setState(() {
             _bg = choice;
             _bgImageFile = choice.image;
           });
-          Navigator.pop(context);
+          await _DesignStorage.saveBg(choice);    // ✅ 저장
+          if (context.mounted) Navigator.pop(context);
         },
         onPickImage: () async {
           final x = await ImagePicker().pickImage(source: ImageSource.gallery);
           if (x == null) return;
+          final choice = BgChoice.image(File(x.path));
           setState(() {
-            _bg = BgChoice.image(File(x.path));
+            _bg = choice;
             _bgImageFile = File(x.path);
           });
+          await _DesignStorage.saveBg(choice);    // ✅ 저장
           if (context.mounted) Navigator.pop(context);
         },
       ),
@@ -141,6 +266,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final displayName = _displayName ?? widget.userName; // 표시 이름
+    final investTypeName = _investTypeName; // 투자 성향 결과 표시
     final funds = _sortedFunds();
     final baseText = AppColors.fontColor;
     final baseDim = baseText.withOpacity(.54);
@@ -150,110 +277,320 @@ class _HomeScreenState extends State<HomeScreen> {
     final int baseCount = math.min(2, funds.length);
     final List<Fund> firstTwo = funds.take(baseCount).toList();
     final List<Fund> rest = _expandFunds ? funds.skip(baseCount).toList() : const [];
-
-    return Scaffold(
-      backgroundColor: Colors.white, // 메인 뒷배경 흰색
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    print(investTypeName);
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return; // 이미 pop 처리된 경우 무시
+        await showExitPopup(context);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // 항상 투명
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0, // 그림자 제거
+          automaticallyImplyLeading: false, // 기본 back 버튼 제거
+          titleSpacing: 0, // 로고를 왼쪽 끝까지 붙이고 싶을 때
+          title: Row(
             children: [
-              /* 헤더 */
-              Row(children: [
-                InkWell(
-                  onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/images/splash_logo.png',
-                    height: 33,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) =>
-                        Icon(Icons.account_balance, color: baseText),
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: Icon(Icons.notifications_none, color: baseDim),
-                  onPressed: () {},
-                ),
-              ]),
-              const SizedBox(height: 12),
-
-              /* 투자성향 카드 (이름/성향 + 화살표) */
+              const SizedBox(width: 8,),
               InkWell(
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.investType), // ✅ 수정
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  height: 72,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: tossBlue.withOpacity(0.16), width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      Text('${widget.userName}님의 투자성향',
-                          style: TextStyle(fontSize: 15, color: baseText)),
-                      const Spacer(),
-                      Text(widget.investType,
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w800, color: baseText)),
-                      const SizedBox(width: 8),
-                      Icon(Icons.chevron_right, color: baseDim),
-                    ],
-                  ),
+                onTap: () =>
+                    Navigator.of(context).popUntil((r) => r.isFirst),
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/splash_logo.png',
+                  height: 33,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.account_balance, color: Colors.black),
                 ),
               ),
-              const SizedBox(height: 28),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.notifications_none, color: Colors.grey),
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 10),
 
-              /* 총 평가금액 카드 */
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(
-                        constraints: const BoxConstraints(minHeight: 100),
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                        decoration: BoxDecoration(
-                          image: _bg.isImage && _bgImageFile != null
-                              ? DecorationImage(image: FileImage(_bgImageFile!), fit: BoxFit.cover)
-                              : null,
-                          color: (!_bg.isImage && !_bg.isGradient) ? _bg.c1 : null,
-                          gradient: _bg.isGradient
-                              ? LinearGradient(
-                              colors: [_bg.c1!, _bg.c2!],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight)
-                              : null,
-                        ),
-                        child: Stack(
-                          children: [
-                            if (_bg.isImage)
-                              Positioned.fill(
-                                child: Container(color: Colors.black.withOpacity(.28)),
-                              ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                /* 투자성향 카드 */
+                InkWell(
+                  onTap: () async {
+                    if (investTypeName == null || investTypeName.isEmpty) {
+                      if (widget.onStartInvestFlow != null) {
+                        await widget.onStartInvestFlow!(); // ✅ 부모가 라우팅 + 리로드
+                      }
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(14.r),
+                  child: Container(
+                    height: (investTypeName != null && investTypeName.isNotEmpty) ? 72.h : 180.h,
+                    padding: EdgeInsets.symmetric(horizontal: 14.w),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: tossBlue.withOpacity(0.16), width: 1.w),
+                    ),
+                    child: Row(
+                      children: [
+                        if (investTypeName != null && investTypeName.isNotEmpty) ...[
+                          // ✅ 좌측 라벨: 한 줄 + 말줄임
+                          Expanded(
+                            child: AutoSizeText(
+                              '$displayName 님의 투자성향',
+                              maxLines: 1,
+                              minFontSize: 10,
+                              stepGranularity: 0.5,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 15.sp, color: baseText),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+
+                          // 🔹 우측 결과(텍스트 + 화살표): 폭 제한 + 한 줄 유지(자동 축소)
+                          InkWell(
+                            borderRadius: BorderRadius.circular(8.r),
+                            onTap: () async {
+                              if (widget.onStartInvestFlow != null) {
+                                await widget.onStartInvestFlow!(); // ✅ 결과 화면/재검사 진입 포함
+                              }
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Row(
-                                  children: [
-                                    InkWell(
-                                      onTap: _toMyFinance,
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Text(
-                                        '총 평가금액',
+                                // 결과 텍스트: 너무 길면 자동 축소해서 1줄 유지
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(maxWidth: 160.w),
+                                  child: AutoSizeText(
+                                    investTypeName!,
+                                    maxLines: 1,
+                                    minFontSize: 10,
+                                    stepGranularity: 0.5,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 20.sp,
+                                      fontWeight: FontWeight.w800,
+                                      color: baseText,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8.w),
+                                Icon(Icons.chevron_right, color: baseDim, size: 20.sp),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          // ❌ 투자성향 결과가 없을 때
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(height: 5.h),
+
+                                // 🔹 유저 이름 + 환영 문구: 한 줄 고정(자동 축소)
+                                // RichText 대신 AutoSizeText.rich로 1줄 강제
+                                AutoSizeText.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: displayName,
                                         style: TextStyle(
-                                          fontSize: 19,
+                                          fontSize: 24.sp,
                                           fontWeight: FontWeight.w700,
-                                          color: onColor,
+                                          color: AppColors.fontColor,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: ' 님 환영합니다',
+                                        style: TextStyle(
+                                          fontSize: 20.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: baseText,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 1,
+                                  minFontSize: 12,
+                                  stepGranularity: 0.5,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+
+                                SizedBox(height: 10.h),
+
+                                // 🔹 안내 문구: 반드시 한 줄 + 자동 축소
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: AutoSizeText(
+                                    '투자성향분석을 진행하고 펀드 가입을 시작해보세요!',
+                                    maxLines: 1,
+                                    minFontSize: 11,
+                                    stepGranularity: 0.5,
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 16.sp,
+                                      color: baseText.withOpacity(0.7),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+
+                                SizedBox(height: 16.h),
+
+                                // 🔹 맨 아래 버튼: 텍스트 한 줄 강제(FittedBox로 축소)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      if (widget.onStartInvestFlow != null) {
+                                        await widget.onStartInvestFlow!(); // ✅ 부모가 끝까지 처리
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                                      backgroundColor: AppColors.primaryBlue,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10.r),
+                                      ),
+                                    ),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        '투자성향 분석하기',
+                                        maxLines: 1,
+                                        softWrap: false,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                /* 총 평가금액 카드 */
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          constraints: const BoxConstraints(minHeight: 100),
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                          decoration: BoxDecoration(
+                            image: _bg.isImage && _bgImageFile != null
+                                ? DecorationImage(image: FileImage(_bgImageFile!), fit: BoxFit.cover)
+                                : null,
+                            color: (!_bg.isImage && !_bg.isGradient) ? _bg.c1 : null,
+                            gradient: _bg.isGradient
+                                ? LinearGradient(
+                                colors: [_bg.c1!, _bg.c2!],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight)
+                                : null,
+                          ),
+                          child: Stack(
+                            children: [
+                              if (_bg.isImage)
+                                Positioned.fill(
+                                  child: Container(color: Colors.black.withOpacity(.28)),
+                                ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      InkWell(
+                                        onTap: _toMyFinance,
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Text(
+                                          '총 평가금액',
+                                          style: TextStyle(
+                                            fontSize: 19,
+                                            fontWeight: FontWeight.w700,
+                                            color: _idealOn(_bg),
+                                            shadows: _bg.isImage
+                                                ? [
+                                              Shadow(
+                                                  color: Colors.black.withOpacity(.55),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 1.5))
+                                            ]
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      IconButton(
+                                        icon: Icon(Icons.more_horiz,
+                                            color: _bg.isImage ? Colors.white : _idealOn(_bg).withOpacity(.6)),
+                                        onPressed: _openSettingsSheet,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 15),
+
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 220),
+                                    child: _obscure
+                                        ? Align(
+                                      key: const ValueKey('hidden'),
+                                      alignment: Alignment.centerRight,
+                                      child: GestureDetector(
+                                        onTap: () async {
+                                          setState(() => _obscure = false);
+                                          await _DesignStorage.saveObscure(false); // ✅ 저장
+                                        },
+                                        child: Text(
+                                          '잔액보기',
+                                          style: TextStyle(
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.bold,
+                                            color: _idealOn(_bg),
+                                            decoration: TextDecoration.underline,
+                                            decorationColor: (_bg.isImage
+                                                ? Colors.white70
+                                                : _idealOn(_bg).withOpacity(.45)),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                        : Align(
+                                      key: const ValueKey('shown'),
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        _won(_totalBal),
+                                        style: TextStyle(
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.bold,
+                                          color: _idealOn(_bg),
                                           shadows: _bg.isImage
                                               ? [
                                             Shadow(
@@ -265,225 +602,179 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       ),
                                     ),
-                                    const Spacer(),
-                                    IconButton(
-                                      icon: Icon(Icons.more_horiz,
-                                          color: _bg.isImage ? Colors.white : onColor.withOpacity(.6)),
-                                      onPressed: _openSettingsSheet,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 220),
-                                  child: _obscure
-                                      ? Align(
-                                    key: const ValueKey('hidden'),
-                                    alignment: Alignment.centerRight,
-                                    child: GestureDetector(
-                                      onTap: () => setState(() => _obscure = false),
-                                      child: Text(
-                                        '잔액 보기',
-                                        style: TextStyle(
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.bold,
-                                          color: onColor,
-                                          decoration: TextDecoration.underline,
-                                          decorationColor: (_bg.isImage
-                                              ? Colors.white70
-                                              : onColor.withOpacity(.45)),
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                      : Align(
-                                    key: const ValueKey('shown'),
-                                    alignment: Alignment.centerRight,
-                                    child: Text(
-                                      _won(_totalBal),
-                                      style: TextStyle(
-                                        fontSize: 26,
-                                        fontWeight: FontWeight.bold,
-                                        color: onColor,
-                                        shadows: _bg.isImage
-                                            ? [
-                                          Shadow(
-                                              color: Colors.black.withOpacity(.55),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 1.5))
-                                        ]
-                                            : null,
-                                      ),
-                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeInOut,
+                          child: _obscure
+                              ? const SizedBox.shrink()
+                              : Container(
+                            color: Colors.white,
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                            child: Builder(builder: (_) {
+                              final up = _pnl >= 0;
+                              final sign = up ? '+' : '−';
+                              final c = up ? Colors.red : Colors.blue;
+                              final baseText = AppColors.fontColor;
+                              return Row(
+                                children: [
+                                  const Spacer(),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text('평가손익',
+                                              style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: baseText.withOpacity(.54))),
+                                          const SizedBox(width: 10),
+                                          Text('$sign ${_won(_pnl.abs())}',
+                                              style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: c)),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text('수익률',
+                                              style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: baseText.withOpacity(.54))),
+                                          const SizedBox(width: 10),
+                                          Text('$sign ${_returnPct.abs().toStringAsFixed(2)}%',
+                                              style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: c)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            }),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                /* 보유 펀드 */
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4))
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(children: [
+                        InkWell(
+                          onTap: _toMyFinance,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Text('보유 펀드',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.fontColor)),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.more_horiz, color: AppColors.fontColor.withOpacity(.54)),
+                          onPressed: _openFundsOptionsSheet,
+                        ),
+                      ]),
+                      const SizedBox(height: 10),
+
+                      for (int i = 0; i < firstTwo.length; i++) ...[
+                        _FundMiniTile(
+                          fund: firstTwo[i],
+                          obscure: _obscure,
+                          onTap: () => Navigator.of(context).pushNamed(
+                            '/fund/transactions',
+                            arguments: firstTwo[i].id,
+                          ),
+                        ),
+                        if (i != firstTwo.length - 1) const SizedBox(height: 10),
+                      ],
 
                       AnimatedSize(
                         duration: const Duration(milliseconds: 220),
                         curve: Curves.easeInOut,
-                        child: _obscure
-                            ? const SizedBox.shrink()
-                            : Container(
-                          color: Colors.white,
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                          child: Builder(builder: (_) {
-                            final up = _pnl >= 0;
-                            final sign = up ? '+' : '−';
-                            final c = up ? Colors.red : Colors.blue;
-                            return Row(
-                              children: [
-                                const Spacer(),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text('평가손익',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                color: baseText.withOpacity(.54))),
-                                        const SizedBox(width: 10),
-                                        Text('$sign ${_won(_pnl.abs())}',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                                color: c)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text('수익률',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                color: baseText.withOpacity(.54))),
-                                        const SizedBox(width: 10),
-                                        Text('$sign ${_returnPct.abs().toStringAsFixed(2)}%',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                                color: c)),
-                                      ],
-                                    ),
-                                  ],
+                        child: Column(
+                          children: [
+                            for (int i = 0; i < rest.length; i++) ...[
+                              const SizedBox(height: 10),
+                              _FundMiniTile(
+                                fund: rest[i],
+                                obscure: _obscure,
+                                onTap: () => Navigator.of(context).pushNamed(
+                                  '/fund/transactions',
+                                  arguments: rest[i].id,
                                 ),
-                              ],
-                            );
-                          }),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
+
+                      if (funds.length > 2) const SizedBox(height: 14),
+                      if (funds.length > 2)
+                        GestureDetector(
+                          onTap: () => setState(() => _expandFunds = !_expandFunds),
+                          child: Container(
+                            height: 44,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: tossBlue,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              child: Text(
+                                _expandFunds ? '접기' : '더보기',
+                                key: ValueKey(_expandFunds),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 30),
 
-              /* 보유 펀드 */
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4))
-                  ],
+                const SizedBox(height: 12),
+
+                _MbtiPromoCard(
+                  onTap: () => Navigator.of(context).pushNamed(AppRoutes.fundMbti),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(children: [
-                      InkWell(
-                        onTap: _toMyFinance,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Text('보유 펀드',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w600, color: baseText)),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: Icon(Icons.more_horiz, color: baseDim),
-                        onPressed: _openFundsOptionsSheet,
-                      ),
-                    ]),
-                    const SizedBox(height: 10),
 
-                    for (int i = 0; i < firstTwo.length; i++) ...[
-                      _FundMiniTile(
-                        fund: firstTwo[i],
-                        obscure: _obscure,
-                        onTap: () => Navigator.of(context).pushNamed(
-                          '/fund/transactions',
-                          arguments: firstTwo[i].id,
-                        ),
-                      ),
-                      if (i != firstTwo.length - 1) const SizedBox(height: 10),
-                    ],
-
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeInOut,
-                      child: Column(
-                        children: [
-                          for (int i = 0; i < rest.length; i++) ...[
-                            const SizedBox(height: 10),
-                            _FundMiniTile(
-                              fund: rest[i],
-                              obscure: _obscure,
-                              onTap: () => Navigator.of(context).pushNamed(
-                                '/fund/transactions',
-                                arguments: rest[i].id,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    if (funds.length > 2) const SizedBox(height: 14),
-                    if (funds.length > 2)
-                      GestureDetector(
-                        onTap: () => setState(() => _expandFunds = !_expandFunds),
-                        child: Container(
-                          height: 44,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: tossBlue,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 180),
-                            child: Text(
-                              _expandFunds ? '접기' : '더보기',
-                              key: ValueKey(_expandFunds),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-              Text('추천/공지 섹션 자리',
-                  style: TextStyle(color: baseText.withOpacity(.6))),
-            ],
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
         ),
       ),
@@ -592,7 +883,7 @@ class _DesignSheetState extends State<_DesignSheet> {
 
   void _setObscure(bool v) {
     setState(() => _isObscure = v); // 모달 내 즉시 갱신
-    widget.onToggleObscure(v);      // 상위(HomeScreen)에도 반영
+    widget.onToggleObscure(v);      // 상위(HomeScreen)에도 반영(+ 저장은 상위에서 처리)
   }
 
   @override
@@ -613,11 +904,15 @@ class _DesignSheetState extends State<_DesignSheet> {
     );
 
     final presets = <BgChoice>[
-      BgChoice.solid(pastel(const Color(0xFF7FA7FF))),
-      BgChoice.gradient(const Color(0xFF6FA8FF), const Color(0xFFFFA8D0)),
-      BgChoice.gradient(const Color(0xFF59E5FF), const Color(0xFF8FFF9F)),
-      BgChoice.gradient(const Color(0xFFFFC371), const Color(0xFFFF5F6D)),
-      BgChoice.solid(const Color(0xFFF5F7FF)),
+      BgChoice.solid(pastel(const Color(0xFFA8E6CF))), // 민트
+      BgChoice.solid(pastel(const Color(0xFFE0BBE4))), // 라벤더
+      BgChoice.solid(pastel(const Color(0xFF0064FF))), // 하늘
+      // BgChoice.solid(pastel(const Color(0xFFFDCEDF))), // 베이비핑크
+      BgChoice.solid(const Color(0xFFFF595E)), // 비비드 레드
+      BgChoice.solid(const Color(0xFFFFCA3A)), // 옐로우
+      BgChoice.solid(const Color(0xFF0064FF)), // 블루
+      BgChoice.solid(const Color(0xFF2ECC71)), // 에메랄드
+      // BgChoice.solid(const Color(0xFF1F3A93)), // 로얄블루
     ];
 
     return Padding(
@@ -646,7 +941,7 @@ class _DesignSheetState extends State<_DesignSheet> {
             children: [
               for (final p in presets)
                 tile(
-                  onTap: () => widget.onPickPreset(p),
+                  onTap: () => widget.onPickPreset(p), // 저장은 상위에서 처리
                   child: Container(
                     decoration: BoxDecoration(
                       color: (!p.isImage && !p.isGradient) ? p.c1 : null,
@@ -668,9 +963,9 @@ class _DesignSheetState extends State<_DesignSheet> {
 
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(
-              _isObscure ? '금액 보기' : '금액 숨기기',
-              style: const TextStyle(
+            title: const Text(
+              '금액 숨기기',
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: AppColors.fontColor,
@@ -679,6 +974,7 @@ class _DesignSheetState extends State<_DesignSheet> {
             trailing: Switch(
               value: _isObscure,
               onChanged: _setObscure,
+              activeColor: AppColors.primaryBlue,
             ),
             onTap: () => _setObscure(!_isObscure),
           ),
@@ -767,7 +1063,7 @@ class _FundsOptionsSheetState extends State<_FundsOptionsSheet> {
             contentPadding: EdgeInsets.zero,
             title: const Text('전체 보기', style: TextStyle(color: AppColors.fontColor, fontWeight: FontWeight.w600)),
             subtitle: Text(
-              _expanded ? '접어서 2개만 보기' : '펀드를 모두 펼쳐 보기',
+              _expanded ? '펀드를 모두 펼쳐 보기' : '펀드를 모두 펼쳐 보기',
               style: TextStyle(color: AppColors.fontColor.withOpacity(.6)),
             ),
             value: _expanded,
@@ -805,6 +1101,81 @@ class _PlusTile extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MbtiPromoCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _MbtiPromoCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFEAF3FF), // 파스텔 블루 (연한 톤)
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 88,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.black.withOpacity(.05)), // 연한 테두리
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/images/mbti-char3.png',
+                  height: 64,
+                  width: 64,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.extension,
+                    size: 36,
+                    color: Colors.black45,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '나의 투자 성격은?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.black.withOpacity(.70),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '펀드 MBTI로 1분 만에 확인하기',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1E1F23),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, color: Colors.black.withOpacity(.35)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

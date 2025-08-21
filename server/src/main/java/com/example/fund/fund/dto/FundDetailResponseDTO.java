@@ -17,7 +17,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class FundDetailResponseDTO {
     // 펀드 기본 정보
-    private Long fundId;
+    private String fundId;
     private String fundName;
     private String fundType;
     private String investmentRegion;
@@ -49,4 +49,7 @@ public class FundDetailResponseDTO {
     private String accessMessage;
     private Integer userInvestType;
     private Integer requiredMinRiskLevel;
+
+    // 상품/공시 묶음 (nullable)
+    private FundProductView product;
 }

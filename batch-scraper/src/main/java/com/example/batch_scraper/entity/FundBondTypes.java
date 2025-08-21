@@ -26,7 +26,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class FundBondTypes {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "fund_bond_types_id")
@@ -53,5 +52,4 @@ public class FundBondTypes {
 
     @Column(name = "other_ratio", precision = 5, scale = 2)
     private BigDecimal otherRatio;
-
 }

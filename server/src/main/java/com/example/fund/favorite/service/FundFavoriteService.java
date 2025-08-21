@@ -2,8 +2,8 @@ package com.example.fund.favorite.service;
 
 import com.example.fund.favorite.entity.FundFavorite;
 import com.example.fund.favorite.repository.FundFavoriteRepository;
-import com.example.fund.fund.entity.Fund;
-import com.example.fund.fund.repository.FundRepository;
+import com.example.fund.fund.entity_fund.Fund;
+import com.example.fund.fund.repository_fund.FundRepository;
 import com.example.fund.user.entity.User;
 import com.example.fund.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +29,7 @@ public class FundFavoriteService {
     }
 
     /* 관심 토글 */
+    /*
     @Transactional
     public void toggle(int userId, int fundId) {
         User user  = userRepo.findById(userId)        .orElseThrow();
@@ -43,11 +44,14 @@ public class FundFavoriteService {
                                         .fund(fund)
                                         .build()));
     }
+    */
 
     /* 상세 페이지용: 이미 관심 등록 여부 */
+    /*
     public boolean isFavorite(int userId, long fundId) {
         User user = userRepo.findById(userId).orElseThrow();
         Fund fund = fundRepo.findById(fundId).orElseThrow();
         return favoriteRepo.findByUserAndFund(user, fund).isPresent();
     }
+    */
 }

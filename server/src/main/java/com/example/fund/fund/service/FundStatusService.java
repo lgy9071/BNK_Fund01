@@ -9,8 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import com.example.fund.fund.entity.FundStatus;
-import com.example.fund.fund.repository.FundStatusRepository;
+import com.example.fund.fund.entity_fund_etc.FundStatus;
+import com.example.fund.fund.repository_fund_etc.FundStatusRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;

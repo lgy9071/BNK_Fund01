@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/utils/exit_guard.dart';
+import '../widgets/circle_nav_bar.dart';        // 동그라미 네브바
+import '../models/fund.dart';
+import '../screens/home_screen.dart';
+import '../screens/my_finance_screen.dart';
+import '../screens/fund_list_screen.dart';
+import '../widgets/full_menu_overlay.dart';    // 전체 메뉴 오버레이(있다면)
 import 'package:flutter/services.dart';
 import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/models/fund.dart';
 import 'package:mobile_front/screens/home_screen.dart';
 import 'package:mobile_front/screens/my_finance_screen.dart';
-import 'package:mobile_front/screens/fund_join_screen.dart';
+import 'package:mobile_front/screens/fund_list_screen.dart';
 import 'package:mobile_front/widgets/full_menu_overlay.dart';
 import 'package:mobile_front/widgets/circle_nav_bar.dart';
 import 'package:mobile_front/utils/exit_popup.dart';
@@ -20,6 +27,7 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _index = 0;
+  bool _exiting = false; // ← 재진입 방지 플래그
 
   // 데모/실제 데이터 연결
   final _myFunds = <Fund>[
@@ -37,7 +45,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     _pages = [
       HomeScreen(myFunds: _myFunds, investType: '공격 투자형', userName: '@@'),
       const MyFinanceScreen(),
-      const FundJoinScreen(),          // ← main_join 기능을 여기로 흡수
+      const FundListScreen(),          // ← main_join 기능을 여기로 흡수
       const SizedBox.shrink(),         // 전체(오버레이용 자리만 차지)
     ];
   }
@@ -92,6 +100,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                 // 내 문의/문의하기도 전역 라우팅으로 통일
                 onAsk:   () => _go(AppRoutes.qnaCompose),
                 onMyQna: () => _go(AppRoutes.qnaList),
+                onFundStatus: () => _go(AppRoutes.fundStatus),
               ),
             ),
           ),
@@ -102,14 +111,10 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (!didPop) await showExitPopup(context);
-      },
+    return ExitGuard(
       child: Scaffold(
         body: IndexedStack(index: _index, children: _pages),
-        bottomNavigationBar: CircleNavBar(
+        bottomNavigationBar: CustomNavBar(
           currentIndex: _index,
           onTap: (i) {
             if (i == 3) { _openFullMenu(); return; }
