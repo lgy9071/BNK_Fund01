@@ -1,23 +1,34 @@
 package com.example.fund.account.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.example.fund.account.entity.Branch;
 import com.example.fund.account.entity.DepositAccount;
 import com.example.fund.account.entity.DepositTransaction;
 import com.example.fund.account.entity.FundAccount;
+import com.example.fund.account.entity.FundTransaction;
+import com.example.fund.account.entity.TransitAccount;
+import com.example.fund.account.entity.TransitTransaction;
 import com.example.fund.account.repository.DepositAccountRepository;
 import com.example.fund.account.repository.DepositTransactionRepository;
 import com.example.fund.account.repository.FundAccountRepository;
 import com.example.fund.account.repository.FundTransactionRepository;
 import com.example.fund.account.repository.TransitAccountRepository;
 import com.example.fund.account.repository.TransitTransactionRepository;
+import com.example.fund.fund.entity_fund.Fund;
 import com.example.fund.fund.entity_fund.FundProduct;
+import com.example.fund.fund.repository_fund.FundStatusDailyRepository;
 import com.example.fund.fund.repository_fund_etc.InvestProfileResultRepository;
 import com.example.fund.user.entity.User;
 
@@ -36,8 +47,25 @@ public class FundJoinService {
 	private final FundTransactionRepository fundTransactionRepo;
 	private final TransitAccountRepository transitAccountRepo;
 	private final TransitTransactionRepository transitTransactionRepo;
+	private final FundStatusDailyRepository fundStatusDailyRepo;
 
 	private final BCryptPasswordEncoder passwordEncoder;
+	
+	
+	// 펀드가입 조건 조회
+	public void checkJoin(User user) {
+		checkDepositAccount(user.getUserId()); // T/F
+		checkInvestProfile(user.getUserId());  // T/F
+	}
+	
+	// 펀드가입
+	public void fundJoin(User user, FundProduct fund, BigDecimal orderAmount, String rawPin, Branch branch) {
+		createFundAccount(user, fund, rawPin); // 펀드 계좌 생성
+		accountTransaction(user, orderAmount, fund); // 입출금 프로세스
+		DepositAccount depositAccount = depositAccountRepo.findByUser_UserId(user.getUserId()).get();
+		FundAccount fundAccount = fundAccountRepo.findByUser_UserId(user.getUserId()).get();
+		createFundTransaction(user, depositAccount, fund, fundAccount, orderAmount, branch);
+	}
 	
 	// 1) 입출금계좌 여부 확인 -- T/F
 	public boolean checkDepositAccount(Integer userId) {
@@ -142,34 +170,108 @@ public class FundJoinService {
 	
 	// 3) 입출금 -> 대기 : 대기계좌에 임시입금
 	// 입출금 거래 내역 & 대기계좌내역 생성
-	 public void accountTransaction(User user, BigDecimal orderAmount) {
-		 DepositAccount depositAccount =depositAccountRepo.findByUser_UserId(user.getUserId()).get();
-		 BigDecimal currentBalance = depositAccount.getBalance(); // 입출금 통장 현재 잔액
-//		 DepositTransaction depositTransaction = depositTransactionRepo.findByUser_UserId(user.getUserId()).get();
-		 if(currentBalance.compareTo(orderAmount) >= 0) {
-			 
-			 // 1) 입출금 계좌에서 주문금액만큼 출금
-			 depositAccount.setBalance(currentBalance.subtract(orderAmount));
-			 
-			 // 2) 입출금 거래 내역 생성
-//			depositTransaction.builder()
-//							  .account(depositAccount)
-//							  .txType(출금)
-//							  .amount(orderAmount)
-			 
-			 
-			 // 3) 대기 계좌에 주문금액만큼 입금
-			 // 4) 대기 계좌 내역 생성
-			 
-			 
+	@Transactional(rollbackOn = Exception.class)
+	public void accountTransaction(User user, BigDecimal orderAmount, FundProduct fund) {
+		// --- 1) 파라미터 검증 ---
+		 if(user == null || user.getUserId() == null) {
+			 throw new IllegalArgumentException("user is required");
 		 }
-		 
+		 if(orderAmount == null || orderAmount.signum() <= 0) {
+			 throw new IllegalArgumentException("orderAmount must be > 0");
+		 }
+		 orderAmount = orderAmount.setScale(0, RoundingMode.UNNECESSARY);  // scale 고정
 		
+		// --- 2) 계좌 조회 ---
+		 DepositAccount depositAccount =depositAccountRepo
+				 .findByUserIdForUpdate(user.getUserId())
+				 .orElseThrow(() -> new IllegalStateException("Deposit account not found"));		 
+		 TransitAccount transitAccount = transitAccountRepo
+				 .findByIdForUpdate(1)
+				 .orElseThrow(() -> new IllegalStateException("Transit account not found"));
+		 FundAccount fundAccount = fundAccountRepo.findByUser_UserId(user.getUserId())
+				 .orElseThrow(() -> new IllegalStateException("Fund account not found"));
 		 
+		// --- 3) 잔액 검증 ---
+		 BigDecimal currentBalance = depositAccount.getBalance(); // 입출금 계좌 현재 잔액
+		 if(currentBalance.compareTo(orderAmount) < 0) {
+			 throw new IllegalArgumentException("Insufficient balance");
+		 }
+		 BigDecimal transitBalance = transitAccount.getBalance(); // 대기계좌 현재 잔액
+		 
+		 String transferId = UUID.randomUUID().toString();
+		 // --- 4) 잔액 변경 ---
+		depositAccount.setBalance(currentBalance.subtract(orderAmount));
+		transitAccount.setBalance(transitBalance.add(orderAmount));
+			 
+		// --- 5) 거래내역 저장 ---
+		DepositTransaction depositTx = DepositTransaction.builder()
+														 .account(depositAccount)
+														 .amount(orderAmount)
+														 .txType(DepositTransaction.TxType.WITHDRAW)
+														 .transferId(transferId)
+														 .counterparty(transitAccount.getTransitAccountNumber())
+														 .build();
+		depositTransactionRepo.save(depositTx);
+
+		TransitTransaction transitTx = TransitTransaction.builder()
+											 			 .counterparty(depositAccount.getAccountNumber()) // 상대 계좌번호
+											 		     .txType(TransitTransaction.TxType.DEPOSIT)
+											 			 .amount(orderAmount)
+											 			 .transferId(transferId)
+											 			 .build();
+		transitTransactionRepo.save(transitTx);	 
 	 }
 	
 	// 4) 펀드거래내역 생성
-	
+	public void createFundTransaction(User user,
+									  DepositAccount depositAccount,
+									  FundProduct fundProduct,
+									  FundAccount fundAccount,
+									  BigDecimal orderAmount,
+									  Branch branch) {
+		Fund fund = fundProduct.getFund();
+		String fundId = fund.getFundId();
+		
+		
+		// 거래일
+		LocalDate T = LocalDate.now(ZoneId.of("Asia/Seoul"));
+		// 컷오프 시간
+		// 주식형 - 15:30, 채권형 - 17:00
+		// 기준가 시간
+		LocalTime cutoffTime;
+		if ("주식형".equals(fund.getFundType())) {
+		    cutoffTime = LocalTime.of(15, 30); 
+		} else {
+		    cutoffTime = LocalTime.of(17, 0); // 채권형 및 기타 기본값
+		}
+		
+		if(LocalTime.now().isAfter(cutoffTime)) {
+			T = T.plusDays(1);
+		}
+		
+		// 기준가
+		BigDecimal navPrice = fundStatusDailyRepo
+					    .findNavPriceByFundIdAndBaseDate(fundId, T)
+					    .orElseThrow(() -> new IllegalStateException("NAV not found for fundId=" + fundId));
+				
+		FundTransaction fundTx = FundTransaction.builder()
+												.fund(fundProduct)
+												.fundAccount(fundAccount)
+												.user(user)
+												.type(FundTransaction.TransactionType.PURCHASE)
+												.amount(orderAmount)
+												.unitPrice(navPrice) // 기준가(거래일 기준) - FundStatusDaily : nav_price
+												.units(null) // 좌수 (거래금액 / 기준가)
+												.branch(branch) //사후관리지점
+												.depositAccount(depositAccount) // 입출금 계좌
+												.investRule(null) // 투자 규칙
+												.requestedAt(null) // 접수시각
+												.tradeDate(null) // 거래일 (컷오프기준)
+												.navDate(null) // 기준가 적용일
+												.processedAt(null) // 정산일(실제 체결일)
+				        						.build();
+	}
+
 	// 5) 매수일에 대기 -> 펀드 로 잔액 이동
 	
 	

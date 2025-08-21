@@ -52,6 +52,10 @@ public class DepositTransaction {
 
     @Column(name = "status", length = 20)
     private String status; // 거래 상태 (PENDING/POSTED/VOID)
+    
+    /* 한 건의 Transfer를 묶어주는 ID */
+    @Column(name = "transfer_id", length = 36, nullable = false, unique = true)
+    private String transferId;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

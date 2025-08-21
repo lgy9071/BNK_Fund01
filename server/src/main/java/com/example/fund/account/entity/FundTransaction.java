@@ -3,11 +3,13 @@ package com.example.fund.account.entity;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import com.example.fund.fund.entity_fund.Fund;
+import com.example.fund.fund.entity_fund.FundProduct;
 import com.example.fund.user.entity.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -35,10 +37,10 @@ public class FundTransaction {
     @Column(name = "order_id", nullable = false)
     private Long orderId; // 거래 ID (AUTO_INCREMENT)
 
-//    // FK: 펀드상품 ID
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "fund_id")
-//    private Fund fund; // fund_id NUMBER
+    // FK: 펀드상품 ID
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    private FundProduct fund; // fund_id NUMBER
 
     // FK: 펀드 계좌 ID
     @ManyToOne(fetch = FetchType.LAZY)
@@ -50,8 +52,9 @@ public class FundTransaction {
     @JoinColumn(name = "user_id")
     private User user; // user_id NUMBER
 
-    @Column(name = "type", length = 10)
-    private String type; // 거래유형 (매수/환매/추가매수 등)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tx_type", length = 12, nullable = false)
+    private TransactionType type; // 거래유형 (매수/환매/추가매수 등)
 
     @Column(name = "amount")
     private BigDecimal amount; // 주문금액 (원 단위)
@@ -86,4 +89,10 @@ public class FundTransaction {
 
     @Column(name = "processed_at")
     private LocalDateTime processedAt; // 정산일 (실제 체결일)
+    
+    public enum TransactionType{
+    	PURCHASE,     // 매수
+    	ADD_PUR,      // 추가매수
+    	REDEMPTION    // 환매
+    }
 }

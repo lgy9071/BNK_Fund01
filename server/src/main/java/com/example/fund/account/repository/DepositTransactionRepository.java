@@ -8,5 +8,5 @@ import com.example.fund.account.entity.DepositTransaction;
 
 public interface DepositTransactionRepository extends JpaRepository<DepositTransaction, Long> {
 	
-//	Optional<DepositTransaction> findByUser_UserId(Integer userId);
+//	Optional<DepositTransaction> findByDepositAccount_AccountId(Long AccountId);
 }
