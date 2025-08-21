@@ -28,6 +28,16 @@
                   >펀드 관리</a
                 >
               </li>
+
+              <li>
+                <a 
+                  th:href="@{/admin/fund/recommend}" 
+                  data-url="/admin/fund/recommend" 
+                  class="group_a"
+                  >펀드 추천 관리</a
+                >
+              </li>
+
               <li th:if="${session.admin.role == 'planner'}">
                 <a
                   th:href="@{/admin/fund/new}"
@@ -152,7 +162,16 @@
             </button>
           </li>
         </ul>
-
+        <div class="aside-bottom">
+          <button
+            type="button"
+            class="group-btn"
+            onclick="openCustomerModal()"
+            data-url="/admin/customers"
+          >
+            고객 조회
+          </button>
+        </div>
         <!-- 아코디언 토글 스크립트 -->
         <script th:inline="javascript">
           document
@@ -223,8 +242,161 @@
                 }
               });
           });
+
+// --- 모달 열고 닫기 (페이드 클래스 토글 + 스크롤 잠금) ---
+  function openCustomerModal(){
+    const m = document.getElementById('customerModal');
+    m.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    // 초기 안내/버튼 상태 리셋
+    document.getElementById('customerResults').innerHTML =
+      '<div class="modal__empty">검색어를 입력하고 ‘검색’을 눌러주세요.</div>';
+    document.getElementById('btnCustomerPdf').disabled = true;
+    // 포커스
+    setTimeout(()=>document.getElementById('customerQuery').focus(), 0);
+    document.addEventListener('keydown', escCloseOnce);
+  }
+  function closeCustomerModal(){
+    const m = document.getElementById('customerModal');
+    m.classList.remove('is-open');
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', escCloseOnce);
+  }
+  function escCloseOnce(e){ if(e.key === 'Escape') closeCustomerModal(); }
+
+  // --- 고객 검색 (카드 클릭 시 선택/토글) ---
+  async function searchCustomers(){
+    const q = document.getElementById('customerQuery').value.trim();
+    const box = document.getElementById('customerResults');
+    const pdfBtn = document.getElementById('btnCustomerPdf');
+    pdfBtn.disabled = true;
+
+    if(!q){
+      box.innerHTML = '<div class="modal__empty">검색어를 입력해주세요.</div>';
+      return;
+    }
+
+    box.innerHTML = '<div class="modal__empty">검색 중...</div>';
+    try{
+      const res = await fetch(`/admin/api/customers/search?q=${encodeURIComponent(q)}`, { credentials:'include' });
+      if(!res.ok) throw new Error('search failed');
+      const data = await res.json();
+
+      if(!Array.isArray(data) || data.length === 0){
+        box.innerHTML = '<div class="modal__empty">검색 결과가 없습니다.</div>';
+        return;
+      }
+
+      const frag = document.createDocumentFragment();
+      data.forEach((c, idx) => {
+        const el = document.createElement('div');
+        el.className = 'customer-card';
+        el.innerHTML = `
+          <h4>${(c.name ?? '고객')} (${idx+1})</h4>
+          <div class="kv"><b>이메일</b><span>${c.email ?? '-'}</span></div>
+          <div class="kv"><b>전화</b><span>${c.phone ?? '-'}</span></div>
+          <div class="kv"><b>가입일</b><span>${c.joinedAt ?? '-'}</span></div>
+          <div class="kv"><b>등급</b><span>${c.grade ?? '-'}</span></div>
+          <div class="kv"><b>보유펀드</b><span>${(c.fundsCount ?? 0)}개</span></div>
+          <div class="kv" style="grid-column:1/-1;"><b>메모</b><span>${c.note ?? '-'}</span></div>
+        `;
+        el.addEventListener('click', () => {
+          // 단일 선택
+          box.querySelectorAll('.customer-card.selected').forEach(v => v.classList.remove('selected'));
+          el.classList.add('selected');
+          pdfBtn.disabled = false;
+        });
+        frag.appendChild(el);
+      });
+      box.innerHTML = '';
+      box.appendChild(frag);
+
+      // 검색 직후엔 첫 카드 자동 선택 (원하면 유지)
+      const first = box.querySelector('.customer-card');
+      if(first){ first.classList.add('selected'); pdfBtn.disabled = false; }
+    }catch(e){
+      console.warn(e);
+      box.innerHTML = '<div class="modal__empty">조회 중 오류가 발생했습니다.</div>';
+    }
+  }
+
+  // --- PDF 저장: 선택된 고객 카드만 캡처 (없으면 결과 전체) ---
+  async function exportCustomerPdf(){
+    await ensureLib('html2canvas', 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+    await ensureLib('jspdf', 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+
+    const { jsPDF } = window.jspdf;
+    const selected = document.querySelector('#customerResults .customer-card.selected');
+    const target = selected || document.getElementById('customerResults'); // fallback
+
+    const canvas = await window.html2canvas(target, { scale: 2, backgroundColor:'#ffffff' });
+    const img = canvas.toDataURL('image/png');
+
+    const pdf = new jsPDF({ orientation:'p', unit:'pt', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 24;
+    const usableW = pageW - margin*2;
+
+    const ratio = canvas.height / canvas.width;
+    const imgW = usableW;
+    const imgH = imgW * ratio;
+
+    let y = margin;
+    // 한 장에 들어가면 한 장, 아니면 자동 새 페이지
+    if (imgH <= pageH - margin*2) {
+      pdf.addImage(img, 'PNG', margin, y, imgW, imgH, undefined, 'FAST');
+    } else {
+      // 긴 내용일 때 페이지 분할
+      let remaining = imgH;
+      let posY = y;
+      while (remaining > 0) {
+        pdf.addImage(img, 'PNG', margin, posY, imgW, imgH, undefined, 'FAST');
+        remaining -= (pageH - margin*2);
+        if (remaining > 0) { pdf.addPage(); posY = margin; }
+      }
+    }
+
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    pdf.save(`고객정보_${stamp}.pdf`);
+  }
+
+  function ensureLib(globalKey, url){
+    return new Promise((resolve, reject) => {
+      if (window[globalKey]) return resolve();
+      const s = document.createElement('script');
+      s.src = url; s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('failed to load ' + url));
+      document.head.appendChild(s);
+    });
+  }
         </script>
       </nav>
+
+        <!-- 고객 조회 모달 -->
+        <div id="customerModal" class="modal">
+          <div class="modal__backdrop" onclick="closeCustomerModal()"></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="customerModalTitle">
+            <div class="modal__header">
+              <h3 id="customerModalTitle">고객 조회</h3>
+              <button class="modal__close" aria-label="닫기" onclick="closeCustomerModal()">×</button>
+            </div>
+
+            <div class="modal__body" id="customerModalBody">
+              <form id="customerSearchForm" class="modal__search" onsubmit="return false;">
+                <input id="customerQuery" type="text" placeholder="이름, 이메일, 전화번호 등으로 검색" />
+                <button type="button" onclick="searchCustomers()">검색</button>
+                <button type="button" id="btnCustomerPdf" onclick="exportCustomerPdf()" disabled>PDF 저장</button>
+              </form>
+
+              <div id="customerResults" class="modal__results">
+                <!-- 검색 결과 렌더링 영역 -->
+                <div class="modal__empty">검색어를 입력하고 ‘검색’을 눌러주세요.</div>
+              </div>
+            </div>
+          </div>
+        </div>
     </aside>
   </body>
 </html>

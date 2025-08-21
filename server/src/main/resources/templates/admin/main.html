@@ -120,7 +120,10 @@
 
         /* 작은 요약 텍스트 */
         .chart-summary {
+          width: 100%;
+          max-width: 100%;   
           font-size: 0.95rem;
+          box-sizing: border-box;
           color: #333;
           text-align: center;
           margin: 0 auto;
@@ -130,7 +133,15 @@
           padding: 10px 14px;
           border-radius: 8px;
           box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-          max-width: 90%;
+          overflow-wrap: break-word;  /* 긴 단어 줄바꿈 */
+          word-break: keep-all;       /* 한국어 가독성 유지 */
+          white-space: normal;
+
+          /* 최대 줄수 제한(원하면 2줄/3줄 선택) */
+          display: -webkit-box;
+          -webkit-line-clamp: 2;      /* 필요시 3으로 변경 */
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
 
         /* 추가 정보 리스트 */
@@ -154,7 +165,7 @@
         .faq-chart-card {
           display: flex;
           flex-direction: column;
-          align-items: center !important;
+          align-items: stretch !important; 
           text-align: center;
         }
         .faq-chart-card .chart-wrapper {
@@ -320,7 +331,7 @@
                     <div class="chart-wrapper">
                         <canvas id="faqCatChart"></canvas>
                     </div>
-                    <div id="faqSummary" class="chart-summary"></div>
+                    <!-- <div id="faqSummary" class="chart-summary"></div> -->
                     <a th:href="@{/admin/faq/list}" class="report-link">FAQ 관리</a>
                 </div>
                 <div class="card">
@@ -439,10 +450,10 @@
         .map(([cat, count]) => `${cat} ${count}건`)
         .join(', ');
 
-      const faqSummary = document.getElementById('faqSummary');
-      if (faqSummary) {
-        faqSummary.textContent = `총 ${total}건: ${summary}`;
-      }
+      // const faqSummary = document.getElementById('faqSummary');
+      // if (faqSummary) {
+      //   faqSummary.textContent = `총 ${total}건: ${summary}`;
+      // }
     })();
 
     createDonut('approverStatusChart', /*[[${approverStatusSummary}]]*/ {}, '50%');

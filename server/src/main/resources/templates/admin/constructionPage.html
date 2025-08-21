@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>construction page</title>
+  <title>Admin Dashboard</title>
   <link rel="stylesheet" href="/css/admin/admin_layout.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
@@ -11,41 +11,63 @@
   <style>
     .layout { display:flex; flex-direction:column; height:100%; }
     .main-wrapper { display:flex; flex:1; }
-    main.content { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; padding:24px; }
+    main.content { display:flex; flex-direction:column; gap:22px; flex:1; padding:24px; }
 
-    /* 카드 */
-    .chart-card {
-      width: min(840px, 92vw);
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-      padding: 24px 28px 32px;
-    }
-    .chart-title {
-      font-size: clamp(18px, 2.4vw, 28px);
-      font-weight: 800;
-      color: #0f3a53;
-      letter-spacing: 0.02em;
-      text-align: center;
-      margin: 4px 0 20px;
+    /* 대시보드 그리드 */
+    .dashboard-grid{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 18px;
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
     }
 
-    /* 총 건수 뱃지 */
-    .count-badge-wrap { display:flex; justify-content:center; margin-top:18px; }
-    .count-badge {
-      display:inline-block;
-      padding: 12px 18px;
-      background: #f3f7fb;
-      color:#1b2b38;
-      border-radius: 14px;
-      font-weight:700;
-      box-shadow: 0 6px 16px rgba(15,58,83,0.08);
+    /* 카드 공통 */
+    .card{
+      background:#fff;
+      border-radius:16px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.06);
+      padding:18px 20px 22px;
+      display:flex; flex-direction:column; min-height:220px;
+    }
+    .card-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+    .card-title{ font-size:18px; font-weight:800; color:#0f3a53; margin:0; }
+    .card-toolbar{ display:flex; align-items:center; gap:8px; }
+    .card select{
+      border:1px solid #d9e2ec; background:#f7fafc; padding:6px 8px; border-radius:8px; font-weight:600;
     }
 
-    /* 캔버스 높이 고정(반응형) */
-    .chart-box { position:relative; height: 360px; }
-    @media (max-width: 520px) {
-      .chart-box { height: 300px; }
+    /* 차트 캔버스 영역 */
+    .chart-box{ position:relative; height:300px; }
+    .chart-box.sm{ height:260px; }
+    .empty{
+      flex:1; display:flex; align-items:center; justify-content:center; color:#6b7c93; font-weight:600; border:2px dashed #e6eef6; border-radius:12px; padding:18px;
+    }
+
+    /* 리스트 */
+    .list{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+    .list-item{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:10px 12px; border:1px solid #edf2f7; border-radius:12px; background:#fbfdff;
+    }
+    .rank{ width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-weight:800; background:#f3f7fb; }
+    .item-name{ font-weight:700; color:#12344d; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .item-metric{ font-weight:800; }
+
+    /* 그리드 배치 */
+    /* lg 이상 */
+    .col-12{ grid-column: span 12; }
+    .col-8{ grid-column: span 8; }
+    .col-6{ grid-column: span 6; }
+    .col-4{ grid-column: span 4; }
+
+    /* 반응형 */
+    @media (max-width: 1080px){
+      .col-8{ grid-column: span 12; }
+      .col-6{ grid-column: span 12; }
+      .col-4{ grid-column: span 12; }
+      .chart-box{ height:280px; }
     }
   </style>
 </head>
@@ -54,118 +76,287 @@
   <div th:replace="admin/admin_header :: adminHeader"></div>
   <div class="main-wrapper">
     <div th:replace="admin/admin_aside :: adminAside"></div>
-    <main class="content">
 
-      <!-- 차트 카드 -->
-      <section class="chart-card">
-        <h2 class="chart-title">📊 FAQ 카테고리 분포 (TOP 3)</h2>
-        <div class="chart-box">
-          <canvas id="faqTop3Chart" aria-label="FAQ 카테고리 분포 바 차트" role="img"></canvas>
-        </div>
-        <div class="count-badge-wrap">
-          <span class="count-badge" id="totalCountBadge">총 0건:</span>
-        </div>
-      </section>
+    <main class="content">
+<div class="dashboard-grid">
+
+  <!-- (윗줄) 1) 가입자 투자 성향 분포 -->
+  <section class="card col-4">
+    <div class="card-header">
+      <h3 class="card-title">가입자 투자 성향 분포</h3>
+    </div>
+    <div class="chart-box sm" id="profileBox">
+      <canvas id="profileChart"></canvas>
+    </div>
+  </section>
+
+  <!-- (윗줄) 2) 클릭 수가 많은 펀드 TOP5 -->
+  <section class="card col-4">
+    <div class="card-header">
+      <h3 class="card-title">클릭 수가 많은 펀드 TOP 5</h3>
+    </div>
+    <div id="popularList" class="list"></div>
+  </section>
+
+  <!-- (윗줄) 3) 리뷰 긍/부정 비율 -->
+  <section class="card col-4">
+    <div class="card-header">
+      <h3 class="card-title">리뷰 긍/부정 감정 비율</h3>
+    </div>
+    <div class="chart-box sm" id="sentimentBox">
+      <canvas id="sentimentChart"></canvas>
+    </div>
+  </section>
+
+  <!-- (아랫줄) 4) 일별/월별 판매 금액 추이 -->
+  <section class="card col-6">
+    <div class="card-header">
+      <h3 class="card-title">일별/월별 판매 금액 추이</h3>
+      <div class="card-toolbar">
+        <label for="salesPeriod" style="font-weight:700">기간</label>
+        <select id="salesPeriod">
+          <option value="daily">일별</option>
+          <option value="monthly">월별</option>
+        </select>
+      </div>
+    </div>
+    <div class="chart-box" id="salesBox">
+      <canvas id="salesChart"></canvas>
+    </div>
+  </section>
+
+  <!-- (아랫줄) 5) 현재 등록된 펀드 수 -->
+  <section class="card col-6">
+    <div class="card-header">
+      <h3 class="card-title">현재 등록된 펀드 수</h3>
+    </div>
+    <div class="chart-box" id="fundCountBox">
+      <canvas id="fundCountChart"></canvas>
+    </div>
+  </section>
+
+</div>
 
     </main>
   </div>
 </div>
 
 <script>
-  // 전역 플러그인 등록
+  // Chart.js 플러그인
   Chart.register(ChartDataLabels);
 
-  /**
-   * 서버에서 데이터 가져오기
-   * 응답 예시: [{ label: "결제", value: 12 }, { label: "계정", value: 7 }, { label: "예약", value: 4 }]
-   * 엔드포인트를 실제 API로 교체하세요.
-   */
-  async function fetchFaqTop3() {
-    try {
-      const res = await fetch('/admin/api/faq/categories?limit=3', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
-      return Array.isArray(data) ? data : [];
-    } catch (e) {
-      console.warn('FAQ 차트 데이터 로드 실패:', e);
-      return [];
-    }
-  }
+  // 차트 인스턴스 보관
+  let salesChart, profileChart, sentimentChart, fundCountChart;
 
-  function buildChart(ctx, rows) {
-    // 빈 데이터일 때도 축/그리드가 보이도록 최소값/최대값 힌트 제공
-    const labels = rows.map(r => r.label);
-    const values = rows.map(r => Number(r.value) || 0);
-    const total = values.reduce((a, b) => a + b, 0);
+  // ===== API 호출 (엔드포인트는 예시이므로 실제로 맞춰 변경) =====
+  // 1) 판매 추이: { labels: [...], values: [...] }
+  const fetchSales = async (period='daily') => {
+    try{
+      const res = await fetch(`/admin/api/stats/sales?period=${period}`, { credentials: 'include' });
+      if(!res.ok) throw new Error();
+      return await res.json();
+    }catch(e){ return { labels: [], values: [] }; }
+  };
 
-    // 총 건수 뱃지 업데이트
-    document.getElementById('totalCountBadge').textContent = `총 ${total.toLocaleString()}건:`;
+  // 2) 투자 성향 분포: [{ label:'안정형', value: 10 }, ...]
+  const fetchInvestorProfiles = async () => {
+    try{
+      const res = await fetch('/admin/api/stats/investor-profiles', { credentials:'include' });
+      if(!res.ok) throw new Error();
+      return await res.json();
+    }catch(e){ return []; }
+  };
 
-    // 데이터가 전혀 없으면 보조값으로 0 하나를 둬서 축만 렌더링
-    const hasData = values.some(v => v > 0);
-    const safeLabels = hasData ? labels : [''];
-    const safeValues = hasData ? values : [0];
+  // 3) 인기 펀드 TOP5: [{ name:'펀드A', clicks:1234 }, ...]
+  const fetchPopularFunds = async () => {
+    try{
+      const res = await fetch('/admin/api/stats/popular-funds?limit=5', { credentials:'include' });
+      if(!res.ok) throw new Error();
+      return await res.json();
+    }catch(e){ return []; }
+  };
 
-    const chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: safeLabels,
-        datasets: [{
-          label: '건수',
-          data: safeValues,
-          borderWidth: 1,
-          // 색상은 기본값(테마)에 맡김 – 요청사항에 맞춰 특정 색 미지정
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { top: 8 } },
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: true },
-          datalabels: {
-            // 값이 0이면 라벨 숨김
-            formatter: (v) => (v > 0 ? v : ''),
-            anchor: 'end',
-            align: 'end',
-            offset: 4,
-            clamp: true
-          },
-          title: { display: false }
-        },
-        scales: {
-          x: {
-            grid: { display: true },
-            ticks: { font: { weight: '600' } }
-          },
-          y: {
-            beginAtZero: true,
-            // 데이터가 없을 때도 그리드 보이게 살짝 상한 제안
-            suggestedMax: hasData ? undefined : 1,
-            grid: { display: true },
-            ticks: {
-              precision: 0 // 정수 눈금
-            }
-          }
-        }
+  // 4) 리뷰 감정 비율: { positive: 60, negative: 40 }
+  const fetchSentiment = async () => {
+    try{
+      const res = await fetch('/admin/api/stats/reviews-sentiment', { credentials:'include' });
+      if(!res.ok) throw new Error();
+      return await res.json();
+    }catch(e){ return { positive:0, negative:0 }; }
+  };
+
+  // 5) 등록 펀드 수 (상태/유형별): { labels:[...], values:[...] }
+  const fetchFundCounts = async () => {
+    try{
+      const res = await fetch('/admin/api/stats/funds-count', { credentials:'include' });
+      if(!res.ok) throw new Error();
+      return await res.json();
+    }catch(e){ return { labels:[], values:[] }; }
+  };
+
+// 공통: 빈 상태 서브타이틀 옵션
+function withEmptySubtitle(baseOptions, empty) {
+  return {
+    ...baseOptions,
+    plugins: {
+      ...baseOptions.plugins,
+      subtitle: {
+        display: empty,
+        text: empty ? '데이터 없음' : '',
+        font: { weight: '700' },
+        color: '#6b7c93',
+        padding: { bottom: 6 }
       }
+    }
+  };
+}
+
+// 1) 판매 추이 (Bar)
+function buildSalesChart(data){
+  const ctx = document.getElementById('salesChart').getContext('2d');
+  const hasData = (data.labels?.length || 0) > 0 && (data.values?.some(v => v > 0));
+
+  const labels = hasData ? data.labels : [''];
+  const values = hasData ? data.values.map(v => Number(v)||0) : [0];
+
+  if (salesChart) salesChart.destroy();
+  salesChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label:'판매 금액', data: values, borderWidth:1 }] },
+    options: withEmptySubtitle({
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:false },
+        datalabels:{ formatter:(v)=> (v>0? v.toLocaleString() : ''), anchor:'end', align:'end', offset:4, clamp:true }
+      },
+      scales:{
+        y:{ beginAtZero:true, suggestedMax: hasData ? undefined : 1, ticks:{ callback:(v)=> v.toLocaleString() } }
+      }
+    }, !hasData)
+  });
+}
+
+// 2) 투자 성향 (Doughnut)
+function buildProfileChart(rows){
+  const ctx = document.getElementById('profileChart').getContext('2d');
+  const hasData = rows?.some(r => Number(r.value) > 0);
+
+  const labels = hasData ? rows.map(r=>r.label) : ['데이터 없음'];
+  const values = hasData ? rows.map(r=>Number(r.value)||0) : [1];
+
+  if (profileChart) profileChart.destroy();
+  profileChart = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data: values, borderWidth:1 }] },
+    options: withEmptySubtitle({
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display: hasData, position:'bottom' },
+        datalabels:{ formatter:(v,ctx)=> {
+          if(!hasData) return '';
+          return v>0? `${v}`:'';
+        }, color:'#111', font:{ weight:'700' } }
+      },
+      cutout:'55%'
+    }, !hasData)
+  });
+}
+
+// 3) 인기 펀드 리스트 (리스트는 안내만)
+function buildPopularList(items){
+  const wrap = document.getElementById('popularList');
+  wrap.innerHTML = '';
+  if(!items?.length){
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.style.height = '220px';
+    empty.textContent = '데이터 없음';
+    wrap.appendChild(empty);
+    return;
+  }
+  items.slice(0,5).forEach((it, idx)=>{
+    const li = document.createElement('div');
+    li.className = 'list-item';
+    li.innerHTML = `
+      <span class="rank">${idx+1}</span>
+      <div class="item-name" title="${it.name || ''}">${it.name || '-'}</div>
+      <div class="item-metric">${(it.clicks??0).toLocaleString()} 클릭</div>
+    `;
+    wrap.appendChild(li);
+  });
+}
+
+// 4) 리뷰 감정 (Pie)
+function buildSentimentChart(data){
+  const ctx = document.getElementById('sentimentChart').getContext('2d');
+  const pos = Number(data?.positive)||0, neg = Number(data?.negative)||0;
+  const hasData = (pos+neg) > 0;
+
+  const labels = hasData ? ['긍정','부정'] : ['데이터 없음'];
+  const values = hasData ? [pos, neg] : [1];
+
+  if (sentimentChart) sentimentChart.destroy();
+  sentimentChart = new Chart(ctx, {
+    type:'pie',
+    data:{ labels, datasets:[{ data: values, borderWidth:1 }] },
+    options: withEmptySubtitle({
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display: hasData, position:'bottom' },
+        datalabels:{ formatter:(v)=> hasData && v>0 ? `${v}%` : '', color:'#111', font:{ weight:'700' } }
+      }
+    }, !hasData)
+  });
+}
+
+// 5) 등록 펀드 수 (Bar)
+function buildFundCountChart(data){
+  const ctx = document.getElementById('fundCountChart').getContext('2d');
+  const hasData = (data.labels?.length||0) > 0 && data.values?.some(v => Number(v) > 0);
+
+  const labels = hasData ? data.labels : [''];
+  const values = hasData ? data.values.map(v=>Number(v)||0) : [0];
+
+  if (fundCountChart) fundCountChart.destroy();
+  fundCountChart = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'펀드 수', data: values, borderWidth:1 }] },
+    options: withEmptySubtitle({
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:false },
+        datalabels:{ formatter:(v)=> (v>0? v : ''), anchor:'end', align:'end', offset:4, clamp:true }
+      },
+      scales:{ y:{ beginAtZero:true, suggestedMax: hasData ? undefined : 1, ticks:{ precision:0 } } }
+    }, !hasData)
+  });
+}
+  // ===== 초기화 =====
+  (async function init(){
+    // 1) 판매 추이
+    const salesPeriod = document.getElementById('salesPeriod');
+    let salesData = await fetchSales(salesPeriod.value);
+    buildSalesChart(salesData);
+    salesPeriod.addEventListener('change', async ()=>{
+      salesData = await fetchSales(salesPeriod.value);
+      buildSalesChart(salesData);
     });
 
-    return chart;
-  }
+    // 2) 투자 성향
+    const profiles = await fetchInvestorProfiles();
+    buildProfileChart(profiles);
 
-  (async function init() {
-    const ctx = document.getElementById('faqTop3Chart').getContext('2d');
-    const rows = await fetchFaqTop3();
+    // 3) 인기 펀드
+    const popular = await fetchPopularFunds();
+    buildPopularList(popular);
 
-    // 상위 3개만 보장(서버가 정렬하지 않는 경우 대비)
-    const top3 = rows
-      .map(r => ({ label: String(r.label ?? ''), value: Number(r.value) || 0 }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 3);
+    // 4) 리뷰 감정
+    const sentiment = await fetchSentiment();
+    buildSentimentChart(sentiment);
 
-    buildChart(ctx, top3);
+    // 5) 등록 펀드 수
+    const counts = await fetchFundCounts();
+    buildFundCountChart(counts);
   })();
 </script>
 </body>
