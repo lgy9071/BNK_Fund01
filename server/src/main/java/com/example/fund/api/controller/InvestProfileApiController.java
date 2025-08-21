@@ -46,6 +46,8 @@ public class InvestProfileApiController {
 
     @GetMapping("/result/latest")
     public RiskResultView latest(@CurrentUid Integer uid) {
+        System.out.println(uid);
+        System.out.println("Latest: " + investProfileApiService.getLatest(uid));
         return investProfileApiService.getLatest(uid);
     }
 
@@ -59,6 +61,7 @@ public class InvestProfileApiController {
 
     @GetMapping("/eligibility")
     public InvestEligibilityResponse eligibility(@CurrentUid Integer uid) {
+        System.out.println("eligubility: " + investProfileApiService.hasAnalyzedToday(uid));
         return new InvestEligibilityResponse(
                 investProfileApiService.hasAnalyzedToday(uid) ? false : true,
                 investProfileApiService.hasAnalyzedToday(uid) ? "오늘은 이미 투자성향 분석을 완료하셨습니다." : null);

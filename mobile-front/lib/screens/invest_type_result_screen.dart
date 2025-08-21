@@ -1,66 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/core/services/invest_result_service.dart';
 import 'package:mobile_front/widgets/show_custom_confirm_dialog.dart';
 
-/// ===== 결과 모델 (백엔드 응답과 매핑) =====
-class InvestResultModel {
-  final String userId;
-  final DateTime analysisDate;
-  final int totalScore;
-  final int typeId;
-  final String typeName;
-  final String typeDescription;
-
-  // 선택(있으면 표시)
-  final String? investorName;
-  final String? investHorizon;
-  final String? goal;
-  final String? experience;
-
-  const InvestResultModel({
-    required this.userId,
-    required this.analysisDate,
-    required this.totalScore,
-    required this.typeId,
-    required this.typeName,
-    required this.typeDescription,
-    this.investorName,
-    this.investHorizon,
-    this.goal,
-    this.experience,
-  });
-
-  factory InvestResultModel.fromJson(Map<String, dynamic> j) {
-    return InvestResultModel(
-      userId: j['userId'],
-      analysisDate: DateTime.parse(j['analysisDate']),
-      totalScore: j['totalScore'],
-      typeId: j['type']['id'],
-      typeName: j['type']['name'],
-      typeDescription: j['type']['description'],
-      investorName: j['investorName'],
-      investHorizon: j['investHorizon'],
-      goal: j['goal'],
-      experience: j['experience'],
-    );
-  }
-}
-
-/// ===== 스크린 =====
 class InvestTypeResultScreen extends StatefulWidget {
   /// 최신 분석 결과 (없으면 null)
   final InvestResultModel? result;
 
-  /// 마지막 재검사 시각 (하루 1회 제한 체크용)
-  final DateTime? lastRetestAt;
+  /// 재분석 가능 여부(서버 판단만 사용)
+  final InvestEligibilityResponse eligibility;
 
-  /// 분석/재분석 시작 콜백
+  /// 분석/재분석 시작 콜백 (설문 라우팅)
   final Future<bool?> Function()? onStartAssessment;
 
   const InvestTypeResultScreen({
     super.key,
-    this.result,
-    this.lastRetestAt,
+    required this.result,
+    required this.eligibility,
     this.onStartAssessment,
   });
 
@@ -75,24 +31,15 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
   String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  bool _isSameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
-
-  // 1) onStartAssessment 타입이 아래처럼 되어 있어야 함
-// final Future<bool?> Function()? onStartAssessment;
-
   Future<void> _handleStartAssessment(BuildContext context) async {
-    final now = DateTime.now();
-    final alreadyToday =
-        widget.lastRetestAt != null && _isSameDay(widget.lastRetestAt!, now);
-    if (alreadyToday) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('오늘은 이미 재검사를 진행하셨습니다. 내일 다시 시도해주세요.')),
-      );
+    // ✅ 클라에서 24시간 로직 제거. 서버 eligibility만 따른다.
+    if (!widget.eligibility.canReanalyze) {
+      final msg = widget.eligibility.message ?? '오늘은 재검사가 제한됩니다.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       return;
     }
 
-    // ✅ 커스텀 팝업으로 교체
+    // 정책 확인 팝업
     final bool? confirmed = await showAppConfirmDialog(
       context: context,
       title: '재검사 정책 확인',
@@ -102,17 +49,16 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
       confirmText: '계속 진행',
       cancelText: '취소',
       showCancel: true,
-      barrierDismissible: true, // 바깥 탭으로 닫히지 않게 (원하면 true로)
-      confirmColor: AppColors.primaryBlue, // 선택: 기본 색 쓰려면 지워도 됨
+      barrierDismissible: true,
+      confirmColor: AppColors.primaryBlue,
     );
 
-    if (confirmed != true) return; // 동의 안 했으면 종료
+    if (confirmed != true) return;
 
-    // ✅ 다이얼로그 닫힌 후: 실제 플로우 시작(동의→설문→로딩→결과)
     if (widget.onStartAssessment != null) {
-      final bool? ok = await widget.onStartAssessment!(); // investTest 진입 → 최종 true 전파
+      final bool? ok = await widget.onStartAssessment!(); // 설문 진입
       if (ok == true && mounted) {
-        Navigator.of(context).pop(true); // ⬅️ 도입부도 닫아서 메인까지 true 전파
+        Navigator.of(context).pop(true); // 도입부 닫고 상위로 true 전파(새로고침 신호)
       }
     } else {
       if (!mounted) return;
@@ -121,7 +67,6 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -151,13 +96,9 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
                 _EmptyDataCard(onStart: () => _handleStartAssessment(context)),
               ] else ...[
                 _InfoCard(children: [
-                  _pair('사용자', r.investorName ?? r.userId),
                   _pair('등급결정일자', _ymd(r.analysisDate)),
                   _pair('총점', '${r.totalScore}점'),
                   _pair('투자성향', r.typeName),
-                  if (r.investHorizon != null) _pair('투자기간', r.investHorizon!),
-                  if (r.goal != null) _pair('투자목표', r.goal!),
-                  if (r.experience != null) _pair('투자경험', r.experience!),
                 ]),
                 const SizedBox(height: 8),
                 _ResultGraphCard(riskType: r.typeName),
@@ -165,14 +106,19 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    r.typeDescription,
+                    r.description,
                     style: TextStyle(color: AppColors.fontColor.withOpacity(.8)),
                   ),
                 ),
               ],
 
               const SizedBox(height: 16),
-              _PolicyNotice(assessedAt: r?.analysisDate, lastRetestAt: widget.lastRetestAt),
+              // ✅ 정책 안내 박스(오늘 가능 여부는 eligibility로만 표시)
+              _PolicyNotice(
+                assessedAt: r?.analysisDate,
+                todayBlocked: !widget.eligibility.canReanalyze,
+                serverMessage: widget.eligibility.message,
+              ),
 
               const SizedBox(height: 24),
 
@@ -202,8 +148,8 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
 
               const SizedBox(height: 32),
 
-              // ===== 하단 버튼: 결과가 있을 때만 재분석 시작 =====
-              if (r != null)
+              // ===== 하단 버튼: 결과가 있을 때만 재분석 시작 (정책은 eligibility로 제어)
+              if (r != null) ...[
                 Center(
                   child: SizedBox(
                     width: 200,
@@ -216,12 +162,32 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      onPressed: () => _handleStartAssessment(context),
-                      child: const Text('재분석 시작',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      onPressed: widget.eligibility.canReanalyze
+                          ? () => _handleStartAssessment(context)
+                          : null, // 🚫 불가 시 버튼 비활성화
+                      child: const Text(
+                        '재분석 시작',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ),
                 ),
+                if (!widget.eligibility.canReanalyze) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.center,
+                    child: Text(
+                      '재검사 가능일자: ${_ymd(DateTime.now().add(const Duration(days: 1)))}',
+                      style: TextStyle(
+                        color: AppColors.fontColor.withOpacity(.7),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ],
 
               const SizedBox(height: 40),
             ],
@@ -313,9 +279,14 @@ class _ResultGraphCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(riskType,
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.fontColor)),
+          Text(
+            riskType,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.fontColor,
+            ),
+          ),
           const SizedBox(height: 12),
           _RiskPositionBar(activeIndex: idx),
           const SizedBox(height: 8),
@@ -529,61 +500,34 @@ class _NoticeBox extends StatelessWidget {
   }
 }
 
-/// 텍스트 전체 탭 + 우측 화살표 아이콘
-class _ExpandableHeader extends StatelessWidget {
-  final String title;
-  final bool expanded;
-  final VoidCallback onToggle;
-  const _ExpandableHeader({
-    required this.title,
-    required this.expanded,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onToggle,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            Expanded(child: _SectionTitle(title)),
-            Icon(expanded ? Icons.expand_less : Icons.expand_more),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 정책 안내 + 다음 정기 재검사일/오늘 가능 여부 표시
+/// 정책 안내 + 다음 정기 재검사일/오늘 가능 여부 표시(서버 응답만 반영)
 class _PolicyNotice extends StatelessWidget {
   final DateTime? assessedAt;
-  final DateTime? lastRetestAt;
-  const _PolicyNotice({required this.assessedAt, required this.lastRetestAt});
+  final bool todayBlocked;       // eligibility 기반
+  final String? serverMessage;   // 서버 메시지
+
+  const _PolicyNotice({
+    required this.assessedAt,
+    required this.todayBlocked,
+    required this.serverMessage,
+  });
 
   String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  bool _isSameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
-
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
     final nextAnnual = assessedAt != null
         ? DateTime(assessedAt!.year + 1, assessedAt!.month, assessedAt!.day)
         : null;
-    final todayBlocked = lastRetestAt != null && _isSameDay(lastRetestAt!, now);
 
     final lines = <String>[
       '정책 안내',
       '• 투자성향 검사는 1년마다 재실시해야 합니다.'
           '${nextAnnual != null ? ' (다음 정기 재검사일: ${_ymd(nextAnnual)})' : ''}',
       '• 재검사는 하루에 한 번만 가능합니다.'
-          '${todayBlocked ? ' (오늘 재검사 불가: 이미 실시)' : ''}',
+          '${todayBlocked ? ' (오늘 재검사 불가)' : ''}',
+      if (serverMessage != null && serverMessage!.isNotEmpty) '• $serverMessage',
     ];
 
     return _NoticeBox(text: lines.join('\n'));
@@ -607,8 +551,10 @@ class _EmptyDataCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('투자성향 데이터가 없습니다.',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.fontColor)),
+          const Text(
+            '투자성향 데이터가 없습니다.',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.fontColor),
+          ),
           const SizedBox(height: 8),
           Text(
             '분석을 먼저 진행해주세요. 분석 완료 후 개인별 결과\n(그래프/정보)가 표시됩니다.\n'
@@ -623,11 +569,39 @@ class _EmptyDataCard extends StatelessWidget {
               icon: const Icon(Icons.play_arrow, size: 18),
               label: const Text('분석 시작'),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,   // ✅ 배경색
+                backgroundColor: AppColors.primaryBlue,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ExpandableHeader extends StatelessWidget {
+  final String title;
+  final bool expanded;
+  final VoidCallback onToggle;
+  const _ExpandableHeader({
+    required this.title,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Expanded(child: _SectionTitle(title)),
+            Icon(expanded ? Icons.expand_less : Icons.expand_more),
+          ],
+        ),
       ),
     );
   }
