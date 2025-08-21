@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -233,21 +234,26 @@ public class FundJoinService {
 		String fundId = fund.getFundId();
 		
 		
-		// 거래일
-		LocalDate T = LocalDate.now(ZoneId.of("Asia/Seoul"));
 		// 컷오프 시간
 		// 주식형 - 15:30, 채권형 - 17:00
 		// 기준가 시간
-		LocalTime cutoffTime;
-		if ("주식형".equals(fund.getFundType())) {
-		    cutoffTime = LocalTime.of(15, 30); 
-		} else {
-		    cutoffTime = LocalTime.of(17, 0); // 채권형 및 기타 기본값
+		ZoneId KST = ZoneId.of("Asia/Seoul");
+		ZonedDateTime now = ZonedDateTime.now(KST);
+		
+		// 기준가 적용일
+		LocalDate T = now.toLocalDate();
+		
+		// 컷오프 시간 결정
+		LocalTime cutoff = switch (fund.getFundType()) {
+		    case "주식형" -> LocalTime.of(15, 30);
+		    case "채권형" -> LocalTime.of(17, 0);
+		    default       -> LocalTime.of(17, 0); // 기본값
+		};
+
+		if (!now.toLocalTime().isBefore(cutoff)) {
+			 T = T.plusDays(1);
 		}
 		
-		if(LocalTime.now().isAfter(cutoffTime)) {
-			T = T.plusDays(1);
-		}
 		
 		// 기준가
 		BigDecimal navPrice = fundStatusDailyRepo
