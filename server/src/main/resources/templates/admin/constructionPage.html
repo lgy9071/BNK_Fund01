@@ -1,88 +1,172 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Construction Page</title>
-    <link rel="stylesheet" href="/css/admin/admin_layout.css" />
-    <style>
-        .layout {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>construction page</title>
+  <link rel="stylesheet" href="/css/admin/admin_layout.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-        .main-wrapper {
-            display: flex;
-            flex: 1;
-            /* 헤더 아래 영역을 남은 공간 전부 차지 */
-        }
+  <style>
+    .layout { display:flex; flex-direction:column; height:100%; }
+    .main-wrapper { display:flex; flex:1; }
+    main.content { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; padding:24px; }
 
-        /* 2) content를 flex 컨테이너로 만들고 세로·가로 중앙정렬 */
-        main.content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-            /* main-wrapper에서 남은 높이를 전부 가져옴 */
-        }
+    /* 카드 */
+    .chart-card {
+      width: min(840px, 92vw);
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+      padding: 24px 28px 32px;
+    }
+    .chart-title {
+      font-size: clamp(18px, 2.4vw, 28px);
+      font-weight: 800;
+      color: #0f3a53;
+      letter-spacing: 0.02em;
+      text-align: center;
+      margin: 4px 0 20px;
+    }
 
-        /* 3) under-construction은 별도 높이 지정 불필요 */
-        .under-construction {
-            /* 여기에 padding, 폰트 크기 등만 남겨둬도 OK */
-            padding: 60px 20px;
-            text-align: center;
-        }
+    /* 총 건수 뱃지 */
+    .count-badge-wrap { display:flex; justify-content:center; margin-top:18px; }
+    .count-badge {
+      display:inline-block;
+      padding: 12px 18px;
+      background: #f3f7fb;
+      color:#1b2b38;
+      border-radius: 14px;
+      font-weight:700;
+      box-shadow: 0 6px 16px rgba(15,58,83,0.08);
+    }
 
-        .construction-img {
-            width: 250px;
-        }
-
-        /* 공통 스타일 */
-        .construction-text {
-            margin: 12px 0;
-            line-height: 1.4;
-            text-align: center;
-        }
-        
-        /* 추가 안내 문구 */
-        .construction-text.open-date {
-            font-size: 2rem;
-            font-weight: 600;
-            color: #333;
-            padding-top: 15px;
-        }
-
-        /* 오픈 예정 날짜 강조 */
-        .construction-text.note {
-            font-size: 1rem;
-            color: #555;
-            opacity: 0.85;
-        }
-    </style>
+    /* 캔버스 높이 고정(반응형) */
+    .chart-box { position:relative; height: 360px; }
+    @media (max-width: 520px) {
+      .chart-box { height: 300px; }
+    }
+  </style>
 </head>
-
 <body>
-    <div class="layout">
-        <div th:replace="admin/admin_header :: adminHeader"></div>
-        <div class="main-wrapper">
-            <div th:replace="admin/admin_aside :: adminAside"></div>
-            <main class="content">
-                <section class="under-construction">
-                    <!-- 이미지 경로는 실제 리소스 위치에 맞춰 수정 -->
-                    <img th:src="@{/images/constructionImage.png}" src="/images/constructionImage.png" alt="공사중"
-                        class="construction-img" />
+<div class="layout">
+  <div th:replace="admin/admin_header :: adminHeader"></div>
+  <div class="main-wrapper">
+    <div th:replace="admin/admin_aside :: adminAside"></div>
+    <main class="content">
 
-                    <p class="construction-text open-date">추후 서비스 예정입니다</p>
-                    <p class="construction-text note">예정일자: 2025년 8월 27일</p>
+      <!-- 차트 카드 -->
+      <section class="chart-card">
+        <h2 class="chart-title">📊 FAQ 카테고리 분포 (TOP 3)</h2>
+        <div class="chart-box">
+          <canvas id="faqTop3Chart" aria-label="FAQ 카테고리 분포 바 차트" role="img"></canvas>
+        </div>
+        <div class="count-badge-wrap">
+          <span class="count-badge" id="totalCountBadge">총 0건:</span>
+        </div>
+      </section>
 
-                </section>
-            </main>
-        </div><!-- main-wrapper end -->
-    </div><!-- layout end -->
+    </main>
+  </div>
+</div>
+
+<script>
+  // 전역 플러그인 등록
+  Chart.register(ChartDataLabels);
+
+  /**
+   * 서버에서 데이터 가져오기
+   * 응답 예시: [{ label: "결제", value: 12 }, { label: "계정", value: 7 }, { label: "예약", value: 4 }]
+   * 엔드포인트를 실제 API로 교체하세요.
+   */
+  async function fetchFaqTop3() {
+    try {
+      const res = await fetch('/admin/api/faq/categories?limit=3', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch');
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch (e) {
+      console.warn('FAQ 차트 데이터 로드 실패:', e);
+      return [];
+    }
+  }
+
+  function buildChart(ctx, rows) {
+    // 빈 데이터일 때도 축/그리드가 보이도록 최소값/최대값 힌트 제공
+    const labels = rows.map(r => r.label);
+    const values = rows.map(r => Number(r.value) || 0);
+    const total = values.reduce((a, b) => a + b, 0);
+
+    // 총 건수 뱃지 업데이트
+    document.getElementById('totalCountBadge').textContent = `총 ${total.toLocaleString()}건:`;
+
+    // 데이터가 전혀 없으면 보조값으로 0 하나를 둬서 축만 렌더링
+    const hasData = values.some(v => v > 0);
+    const safeLabels = hasData ? labels : [''];
+    const safeValues = hasData ? values : [0];
+
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: safeLabels,
+        datasets: [{
+          label: '건수',
+          data: safeValues,
+          borderWidth: 1,
+          // 색상은 기본값(테마)에 맡김 – 요청사항에 맞춰 특정 색 미지정
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { top: 8 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: true },
+          datalabels: {
+            // 값이 0이면 라벨 숨김
+            formatter: (v) => (v > 0 ? v : ''),
+            anchor: 'end',
+            align: 'end',
+            offset: 4,
+            clamp: true
+          },
+          title: { display: false }
+        },
+        scales: {
+          x: {
+            grid: { display: true },
+            ticks: { font: { weight: '600' } }
+          },
+          y: {
+            beginAtZero: true,
+            // 데이터가 없을 때도 그리드 보이게 살짝 상한 제안
+            suggestedMax: hasData ? undefined : 1,
+            grid: { display: true },
+            ticks: {
+              precision: 0 // 정수 눈금
+            }
+          }
+        }
+      }
+    });
+
+    return chart;
+  }
+
+  (async function init() {
+    const ctx = document.getElementById('faqTop3Chart').getContext('2d');
+    const rows = await fetchFaqTop3();
+
+    // 상위 3개만 보장(서버가 정렬하지 않는 경우 대비)
+    const top3 = rows
+      .map(r => ({ label: String(r.label ?? ''), value: Number(r.value) || 0 }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3);
+
+    buildChart(ctx, top3);
+  })();
+</script>
 </body>
-
-
 </html>
