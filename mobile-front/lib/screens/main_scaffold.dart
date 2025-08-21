@@ -163,6 +163,9 @@ class _MainScaffoldState extends State<MainScaffold> {
                         }
                       }
                       return;
+                    }else{
+                      Navigator.of(context, rootNavigator: true).pop();
+                      setState(() => _index = 2);
                     }
                   },
                   onGoInvestAnalysis: () async {
@@ -199,6 +202,10 @@ class _MainScaffoldState extends State<MainScaffold> {
                   onMyQna: () {
                     Navigator.of(context, rootNavigator: true).pop();
                     Navigator.of(context).pushNamed('/qna/list');
+                  },
+                  onFundStatus: (){
+                    Navigator.of(context, rootNavigator: true).pop();
+                    Navigator.of(context).pushNamed(AppRoutes.fundStatus);
                   },
                 ),
               ),

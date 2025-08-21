@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/screens/fund_status/fund_status_list_screen.dart';
 import 'package:mobile_front/screens/investprofile_test/consent_step_page.dart';
 import 'package:mobile_front/screens/investprofile_test/invest_result_screen.dart';
 import 'package:mobile_front/screens/investprofile_test/questionnaire_screen.dart';
@@ -27,6 +28,7 @@ class AppRoutes {
   static const String questionnaire = '/questionnaire'; // 설문 화면
   static const String investTest = '/invest-test';      // 동의 -> 설문 진입
   static const String investResult = '/invest-result';  // 결과 화면
+  static const String fundStatus = '/fund-status'; // 펀드 시황
 }
 
 class AppRouter {
@@ -99,6 +101,9 @@ class AppRouter {
           ),
           settings: s, // arguments 유지
         );
+
+      case AppRoutes.fundStatus:
+        return _page(const FundStatusListScreen());
 
       default:
         return _page(const Scaffold(
