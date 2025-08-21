@@ -14,3 +14,4 @@ public class OtpMailTemplate {
         """.formatted(otp);
     }
 }
+

@@ -35,7 +35,7 @@ class _OptScreenState extends State<OptScreen> {
   bool _otpSent = false;
   int _remainingSeconds = 0;
   Timer? _timer;
-  String? _userEmail;
+  String? _userEmail; // ✅ 추가: 토큰에서 추출한 이메일 저장
 
   final _otpRequest = ApiConfig.otpRequest;
   final _otpVerify = ApiConfig.otpVerify;
@@ -46,14 +46,14 @@ class _OptScreenState extends State<OptScreen> {
     super.dispose();
   }
 
-  // 화면 로드 시 사용자 이메일 미리 로드
+  // ✅ 추가: 화면 로드 시 사용자 이메일 미리 가져오기 (선택사항)
   @override
   void initState() {
     super.initState();
     _preloadUserEmail(); // 미리 이메일을 가져와서 화면에 표시
   }
 
-  // OTP 요청
+  // 이메일 추출 후 otp 요청
   Future<void> _requestOtp() async {
     setState(() => _isRequestingOtp = true);
 
@@ -100,7 +100,7 @@ class _OptScreenState extends State<OptScreen> {
     }
   }
 
-  // OTP 검증
+  // ✅ 수정: OTP 검증 메서드
   Future<void> _verifyOtp() async {
     if (_currentOtp.length != 6) {
       _showSnackBar('인증번호 6자리를 모두 입력해주세요.');
@@ -120,7 +120,7 @@ class _OptScreenState extends State<OptScreen> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': _userEmail!,
-          'otp': _currentOtp, // ✅ 수정: _currentOtp 사용
+          'otp': _currentOtp,
         }),
       );
 
@@ -134,7 +134,6 @@ class _OptScreenState extends State<OptScreen> {
         }
       } else {
         _showSnackBar(data['message'] ?? '인증에 실패했습니다.');
-        // ✅ 수정: OTP 필드 클리어
         _otpKey.currentState?.clearAll();
         _currentOtp = '';
       }
@@ -145,7 +144,6 @@ class _OptScreenState extends State<OptScreen> {
     }
   }
 
-  // 타이머
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -155,7 +153,6 @@ class _OptScreenState extends State<OptScreen> {
         } else {
           _timer?.cancel();
           _otpSent = false;
-          // ✅ 수정: OTP 필드 클리어
           _otpKey.currentState?.clearAll();
           _currentOtp = '';
         }
@@ -174,14 +171,12 @@ class _OptScreenState extends State<OptScreen> {
     );
   }
 
-  // 분:초 형식 변환
   String _formatTime(int seconds) {
     final minutes = seconds ~/ 60;
     final remainingSeconds = seconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
-  // 화면 진입 시 미리 이메일 로드
   Future<void> _preloadUserEmail() async {
     final token = widget.accessToken;
     if (token == null || token.isEmpty) return;
@@ -194,9 +189,9 @@ class _OptScreenState extends State<OptScreen> {
       });
     } catch (e) {
       debugPrint('Failed to preload user email: $e');
-      // 실패해도 괜찮음 - OTP 요청 시 다시 시도
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -353,31 +348,30 @@ class _OptScreenState extends State<OptScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  //
-                  // 새로운 OTP 입력 위젯
+                  // 새로운 OTP 입력 필드
                   _OtpInputFields(
                     key: _otpKey,
                     onCompleted: (otp) {
-                      _currentOtp = otp;
-                      // 6자리 완성되면 자동으로 검증 시도
-                      if (_remainingSeconds > 0 && !_isVerifyingOtp) {
-                        _verifyOtp();
-                      }
+                      setState(() {
+                        _currentOtp = otp;
+                      });
                     },
                     onChanged: () {
-                      // OTP 변경될 때마다 현재 값 업데이트
-                      final currentOtp = _otpKey.currentState?._controllers.map((c) => c.text).join() ?? '';
-                      _currentOtp = currentOtp;
+                      setState(() {
+                        final currentOtp = _otpKey.currentState?._controllers.map((c) => c.text).join() ?? '';
+                        _currentOtp = currentOtp;
+                      });
                     },
                   ),
                   const SizedBox(height: 20),
 
-                  // 인증 확인 버튼
+                  // 인증 확인 버튼 
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _remainingSeconds > 0 && !_isVerifyingOtp ? _verifyOtp : null,
+                      // 6자리 모두 입력되어야만 버튼 활성화
+                      onPressed: _remainingSeconds > 0 && !_isVerifyingOtp && _currentOtp.length == 6 ? _verifyOtp : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0064FF),
                         foregroundColor: Colors.white,
@@ -425,7 +419,7 @@ class _OptScreenState extends State<OptScreen> {
 
                 const SizedBox(height: 40),
 
-                // ✅ 수정: 안내 문구 - 가로 최대 너비로 설정
+                // 안내 문구
                 SizedBox(
                   width: double.infinity,
                   child: Container(
@@ -482,7 +476,7 @@ class _OptScreenState extends State<OptScreen> {
 
 
 
-// ✅ 추가: 6자리 개별 입력 위젯
+// 6자리 개별 입력 위젯
 class _OtpInputFields extends StatefulWidget {
   final Function(String) onCompleted;
   final VoidCallback onChanged;
@@ -522,12 +516,14 @@ class _OtpInputFieldsState extends State<_OtpInputFields> {
       }
     }
 
-    // 6자리 모두 입력되었는지 확인
+    // ✅ 수정: onChanged를 먼저 호출하여 _currentOtp 업데이트
+    widget.onChanged();
+
+    // ✅ 수정: 그 다음에 6자리 완성 여부 확인
     final otpCode = _controllers.map((c) => c.text).join();
     if (otpCode.length == 6) {
       widget.onCompleted(otpCode);
     }
-    widget.onChanged();
   }
 
   void _onKeyPressed(RawKeyEvent event, int index) {
@@ -584,7 +580,8 @@ class _OtpInputFieldsState extends State<_OtpInputFields> {
                 ),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                // ✅ 텍스트 중앙 정렬을 위해 패딩 제거
+                contentPadding: EdgeInsets.zero,
               ),
               onChanged: (value) => _onChanged(value, index),
             ),

@@ -1,9 +1,12 @@
 package com.example.fund.otp.service;
 
+import com.example.fund.otp.templates.OtpMailTemplate;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 
@@ -18,37 +21,45 @@ public class EmailService {
     /** OTP 인증번호를 이메일로 발송 */
     public void sendOtpEmail(String toEmail, String otpCode) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            // 발송자 (application-secret.properties에서 가져옴)
-            message.setFrom(fromEmail);
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("인증번호 발송");
 
-            // 수신자
-            message.setTo(toEmail);
+            // HTML 템플릿 사용
+            String htmlContent = OtpMailTemplate.html(otpCode);
+            helper.setText(htmlContent, true); // true = HTML 형식
 
-            // 제목
-            message.setSubject("인증번호 발송");
-
-            // 내용
-            String emailContent = String.format(
-                    "안녕하세요!\n\n" +
-                            "요청하신 인증번호는 다음과 같습니다:\n\n" +
-                            "인증번호: %s\n\n" +
-                            "이 인증번호는 3분간 유효합니다.\n" +
-                            "타인에게 절대 알려주지 마세요.\n\n" +
-                            "감사합니다.",
-                    otpCode
-            );
-            message.setText(emailContent);
-
-            // 이메일 발송
             mailSender.send(message);
-
-            System.out.println("✅ 이메일 발송 성공: " + toEmail);
-
+            System.out.println("✅ HTML 이메일 발송 성공: " + toEmail);
         } catch (Exception e) {
             System.err.println("❌ 이메일 발송 실패: " + e.getMessage());
             throw new RuntimeException("이메일 발송에 실패했습니다.", e);
         }
     }
 }
+
+/*
+
+
+public void sendOtpEmail(String toEmail, String otpCode) {
+    try {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail); // 발송자
+        message.setTo(toEmail);     // 수신자
+        message.setSubject("인증번호 발송");      // 제목
+        String emailContent = OtpMailTemplate.text(otpCode);    // 내용
+        message.setText(emailContent);
+
+        mailSender.send(message);   // 이메일 발송
+        System.out.println("✅ 이메일 발송 성공: " + toEmail);
+    } catch (Exception e) {
+        System.err.println("❌ 이메일 발송 실패: " + e.getMessage());
+        throw new RuntimeException("이메일 발송에 실패했습니다.", e);
+    }
+}
+
+
+*/
