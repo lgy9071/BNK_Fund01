@@ -201,8 +201,7 @@ class _OptScreenState extends State<OptScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      // backgroundColor: Colors.white,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('신원 확인'),
         backgroundColor: Colors.white,

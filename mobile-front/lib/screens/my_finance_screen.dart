@@ -154,8 +154,8 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => OptScreen(
-                      accessToken: widget.accessToken,    // ← 토큰 전달
-                      userService: widget.userService,    // ← 서비스 전달
+                      accessToken: widget.accessToken,
+                      userService: widget.userService,
                     ),
                   ),
                 );
