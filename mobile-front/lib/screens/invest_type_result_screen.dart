@@ -66,7 +66,7 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
           '• 최초 분석 완료 후 결과가 표시됩니다\n\n'
           '계속 진행하시겠습니까?'
           : '• 투자성향 검사는 1년마다 재실시해야 합니다\n'
-          '• 재검사는 하루에 한 번만 가능합니다\n\n'
+          '• 재분석은 하루에 한 번만 가능합니다\n\n'
           '위 정책 확인 후 계속 진행을 눌러주세요',
       confirmText: '계속 진행',
       cancelText: '취소',
@@ -193,14 +193,26 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.center,
-                    child: Text(
-                      '재검사 가능일자: ${_ymd(_calcNextAvailableDate(serverNext: widget.eligibility.nextAvailableAt, lastAnalyzedAt: r.analysisDate))}',
-                      style: TextStyle(
-                        color: AppColors.fontColor.withOpacity(.7),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      children: [
+                        Text('오늘은 이미 투자성향 분석을 완료하였습니다',
+                          style: TextStyle(
+                          color: AppColors.fontColor.withOpacity(.9),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                          textAlign: TextAlign.center,),
+                        SizedBox(height: 3,),
+                        Text(
+                          '재분석 가능일자: ${_ymd(_calcNextAvailableDate(serverNext: widget.eligibility.nextAvailableAt, lastAnalyzedAt: r.analysisDate))}',
+                          style: TextStyle(
+                            color: AppColors.fontColor.withOpacity(.7),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -541,12 +553,9 @@ class _PolicyNotice extends StatelessWidget {
         : null;
 
     final lines = <String>[
-      '정책 안내',
       '• 투자성향 검사는 1년마다 재실시해야 합니다.'
           '${nextAnnual != null ? ' \n(다음 정기 재검사일: ${_ymd(nextAnnual)})' : ''}',
-      '• 재검사는 하루에 한 번만 가능합니다.'
-          '${todayBlocked ? ' \n(오늘 재검사 불가)' : ''}',
-      if (serverMessage != null && serverMessage!.isNotEmpty) '• $serverMessage',
+      '• 재분석은 하루에 한 번만 가능합니다.',
     ];
 
     return _NoticeBox(text: lines.join('\n'));
