@@ -2,15 +2,15 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../screens/fund_list_screen.dart' show JoinFund;
-import 'package:mobile_front/utils/badge_colors.dart';
+
+import 'package:mobile_front/core/services/fund_service.dart';
+import 'package:mobile_front/models/fund_detail_net.dart';
+
+import 'package:url_launcher/url_launcher.dart';
+import 'package:mobile_front/core/constants/api.dart'; // ApiConfig.baseUrl 사용
 
 /// ───────────────── colors
 const tossBlue = Color(0xFF0064FF);
-const tossBlueDark = Color(0xFF1133AA);
-const violet = Color(0xFF6E3AFF);
-const violetSoft = Color(0xFFEEE7FF);
-
 const tossBlue500 = Color(0xFF0064FF);
 const tossBlue400 = Color(0xFF2D6BFF);
 const tossBlue300 = Color(0xFF5A8CFF);
@@ -23,9 +23,16 @@ String fmtWon(num v) => '${_won.format(v)} 원';
 String fmtPercent(num v, {int digits = 1}) => '${v.toStringAsFixed(digits)}%';
 String fmtDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-String fmtAumFromMm(double mm) => '${_won.format(mm / 100)} 억원';
 
-/// ───────────────── data view models (요약) ※ 기존 구조 유지
+/// ───────────────── 리스트 화면에서 넘어오는 최소 정보
+class JoinFund {
+  final int id;         // UI용 식별자
+  final String fundId;  // 서버 ID
+  final String name;
+  JoinFund({required this.id, required this.fundId, required this.name});
+}
+
+/// ───────────────── 네트워크 → UI용 상세 모델
 class FundBasic {
   final String fundId, fundName, fundType, fundDivision, investmentRegion,
       salesRegionType, groupCode, shortCode, fundClass, publicType,
@@ -135,140 +142,101 @@ class FundDetail {
     required this.asset,
     required this.docs,
   });
+}
 
-  factory FundDetail.demo(String name) => FundDetail(
+/// FundDetailNet → FundDetail 변환
+FundDetail toUiDetail(FundDetailNet d) {
+  DateTime _parse(String? s) {
+    if (s == null || s.isEmpty) return DateTime(1970, 1, 1);
+    final p = s.split('-').map(int.parse).toList();
+    return DateTime(p[0], p[1], p[2]);
+  }
+
+  final latestDate = _parse(d.latestBaseDate ?? d.issueDate);
+  final riskText = d.riskLevel == null ? '위험 미정' : '위험(${d.riskLevel}등급)';
+
+  return FundDetail(
     basic: FundBasic(
-      fundId: 'K55207BU7140',
-      fundName: name,
-      fundType: '주식형',
-      fundDivision: '투자신탁',
-      investmentRegion: '국내',
-      salesRegionType: '국내위탁',
-      groupCode: '12111712301011111ZZ2',
-      shortCode: 'BU714',
-      issueDate: DateTime(2005, 8, 10),
+      fundId: d.fundId,
+      fundName: d.fundName,
+      fundType: d.fundType ?? '-',
+      fundDivision: d.fundDivision ?? '-',
+      investmentRegion: d.investmentRegion ?? '-',
+      salesRegionType: d.salesRegionType ?? '-',
+      groupCode: '',
+      shortCode: '',
+      issueDate: _parse(d.issueDate),
       initialNavPrice: 1000,
       trustTerm: 0,
       accountingPeriod: 0,
-      fundClass: '종류형 CLASS',
-      publicType: '공모',
-      addUnitType: '추가형',
-      fundStatus: '운용중',
-      riskGrade: '매우 높은 위험(1)', // 예시 포맷
-      performanceDisclosure: '(주식고)일반',
-      managementCompany: '교보악사자산운용',
+      fundClass: '-',
+      publicType: '-',
+      addUnitType: '-',
+      fundStatus: d.fundStatus ?? '-',
+      riskGrade: riskText,
+      performanceDisclosure: '-',
+      managementCompany: d.managementCompany ?? '-',
     ),
     fee: FundFeeInfo(
-      baseDate: DateTime(2025, 6, 30),
-      managementFee: 0.26,
-      salesFee: 0.02,
-      adminFee: 0.01,
-      trustFee: 0.03,
-      totalFee: 0.32,
-      ter: 0.3228,
+      baseDate: latestDate,
+      managementFee: 0,
+      salesFee: 0,
+      adminFee: 0,
+      trustFee: 0,
+      totalFee: d.totalFee ?? 0,
+      ter: d.ter ?? 0,
       frontLoadFee: 0,
       rearLoadFee: 0,
     ),
     daily: FundStatusDaily(
-      baseDate: DateTime(2025, 8, 1),
-      navTotalMm: 146653,
-      originalPrincipalMm: 12975,
-      navPrice: 831.93,
-      navChange1d: 13.7717,
-      navChangeRate1d: 1.02,
-      navChange1w: -20.5464,
-      navChangeRate1w: -1.48,
+      baseDate: latestDate,
+      navTotalMm: d.navTotal ?? 0,
+      originalPrincipalMm: d.originalPrincipal ?? 0,
+      navPrice: d.navPrice ?? 0,
+      navChange1d: 0,
+      navChangeRate1d: 0,
+      navChange1w: 0,
+      navChangeRate1w: 0,
     ),
     ret: FundReturn(
-      baseDate: DateTime(2025, 8, 1),
-      r1m: 0.85,
-      r3m: 1.02,
-      r6m: 1.95,
-      r12m: 3.80,
+      baseDate: latestDate,
+      r1m: d.return1m ?? 0,
+      r3m: d.return3m ?? 0,
+      r6m: d.return6m ?? 0,
+      r12m: d.return12m ?? 0,
     ),
     asset: FundAssetSummary(
-      baseDate: DateTime(2025, 8, 1),
-      stock: 55,
-      bond: 25,
-      cash: 5,
-      etc: 15,
+      baseDate: latestDate,
+      stock: d.stockRatio ?? 0,
+      bond: d.bondRatio ?? 0,
+      cash: d.cashRatio ?? 0,
+      etc: d.etcRatio ?? 0,
     ),
-    docs: [
-      FundDocument(
-        type: '간이투자설명서',
-        fileName: 'P_20250715_v1.pdf',
-        path: '/docs/K55207BU7140/',
-        uploadedAt: DateTime(2025, 7, 15, 10, 32, 54),
-      ),
-      FundDocument(
-        type: '투자설명서',
-        fileName: 'T_20250715_v1.pdf',
-        path: '/docs/K55207BU7140/',
-        uploadedAt: DateTime(2025, 7, 15, 10, 33, 10),
-      ),
-    ],
+    // 네트워크 docs -> UI docs
+    docs: d.docs.map((x) => FundDocument(
+      type: x.type,
+      fileName: x.fileName ?? '',
+      path: x.path ?? '',          // '/fund_document/...' 또는 절대 URL
+      uploadedAt: latestDate,      // 업로드일 없으면 임시로 latestDate
+    )).toList(),
   );
 }
 
-/// ───────────────── screen
+/// ───────────────── 화면 본체
 enum _TimeTab { m1, m3, m6, y1, y3 }
 
 class FundDetailScreen extends StatefulWidget {
-  final JoinFund fund;
-  const FundDetailScreen({super.key, required this.fund});
+  final String fundId;
+  final String? title; //초기 AppBar에 쓸 텍스트(옵션)
+  const FundDetailScreen({super.key, required this.fundId, this.title});
 
   @override
   State<FundDetailScreen> createState() => _FundDetailScreenState();
 }
 
-/// 차트 기간 선택 탭 (1개월/3개월/6개월/1년/3년)
-class _PeriodTabs extends StatelessWidget {
-  final _TimeTab tab;
-  final ValueChanged<_TimeTab> onChanged;
-  const _PeriodTabs({required this.tab, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    const items = [
-      (_TimeTab.m1, '1개월'),
-      (_TimeTab.m3, '3개월'),
-      (_TimeTab.m6, '6개월'),
-      (_TimeTab.y1, '1년'),
-      (_TimeTab.y3, '3년'),
-    ];
-
-    return Row(
-      children: items.map((e) {
-        final selected = tab == e.$1;
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                side: BorderSide(color: selected ? Colors.white : Colors.white30),
-                backgroundColor: selected ? Colors.white : const Color(0xFF2C5DE6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () => onChanged(e.$1),
-              child: Text(
-                e.$2,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: selected ? tossBlue : Colors.white,
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
 class _FundDetailScreenState extends State<FundDetailScreen> {
-  late final FundDetail data = FundDetail.demo(widget.fund.name);
+  final _svc = FundService();
+  FundDetail? data; // ← 더미 제거, 서버 데이터로 교체
   _TimeTab _tab = _TimeTab.m3;
 
   // 간편 적립식 카드 상태
@@ -276,14 +244,41 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
   int _monthly = 500000; // 50만원
 
   @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await _svc.getFundDetail(widget.fundId);
+      final net = res.data;
+      if (net == null) throw Exception('상세 데이터가 없습니다.');
+
+      // 디버그 한스푼
+      debugPrint('[detail] docs.len=${net.docs.length} firstPath=${net.docs.isNotEmpty ? net.docs.first.path : "-"}');
+
+      setState(() => data = toUiDetail(net));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('상세 로드 실패: $e')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (data == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isUp = data.daily.navChangeRate1d >= 0;
+    final isUp = data!.daily.navChangeRate1d >= 0;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          data.basic.fundName,
+          data!.basic.fundName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -311,13 +306,13 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
               decoration: const BoxDecoration(
-                color: const Color(0xFF0064FF),
+                color: tossBlue,
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${data.basic.investmentRegion} · ${data.basic.fundType}',
+                  Text('${data!.basic.investmentRegion} · ${data!.basic.fundType}',
                       style: const TextStyle(color: Colors.white70, fontSize: 15)),
                   const SizedBox(height: 6),
                   const Text('수익률 그래프',
@@ -335,7 +330,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
                         height: 180,
                         child: Stack(
                           children: [
-                            LineChart(_lineDataFor(_tab)),
+                            LineChart(_lineDataFor(_tab)), // 데모 곡선(실제 과거 데이터 API 있으면 교체)
                             Align(
                               alignment: Alignment.bottomRight,
                               child: Padding(
@@ -356,9 +351,9 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
 
                   // 그래프 하단 핵심정보 2개만
                   _KeyFactsRow(
-                    navPrice: data.daily.navPrice,
-                    navChangeRate1d: data.daily.navChangeRate1d,
-                    riskText: data.basic.riskGrade,
+                    navPrice: data!.daily.navPrice,
+                    navChangeRate1d: data!.daily.navChangeRate1d,
+                    riskText: data!.basic.riskGrade,
                     isUp: isUp,
                   ),
                 ],
@@ -373,28 +368,44 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
               monthly: _monthly,
               onYears: (y) => setState(() => _years = y),
               onMonthly: (m) => setState(() => _monthly = m),
-              assumedAnnualReturn: data.ret.r12m / 100.0, // 대략 1년 수익률 사용
+              assumedAnnualReturn: data!.ret.r12m / 100.0, // 대략 1년 수익률 사용
             ),
 
             const SizedBox(height: 12),
 
             // 위험수준 — 도넛 + 표
-            _RiskCard(riskText: data.basic.riskGrade),
+            _RiskCard(riskText: data!.basic.riskGrade),
 
             const SizedBox(height: 12),
 
             // 자산 구성 — 도넛 + 표
-            _AssetCard(asset: data.asset),
+            _AssetCard(asset: data!.asset),
 
             const SizedBox(height: 12),
 
             // 주식/채권 보유 비중 — 표
-            _StockBondTable(stockPct: data.asset.stock, bondPct: data.asset.bond, baseDate: data.asset.baseDate),
+            _StockBondTable(
+              stockPct: data!.asset.stock,
+              bondPct: data!.asset.bond,
+              baseDate: data!.asset.baseDate,
+            ),
 
             const SizedBox(height: 12),
 
             // 보수 및 수수료 — 카드형
-            _FeeCards(fee: data.fee),
+            _FeeCards(
+              fee: FundFeeInfo(
+                baseDate: data!.fee.baseDate,
+                managementFee: data!.fee.managementFee,
+                salesFee: data!.fee.salesFee,
+                adminFee: data!.fee.adminFee,
+                trustFee: data!.fee.trustFee,
+                totalFee: data!.fee.totalFee,
+                ter: data!.fee.ter,
+                frontLoadFee: data!.fee.frontLoadFee,
+                rearLoadFee: data!.fee.rearLoadFee,
+              ),
+            ),
 
             const SizedBox(height: 12),
 
@@ -402,22 +413,19 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
             _InfoCard(
               title: '상품 정보',
               rows: [
-                ('펀드 ID', data.basic.fundId),
-                ('상품명', data.basic.fundName),
-                ('상품분류', data.basic.fundType),
-                ('구분', data.basic.fundDivision),
-                ('투자지역', data.basic.investmentRegion),
-                ('설정일', fmtDate(data.basic.issueDate)),
-                ('운용사', data.basic.managementCompany),
-                ('위험 등급', data.basic.riskGrade),
+                ('펀드 ID', data!.basic.fundId),
+                ('상품명', data!.basic.fundName),
+                ('상품분류', data!.basic.fundType),
+                ('구분', data!.basic.fundDivision),
+                ('투자지역', data!.basic.investmentRegion),
+                ('설정일', fmtDate(data!.basic.issueDate)),
+                ('운용사', data!.basic.managementCompany),
+                ('위험 등급', data!.basic.riskGrade),
               ],
             ),
 
-            // 매입/환매 프로세스 카드
-            _ProcessCard(),
-
-            //공시자료
-            _DocsCard(docs: data.docs),
+            // 공시자료
+            _DocsCard(docs: data!.docs),
 
             const SizedBox(height: 12),
 
@@ -437,7 +445,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
     );
   }
 
-  /// 라인 차트 데이터(기간 탭별)
+  /// 차트 기간 선택 탭
   LineChartData _lineDataFor(_TimeTab tab) {
     final spots = _spotsForRange(tab);
     final ys = spots.map((e) => e.y);
@@ -488,15 +496,14 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
     );
   }
 
-  /// 기간별 라인 샘플 데이터
   List<FlSpot> _spotsForRange(_TimeTab t) {
     final n = switch (t) { _TimeTab.m1 => 30, _TimeTab.m3 => 90, _TimeTab.m6 => 180, _TimeTab.y1 => 365, _TimeTab.y3 => 365 * 3 };
     final targetPct = switch (t) {
-      _TimeTab.m1 => data.ret.r1m,
-      _TimeTab.m3 => data.ret.r3m,
-      _TimeTab.m6 => data.ret.r6m,
-      _TimeTab.y1 => data.ret.r12m,
-      _TimeTab.y3 => data.ret.r12m * 3, // 임시
+      _TimeTab.m1 => data!.ret.r1m,
+      _TimeTab.m3 => data!.ret.r3m,
+      _TimeTab.m6 => data!.ret.r6m,
+      _TimeTab.y1 => data!.ret.r12m,
+      _TimeTab.y3 => data!.ret.r12m * 3, // 임시
     } / 100.0;
 
     final start = 1.0;
@@ -516,7 +523,51 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
       switch (t) { _TimeTab.m1 => '1개월', _TimeTab.m3 => '3개월', _TimeTab.m6 => '6개월', _TimeTab.y1 => '1년', _TimeTab.y3 => '3년' };
 }
 
-/// ───────────────── widgets
+/// 차트 기간 탭 위젯
+class _PeriodTabs extends StatelessWidget {
+  final _TimeTab tab;
+  final ValueChanged<_TimeTab> onChanged;
+  const _PeriodTabs({required this.tab, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      (_TimeTab.m1, '1개월'),
+      (_TimeTab.m3, '3개월'),
+      (_TimeTab.m6, '6개월'),
+      (_TimeTab.y1, '1년'),
+      (_TimeTab.y3, '3년'),
+    ];
+
+    return Row(
+      children: items.map((e) {
+        final selected = tab == e.$1;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                side: BorderSide(color: selected ? Colors.white : Colors.white30),
+                backgroundColor: selected ? Colors.white : const Color(0xFF2C5DE6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => onChanged(e.$1),
+              child: Text(
+                e.$2,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? tossBlue : Colors.white,
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
 
 /// 그래프 아래 핵심 2카드
 class _KeyFactsRow extends StatelessWidget {
@@ -532,7 +583,6 @@ class _KeyFactsRow extends StatelessWidget {
   });
 
   int _riskLevelFromText(String s) {
-    // “매우 높은 위험(1)” “낮은 위험(5)” 등 숫자 추출 (없으면 3)
     final m = RegExp(r'\((\d)\)').firstMatch(s);
     return m != null ? int.parse(m.group(1)!) : 3;
   }
@@ -648,7 +698,7 @@ class _KeyFactsRow extends StatelessWidget {
   }
 }
 
-/// 간편 적립식 참고 카드
+/// 간편 적립식 카드
 class _SimpleDcaCard extends StatelessWidget {
   final int years;
   final int monthly; // 원
@@ -754,7 +804,7 @@ class _DD<T> extends StatelessWidget {
   }
 }
 
-/// 위험수준 카드 (도넛 + 표)
+/// 위험수준 카드
 class _RiskCard extends StatelessWidget {
   final String riskText;
   const _RiskCard({required this.riskText});
@@ -1016,14 +1066,14 @@ class _FeeCards extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: tossBlue,)),
+            Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: tossBlue)),
             const SizedBox(height: 8),
             ...rows.map((e) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: Text(e.$1, style: const TextStyle(height: 1.2))), // 라벨
+                  Expanded(child: Text(e.$1, style: const TextStyle(height: 1.2))),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -1031,7 +1081,7 @@ class _FeeCards extends StatelessWidget {
                       textAlign: TextAlign.right,
                       style: const TextStyle(fontWeight: FontWeight.w700, height: 1.2),
                     ),
-                  ), // 값
+                  ),
                 ],
               ),
             )),
@@ -1045,15 +1095,15 @@ class _FeeCards extends StatelessWidget {
       child: SizedBox(
         width: double.infinity,
         child: Card(
-          color: Colors.white,                // ← 추가
-          surfaceTintColor: Colors.white,     // ← 추가 (Material3 틴트 무력화)
+          color: Colors.white,
+          surfaceTintColor: Colors.white,
           elevation: .6,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: LayoutBuilder(
               builder: (context, c) {
-                final isNarrow = c.maxWidth < 360; // 폭 좁으면 세로로
+                final isNarrow = c.maxWidth < 360;
                 final children = [
                   block('매입할 때', [
                     ('선취판매수수료', _feeText(fee.frontLoadFee)),
@@ -1061,7 +1111,6 @@ class _FeeCards extends StatelessWidget {
                   block('투자기간동안', [
                     ('총 보수(연)', fmtPercent(fee.totalFee, digits: 3)),
                     ('총비용비율(TER)', fmtPercent(fee.ter, digits: 4)),
-                    // 긴 항목들을 4줄로 분리해 깨짐 방지
                     ('운용보수', fmtPercent(fee.managementFee, digits: 3)),
                     ('판매보수', fmtPercent(fee.salesFee, digits: 3)),
                     ('일반사무관리보수', fmtPercent(fee.adminFee, digits: 3)),
@@ -1072,9 +1121,8 @@ class _FeeCards extends StatelessWidget {
                     ('환매수수료', '수수료없음'),
                   ]),
                 ];
-        
+
                 if (isNarrow) {
-                  // 세로 스택
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1085,7 +1133,6 @@ class _FeeCards extends StatelessWidget {
                     ],
                   );
                 } else {
-                  // 가로 + 간격
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1124,8 +1171,8 @@ class _InfoCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Card(
-        color: Colors.white,                // ← 추가
-        surfaceTintColor: Colors.white,     // ← 추가 (Material3 틴트 무력화)
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
@@ -1157,6 +1204,11 @@ class _InfoCard extends StatelessWidget {
 }
 
 /// 공시자료 카드
+class FundDocumentUI {
+  final String type, fileName, path;
+  final DateTime uploadedAt;
+  FundDocumentUI({required this.type, required this.fileName, required this.path, required this.uploadedAt});
+}
 class _DocsCard extends StatelessWidget {
   final List<FundDocument> docs;
   const _DocsCard({required this.docs});
@@ -1166,8 +1218,8 @@ class _DocsCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Card(
-        color: Colors.white,                // ← 추가
-        surfaceTintColor: Colors.white,     // ← 추가 (Material3 틴트 무력화)
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: .6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
@@ -1177,92 +1229,43 @@ class _DocsCard extends StatelessWidget {
             children: [
               const Text('공시자료', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
+              if (docs.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('등록된 공시자료가 없습니다.', style: TextStyle(color: Colors.black54)),
+                ),
               ...docs.map((d) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.description_outlined),
                 title: Text(d.type),
                 subtitle: Text('${d.fileName} · 업로드 ${fmtDate(d.uploadedAt)}'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () { /* TODO: 파일 열기 */ },
+                // 공시자료 받기
+                onTap: () async {
+                  final raw = d.path; // 예: '/fund_document/PROSPECTUS_투자설명서.pdf'
+                  if (raw.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('파일 경로가 없습니다.')),
+                    );
+                    return;
+                  }
+
+                  final base = ApiConfig.baseUrl; // 예: http://10.0.2.2:8090
+                  final full = raw.startsWith('http')
+                      ? raw
+                      : raw.startsWith('/')
+                      ? '$base$raw'
+                      : '$base/$raw';
+
+                  final ok = await launchUrl(Uri.parse(full), mode: LaunchMode.externalApplication);
+                  if (!ok && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('파일을 열 수 없습니다.')),
+                    );
+                  }
+                },
+
               )),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 매입/환매 프로세스 카드(간단 버전)
-class _ProcessCard extends StatelessWidget {
-  const _ProcessCard();
-
-  Widget _chip(String t) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-    child: Text(t, style: const TextStyle(fontWeight: FontWeight.w700)),
-  );
-
-  Widget _col(String title, List<(String, List<String>)> groups) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: tossBlue)),
-            const SizedBox(height: 10),
-            ...groups.map((g) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Icon(g.$1.contains('이전') ? Icons.wb_sunny_outlined : Icons.nightlight_round, size: 18, color: tossBlue),
-                    const SizedBox(width: 6),
-                    Text(g.$1, style: const TextStyle(fontWeight: FontWeight.w700, color: tossBlue)),
-                  ]),
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 8, runSpacing: 8, children: g.$2.map(_chip).toList()),
-                ],
-              ),
-            )),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        color: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: .6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('매입/환매 프로세스', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _col('매입', [
-                    ('16시 이전', ['매입 신청일', '기준가 적용일', '매입일']),
-                    ('16시 경과후', ['매입 신청일', '기준가 적용일', '매입일']),
-                  ]),
-                  const SizedBox(width: 8),
-                  _col('환매', [
-                    ('16시 이전', ['환매 신청일', '기준가 적용일', '환매일']),
-                    ('16시 경과후', ['환매 신청일', '기준가 적용일', '환매일']),
-                  ]),
-                ],
-              ),
             ],
           ),
         ),

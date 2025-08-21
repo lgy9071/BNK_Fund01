@@ -18,7 +18,7 @@ import java.time.LocalDate;
 public class FundDetailResponse {
 
     // 기본 정보
-    private Long fundId;
+    private String fundId;
     private String fundName;
     private String fundType;
     private String classType;
@@ -43,4 +43,6 @@ public class FundDetailResponse {
     private BigDecimal overseasBond;
     private BigDecimal fundInvestment;
     private BigDecimal liquidity;
+
+    private FundProductView product; // 목록에 Product 데이터 보이기
 }
