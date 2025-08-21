@@ -37,6 +37,28 @@ class JoinFund {
   });
 }
 
+// 타입 표준화: 원본 표기를 칩 텍스트(전체/주식형/채권형/혼합형)에 맞춤
+String _canonByText(String? s) {
+  final t = (s ?? '').replaceAll(RegExp(r'\s'), '').toLowerCase();
+  if (t.isEmpty) return '기타';
+  if (t.contains('주식') || t.contains('equity') || t.contains('stock')) return '주식형';
+  if (t.contains('채권') || t.contains('bond') || t.contains('fixed'))   return '채권형';
+  if (t.contains('혼합') || t.contains('복합') || t.contains('balanced') || t.contains('mix') || t.contains('hybrid'))
+    return '혼합형';
+  return '기타';
+}
+
+// ② FundListItem 전체를 보고 최종 타입 결정
+String _canonTypeFromAny(FundListItem f) {
+  final a = _canonByText(f.fundType);
+  if (a != '기타') return a;
+  final b = _canonByText(f.fundDivision);
+  if (b != '기타') return b;
+  final c = _canonByText(f.fundName);
+  if (c != '기타') return c;
+  return '기타';
+}
+
 /// DTO → UI 모델
 JoinFund _joinFundFromDto(FundListItem f) {
   DateTime? _parse(String? s) {
@@ -49,7 +71,7 @@ JoinFund _joinFundFromDto(FundListItem f) {
     fundId: f.fundId,
     name: f.fundName,
     subName: f.managementCompany ?? '',
-    type: f.fundType ?? '펀드',
+    type: _canonTypeFromAny(f),
     launchedAt: _parse(f.issueDate),
     return1m: f.return1m ?? 0,
     return3m: f.return3m ?? 0,
@@ -182,7 +204,7 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
         keyword: _searchCtrl.text.trim(),
         page: page,
         size: 10,
-        fundType: _selType == '전체' ? null : _selType,
+        fundType: null,
         riskLevel: null,
         company: null,
       );
@@ -236,87 +258,90 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
 
   Widget _buildHeader(double headerH) {
     return SafeArea(
+      top: false,
       bottom: false,
       child: SizedBox(
         height: headerH,
         child: Column(
           children: [
-            const SizedBox(height: 8),
             Expanded(
               child: Align(
-                alignment: const Alignment(0, -0.25), // 가운데 기준 살짝 위
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 560),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // 1) 제목
-                      __SlideFade(
-                        t: _tTitle,
-                        child: const Text(
-                          '펀드 찾기',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.4),
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 560),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 1) 제목
+                        __SlideFade(
+                          t: _tTitle,
+                          child: const Text(
+                            '펀드 찾기',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.4),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      // 2) 검색바 (폭 축소 & 높이 얇게)
-                      __SlideFade(
-                        t: _tSearch,
-                        child: Align(
-                          alignment: Alignment.center,
-                          child: FractionallySizedBox(
-                            widthFactor: 0.86,
-                            child: TextField(
-                              controller: _searchCtrl,
-                              onChanged: (_) => _debouncer.run(() => _load(page: 0)),
-                              onSubmitted: (_) => _load(page: 0),
-                              textInputAction: TextInputAction.search,
-                              decoration: InputDecoration(
-                                hintText: '펀드를 검색해보세요',
-                                prefixIcon: const Icon(Icons.search, color: tossBlue),
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                                filled: true,
-                                fillColor: Colors.white,
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(color: tossBlue, width: 1.2),
-                                  borderRadius: BorderRadius.circular(22),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(color: tossBlue, width: 1.6),
-                                  borderRadius: BorderRadius.circular(22),
+                        const SizedBox(height: 16),
+                        // 2) 검색바 (폭 축소 & 높이 얇게)
+                        __SlideFade(
+                          t: _tSearch,
+                          child: Align(
+                            alignment: Alignment.center,
+                            child: FractionallySizedBox(
+                              widthFactor: 0.86,
+                              child: TextField(
+                                controller: _searchCtrl,
+                                onChanged: (_) => _debouncer.run(() => _load(page: 0)),
+                                onSubmitted: (_) => _load(page: 0),
+                                textInputAction: TextInputAction.search,
+                                decoration: InputDecoration(
+                                  hintText: '펀드를 검색해보세요',
+                                  prefixIcon: const Icon(Icons.search, color: tossBlue),
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  enabledBorder: OutlineInputBorder(
+                                    borderSide: const BorderSide(color: tossBlue, width: 1.2),
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide: const BorderSide(color: tossBlue, width: 1.6),
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      // 3) 유형 칩 (라벨 없이 칩만)
-                      __SlideFade(
-                        t: _tChips,
-                        child: SizedBox(
-                          height: 44,
-                          child: _ChipsRow(
-                            items: _typeChips,
-                            selected: _selType,
-                            onSelected: (v) { setState(() => _selType = v); _load(page: 0); },
-                            leadingBuilder: (t, sel) {
-                              final path = chipIconPaths[t];
-                              if (path == null) {
-                                return Icon(Icons.category, size: 16, color: sel ? tossBlue : Colors.black87);
-                              }
-                              return Image.asset(
-                                path, width: 16, height: 16, filterQuality: FilterQuality.medium,
-                                // color: sel ? tossBlue : Colors.black87,
-                                // colorBlendMode: BlendMode.srcIn,
-                              );
-                            },
+                        const SizedBox(height: 18),
+                        // 3) 유형 칩 (라벨 없이 칩만)
+                        __SlideFade(
+                          t: _tChips,
+                          child: SizedBox(
+                            height: 44,
+                            child: _ChipsRow(
+                              items: _typeChips,
+                              selected: _selType,
+                              onSelected: (v) { setState(() => _selType = v); _load(page: 0); },
+                              leadingBuilder: (t, sel) {
+                                final path = chipIconPaths[t];
+                                if (path == null) {
+                                  return Icon(Icons.category, size: 16, color: sel ? tossBlue : Colors.black87);
+                                }
+                                return Image.asset(
+                                  path, width: 16, height: 16, filterQuality: FilterQuality.medium,
+                                  // color: sel ? tossBlue : Colors.black87,
+                                  // colorBlendMode: BlendMode.srcIn,
+                                );
+                              },
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -351,11 +376,12 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
               final t = (1.0 - (y / headerH)).clamp(0.0, 1.0);
 
               // 첫 카드 위 파스텔 배경 노출 여백(최대 20 → 0)
-              const double kRevealGapMax = 20.0;
+              const double kRevealGapMax = 15.0;
               final revealGap = kRevealGapMax * t;
 
               // 헤더가 올라간 만큼 + 추가 여백 + 기본여백(8)
-              final topPad = 45.0 + (headerH - y) + revealGap;
+              const double kHeaderBottomPad = 8.0;   // 필요하면 0~12 안에서 조절
+              final topPad = kHeaderBottomPad + (headerH - y) + revealGap;
 
               return Stack(
                 children: [

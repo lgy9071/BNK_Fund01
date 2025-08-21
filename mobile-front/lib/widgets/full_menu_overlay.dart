@@ -33,6 +33,7 @@ class FullMenuOverlay extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onAsk;
   final VoidCallback onMyQna;
+  final VoidCallback onFundStatus;
 
   const FullMenuOverlay({
     super.key,
@@ -48,6 +49,7 @@ class FullMenuOverlay extends StatefulWidget {
     required this.onLogout,
     required this.onAsk,
     required this.onMyQna,
+    required this.onFundStatus,
 
     this.userService,
     this.accessToken,
@@ -213,6 +215,11 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                         title: '펀드 이용 가이드',
                         onTap: widget.onGoGuide,
                         assetPath: 'assets/icons/ic_guide.png',
+                      ),
+                      _MenuItemData(
+                        title: '펀드 시황',
+                        onTap: widget.onFundStatus,
+                        assetPath: 'assets/icons/ic_news.png',
                       ),
                       _MenuItemData(
                         title: '펀드 MBTI',
