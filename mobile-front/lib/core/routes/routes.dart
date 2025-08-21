@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/screens/cdd/cdd_screen.dart';
 import 'package:mobile_front/screens/investprofile_test/consent_step_page.dart';
 import 'package:mobile_front/screens/investprofile_test/invest_result_screen.dart';
 import 'package:mobile_front/screens/investprofile_test/questionnaire_screen.dart';
 import 'package:mobile_front/screens/login_screen.dart';
+import 'package:mobile_front/screens/opt/opt_screen.dart';
 import 'package:mobile_front/screens/splash_screen.dart';
 import 'package:mobile_front/screens/main_scaffold.dart';
 import 'package:mobile_front/screens/qna_compose_screen.dart';
@@ -28,6 +30,7 @@ class AppRoutes {
   static const String investTest = '/invest-test';      // 동의 -> 설문 진입
   static const String investResult = '/invest-result';  // 결과 화면
   static const String otp = '/otp';
+  static const String cdd = '/cdd';
 }
 
 class AppRouter {
@@ -54,7 +57,8 @@ class AppRouter {
       case AppRoutes.guide:
         return _page(const FundGuideScreen());
 
-    // ✅ 도입부(최신 결과 로더). 완료 시 pop(true) 전파해야 하므로 bool?로 반환
+
+      // ✅ 도입부(최신 결과 로더). 완료 시 pop(true) 전파해야 하므로 bool?로 반환
       case AppRoutes.investType: {
         final uid = (s.arguments as int?) ?? 1;
         return _page<bool?>(
@@ -70,11 +74,11 @@ class AppRouter {
       case AppRoutes.fundMbti:
         return _page(const FundMbtiFlowScreen());
 
-    // ✅ 설문 화면도 최종 true 전파 가능해야 하므로 bool?
+      // ✅ 설문 화면도 최종 true 전파 가능해야 하므로 bool?
       case AppRoutes.questionnaire:
         return _page<bool?>(const QuestionnaireScreen(), settings: s);
 
-    // ✅ 동의 -> 설문 진입(동의 화면). onNext가 설문을 await하고 bool? 반환
+      // ✅ 동의 -> 설문 진입(동의 화면). onNext가 설문을 await하고 bool? 반환
       case AppRoutes.investTest:
         return MaterialPageRoute<bool?>(
           builder: (ctx) => ConsentStepPage(
@@ -92,7 +96,7 @@ class AppRouter {
           settings: s,
         );
 
-    // ✅ 결과 화면: 완료 시 pop(true) 전파 → bool?
+      // ✅ 결과 화면: 완료 시 pop(true) 전파 → bool?
       case AppRoutes.investResult:
         return _page<bool?>(
           InvestResultScreen(
@@ -100,6 +104,21 @@ class AppRouter {
           ),
           settings: s, // arguments 유지
         );
+
+
+      case AppRoutes.otp:
+        final args = s.arguments as Map<String, dynamic>? ?? {};
+        return _page(OptScreen(
+          accessToken: args['accessToken'],
+          userService: args['userService'],
+        ));
+
+      case AppRoutes.cdd:
+        final args = s.arguments as Map<String, dynamic>? ?? {};
+        return _page(CddScreen(
+          accessToken: args['accessToken'],
+          userService: args['userService'],
+        ));
 
       default:
         return _page(const Scaffold(

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_front/core/constants/api.dart';
+import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/core/services/user_service.dart';
 import '../../core/constants/colors.dart';
 
@@ -53,7 +54,7 @@ class _OptScreenState extends State<OptScreen> {
     _preloadUserEmail(); // 미리 이메일을 가져와서 화면에 표시
   }
 
-  // 이메일 추출 후 otp 요청
+  // otp 요청
   Future<void> _requestOtp() async {
     setState(() => _isRequestingOtp = true);
 
@@ -100,7 +101,7 @@ class _OptScreenState extends State<OptScreen> {
     }
   }
 
-  // ✅ 수정: OTP 검증 메서드
+  // otp 인증
   Future<void> _verifyOtp() async {
     if (_currentOtp.length != 6) {
       _showSnackBar('인증번호 6자리를 모두 입력해주세요.');
@@ -130,7 +131,15 @@ class _OptScreenState extends State<OptScreen> {
         _showSnackBar(data['message'], isError: false);
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/next_screen');
+          // ✅ 수정: 동적 라우터로 CDD 화면으로 이동
+          Navigator.pushReplacementNamed(
+            context,
+            AppRoutes.cdd,
+            arguments: {
+              'accessToken': widget.accessToken,
+              'userService': widget.userService,
+            },
+          );
         }
       } else {
         _showSnackBar(data['message'] ?? '인증에 실패했습니다.');

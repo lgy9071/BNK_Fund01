@@ -26,7 +26,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  ThemeMode _mode = ThemeMode.light;
+  final ThemeMode _mode = ThemeMode.light;
 
   @override
   Widget build(BuildContext context) {
