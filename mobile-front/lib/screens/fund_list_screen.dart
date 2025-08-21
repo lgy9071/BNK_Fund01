@@ -128,7 +128,12 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
   final _searchCtrl = TextEditingController();
   final _debouncer = _Debouncer(const Duration(milliseconds: 350));
 
-  // ⚠️ 컨트롤러는 내부 ListView에 연결 (NestedScrollView엔 연결하지 않음)
+  // 새로고침 더 가볍게 트리거
+  final _refreshKey = GlobalKey<RefreshIndicatorState>();
+  bool _autoRefreshing = false;
+  double _pullAccum = 0.0; // 살짝 당긴 거리 누적
+
+  // 컨트롤러는 내부 ListView에 연결 (NestedScrollView엔 연결하지 않음)
   final _scroll = ScrollController();
   bool _showHeader = true; // 헤더 노출 제어용 플래그
 
@@ -383,6 +388,9 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
               const double kHeaderBottomPad = 8.0;   // 필요하면 0~12 안에서 조절
               final topPad = kHeaderBottomPad + (headerH - y) + revealGap;
 
+              // 스피너를 "헤더 바로 아래"에 그리도록 위치 계산
+              final double spinnerY = (topPad - 16).clamp(16.0, topPad).toDouble();
+
               return Stack(
                 children: [
                   // ① 리스트(항상 전체 화면)
@@ -390,135 +398,170 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
                     child: (!_initialized && _loading)
                         ? const Center(child: CircularProgressIndicator())
                         : RefreshIndicator(
+                      key: _refreshKey,
                       onRefresh: () => _load(page: 0),
+                      // 헤더 아래에서 스피너가 보이도록 위치 조정
+                      edgeOffset: topPad,
+                      displacement: (topPad - 8).clamp(8.0, topPad).toDouble(),
+                      color: tossBlue,
+                      backgroundColor: Colors.white,
+                      strokeWidth: 2.6,
+                      notificationPredicate: (n) => n.depth == 0,
                       child: Container(
                         color: pastel(tossBlue),
-                        child: ListView.separated(
-                          controller: _scroll,
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: EdgeInsets.fromLTRB(16, topPad, 16, 16),
-                          itemCount: _items.length + 1,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (ctx, i) {
-                            if (i == _items.length) {
-                              if (_loading) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Center(child: CircularProgressIndicator()),
-                                );
+                        child: NotificationListener<ScrollNotification>(
+                          // 살짝만 내려도 새로고침되도록: 누적 풀다운 거리로 강제 show()
+                          onNotification: (n) {
+                            final atTop = n.metrics.extentBefore == 0;
+
+                            if (atTop) {
+                              if (n is OverscrollNotification && n.overscroll < 0) {
+                                _pullAccum += -n.overscroll; // 위쪽으로 당김 누적
+                              } else if (n is ScrollUpdateNotification) {
+                                final d = n.scrollDelta ?? 0;
+                                if (d < 0) _pullAccum += -d;
                               }
-                              if (!(_page?.hasNext ?? false)) return const SizedBox(height: 24);
-                              return const SizedBox.shrink();
+
+                              // 임계치(px) 넘으면 강제 새로고침
+                              if (!_autoRefreshing && !_loading && _pullAccum > 8) {
+                                _autoRefreshing = true;
+                                _refreshKey.currentState?.show();
+                              }
                             }
 
-                            final f = _items[i];
-
-                            Animation<double> it;
-                            if (_animateFirstPage && i < _firstPageCount) {
-                              final start = (i * 0.06).clamp(0.0, 0.9);
-                              final end = (start + 0.4).clamp(0.0, 1.0);
-                              it = CurvedAnimation(parent: _listCtl, curve: Interval(start, end, curve: Curves.easeOut));
-                            } else {
-                              it = const AlwaysStoppedAnimation(1.0);
+                            // 드래그가 끝나면 누적 초기화
+                            if (n is ScrollEndNotification) {
+                              _pullAccum = 0.0;
+                              _autoRefreshing = false;
                             }
+                            return false; // 기본 동작 유지
+                          },
+                          child: ListView.separated(
+                            controller: _scroll,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(16, topPad, 16, 16),
+                            itemCount: _items.length + 1,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (ctx, i) {
+                              if (i == _items.length) {
+                                if (_loading) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Center(child: CircularProgressIndicator()),
+                                  );
+                                }
+                                if (!(_page?.hasNext ?? false)) return const SizedBox(height: 24);
+                                return const SizedBox.shrink();
+                              }
 
-                            final card = _Pressable(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
-                                child: Material(
-                                  color: Colors.white,
-                                  surfaceTintColor: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => FundDetailScreen(
-                                            fundId: f.fundId,
-                                            title: f.name,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: tossBlue.withOpacity(0.12),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  _divisionOf(f),
-                                                  style: const TextStyle(
-                                                    fontSize: 10,
-                                                    color: tossBlue,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                              ),
-                                              const Spacer(),
-                                              if (f.launchedAt != null)
-                                                Text('설정일 ${_fmtDate(f.launchedAt!)}',
-                                                    style: const TextStyle(fontSize: 12)),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            f.name,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            f.subName,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                              fontSize: 12,
+                              final f = _items[i];
+
+                              Animation<double> it;
+                              if (_animateFirstPage && i < _firstPageCount) {
+                                final start = (i * 0.06).clamp(0.0, 0.9);
+                                final end = (start + 0.4).clamp(0.0, 1.0);
+                                it = CurvedAnimation(parent: _listCtl, curve: Interval(start, end, curve: Curves.easeOut));
+                              } else {
+                                it = const AlwaysStoppedAnimation(1.0);
+                              }
+
+                              final card = _Pressable(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Material(
+                                    color: Colors.white,
+                                    surfaceTintColor: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        HapticFeedback.lightImpact();
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => FundDetailScreen(
+                                              fundId: f.fundId,
+                                              title: f.name,
                                             ),
                                           ),
-                                          const SizedBox(height: 10),
-                                          Row(
-                                            children: [
-                                              Wrap(
-                                                spacing: 6,
-                                                runSpacing: 6,
-                                                children: [
-                                                  if (f.badges.any((b) => b.startsWith('위험')))
-                                                    _badgeChip(f.badges.firstWhere((b) => b.startsWith('위험'))),
-                                                  _badgeChip(f.type),
-                                                ],
+                                        );
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: tossBlue.withOpacity(0.12),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Text(
+                                                    _divisionOf(f),
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      color: tossBlue,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const Spacer(),
+                                                if (f.launchedAt != null)
+                                                  Text('설정일 ${_fmtDate(f.launchedAt!)}', style: const TextStyle(fontSize: 12)),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              f.name,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              f.subName,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                fontSize: 12,
                                               ),
-                                              const Spacer(),
-                                              const Text('1개월 수익률',
-                                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                                              const SizedBox(width: 8),
-                                              Text('${f.return1m.toStringAsFixed(2)}%', style: _ret(f.return1m)),
-                                            ],
-                                          ),
-                                        ],
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Row(
+                                              children: [
+                                                Wrap(
+                                                  spacing: 6,
+                                                  runSpacing: 6,
+                                                  children: [
+                                                    if (f.badges.any((b) => b.startsWith('위험')))
+                                                      _badgeChip(f.badges.firstWhere((b) => b.startsWith('위험'))),
+                                                    _badgeChip(f.type),
+                                                  ],
+                                                ),
+                                                const Spacer(),
+                                                const Text('1개월 수익률', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                                const SizedBox(width: 8),
+                                                Text('${f.return1m.toStringAsFixed(2)}%', style: _ret(f.return1m)),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
+                              );
 
-                            return __SlideFade(t: it, dy: .06, child: card);
-                          },
+                              return __SlideFade(t: it, dy: .06, child: card);
+                            },
+                          ),
                         ),
                       ),
                     ),
                   ),
+
 
                   // ② 헤더(흰 배경) — 스크롤에 맞춰 "그냥 위로" 올라가게만
                   Positioned(
