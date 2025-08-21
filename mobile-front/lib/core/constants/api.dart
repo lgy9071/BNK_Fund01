@@ -1,7 +1,6 @@
 class ApiConfig {
   // 기본 서버 주소 (IP/포트 변경 시 여기만 수정)
-  // static const String baseUrl = 'http://192.168.100.245:8090';
-  static const String baseUrl = 'http://192.168.100.244:8090';
+  static const String baseUrl = 'http://10.0.2.2:8090';
 
   // 회원가입 API
   static const String signup = '$baseUrl/api/signup';
