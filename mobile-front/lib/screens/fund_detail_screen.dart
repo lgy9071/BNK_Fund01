@@ -24,6 +24,39 @@ String fmtPercent(num v, {int digits = 1}) => '${v.toStringAsFixed(digits)}%';
 String fmtDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+/// ────────────── 문서 열기 URL을 “세그먼트 단위로” 조합(자동 인코딩)
+/// 한글/공백 파일명 안전 처리 + 이중 인코딩 방지
+Uri _buildDocUri(String base, String raw) {
+  // 절대 URL이면 그대로
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return Uri.parse(raw);
+  }
+
+  // 이미 %XX 패턴이 있으면(= 인코딩 되어 있으면) 더 이상 인코딩하지 않음
+  final alreadyEncoded = RegExp(r'%[0-9A-Fa-f]{2}').hasMatch(raw);
+  final withSlash = raw.startsWith('/') ? raw : '/$raw';
+
+  if (alreadyEncoded) {
+    // 문자열 연결 방식으로 그대로 사용 (재인코딩 금지)
+    return Uri.parse('${ApiConfig.baseUrl}$withSlash');
+  }
+
+  // 생 문자열이면 세그먼트 단위로 안전 인코딩
+  final b = Uri.parse(base);
+  final trimmed = withSlash.substring(1); // 앞의 '/' 제거
+  final segs = trimmed.split('/').where((s) => s.isNotEmpty).toList();
+
+  return Uri(
+    scheme: b.scheme,
+    host: b.host,
+    port: b.hasPort ? b.port : null,
+    pathSegments: [
+      ...b.pathSegments.where((s) => s.isNotEmpty),
+      ...segs,
+    ],
+  );
+}
+
 /// ───────────────── 리스트 화면에서 넘어오는 최소 정보
 class JoinFund {
   final int id;         // UI용 식별자
@@ -1209,6 +1242,7 @@ class FundDocumentUI {
   final DateTime uploadedAt;
   FundDocumentUI({required this.type, required this.fileName, required this.path, required this.uploadedAt});
 }
+
 class _DocsCard extends StatelessWidget {
   final List<FundDocument> docs;
   const _DocsCard({required this.docs});
@@ -1240,31 +1274,25 @@ class _DocsCard extends StatelessWidget {
                 title: Text(d.type),
                 subtitle: Text('${d.fileName} · 업로드 ${fmtDate(d.uploadedAt)}'),
                 trailing: const Icon(Icons.chevron_right),
-                // 공시자료 받기
                 onTap: () async {
-                  final raw = d.path; // 예: '/fund_document/PROSPECTUS_투자설명서.pdf'
+                  final raw = d.path; // '/fund_document/...' 또는 절대 URL
                   if (raw.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('파일 경로가 없습니다.')),
                     );
                     return;
                   }
+                  final base = ApiConfig.baseUrl;     // 예: http://10.0.2.2:8090
+                  final uri  = _buildDocUri(base, raw); // ← 안전 조합/인코딩
+                  debugPrint('open: $uri');
 
-                  final base = ApiConfig.baseUrl; // 예: http://10.0.2.2:8090
-                  final full = raw.startsWith('http')
-                      ? raw
-                      : raw.startsWith('/')
-                      ? '$base$raw'
-                      : '$base/$raw';
-
-                  final ok = await launchUrl(Uri.parse(full), mode: LaunchMode.externalApplication);
+                  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
                   if (!ok && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('파일을 열 수 없습니다.')),
                     );
                   }
                 },
-
               )),
             ],
           ),

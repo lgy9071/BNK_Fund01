@@ -103,19 +103,35 @@ public class FundDetailService {
      * - DB에 filePath가 있으면 그대로 사용(앞에 '/' 없으면 붙임)
      * - 없으면 fileName을 사용해서 /fund_document/{encodedFileName} 생성
      */
-    private void addDoc(List<FundProductDocDto> out, Long docId, String type) {
+    private void addDoc(java.util.List<FundProductDocDto> out, Long docId, String type) {
         if (docId == null) return;
 
         FundDocument d = fundDocumentRepository.findById(docId).orElse(null);
-        String fileName = (d != null) ? d.getFileName()  : null;
-        String filePath = (d != null) ? d.getFilePath()  : null; // getPath() 아님
+        String fileName = (d != null) ? d.getFileName() : null;
+        String filePath = (d != null) ? d.getFilePath() : null;
 
         String path = null;
+
+        // filePath가 있어도 '디렉터리'만 들어온 경우 파일명 붙여 보정
         if (filePath != null && !filePath.isBlank()) {
-            path = filePath.startsWith("/") ? filePath : ("/" + filePath);
-        } else if (fileName != null && !fileName.isBlank()) {
-            String encoded = UriUtils.encodePath(fileName, StandardCharsets.UTF_8);
-            path = "/fund_document/" + encoded; // 정적 폴더
+            String p = filePath.startsWith("/") ? filePath.substring(1) : filePath; // 선행 '/' 제거
+            boolean looksLikeDir = !p.contains(".") || p.endsWith("/");
+            if (looksLikeDir) {
+                if (fileName != null && !fileName.isBlank()) {
+                    String encoded = org.springframework.web.util.UriUtils
+                            .encodePath(fileName, java.nio.charset.StandardCharsets.UTF_8);
+                    path = "/" + (p.endsWith("/") ? p : (p + "/")) + encoded;
+                }
+            } else {
+                path = "/" + p; // 이미 파일까지 포함되어 있던 경우
+            }
+        }
+
+        // filePath가 없으면 fileName으로 /fund_document/{encodedFileName} 생성
+        if (path == null && fileName != null && !fileName.isBlank()) {
+            String encoded = org.springframework.web.util.UriUtils
+                    .encodePath(fileName, java.nio.charset.StandardCharsets.UTF_8);
+            path = "/fund_document/" + encoded;
         }
 
         out.add(new FundProductDocDto(docId, type, fileName, path));

@@ -12,6 +12,6 @@ public class FundProductView {
     private Long productId;
     private String status;
 
-    @JsonProperty("docs")         // ← JSON 키를 docs로 강제
-    private List<FundProductDocDto> documents;
+    // JSON에 'docs' 한 가지만 노출
+    private java.util.List<FundProductDocDto> docs;
 }
