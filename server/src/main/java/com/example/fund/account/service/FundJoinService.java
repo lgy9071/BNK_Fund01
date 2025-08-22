@@ -70,14 +70,12 @@ public class FundJoinService {
 		checkInvestProfile(user.getUserId());  // T/F
 	}
 	
-	// 1) 입출금계좌 여부 확인 -- T/F
+	// 입출금계좌 여부 확인
 		public boolean checkDepositAccount(Integer userId) {
-			boolean check = depositAccountRepo.existsByUser_UserId(userId);
-			return check;
+			return depositAccountRepo.existsByUser_UserId(userId);
 		}
 		
-	// 2) 투자성향분석 여부 확인 
-	// - 분석 X or 1년 만료
+	// 투자성향분석 여부 확인 -- 분석X or 1년 만료
 		public boolean checkInvestProfile(Integer userId) {
 			Optional<LocalDateTime> result = investProfileResultRepo.findAnalysisDateByUserId(userId);
 			boolean check = true;
@@ -263,8 +261,6 @@ public class FundJoinService {
 	     LocalDate D = now.toLocalDate(); // 주문일
 		
 		// 컷오프 시간
-		// 주식형 - 15:30, 채권형 - 17:00
-	    // 컷오프 시간 결정
 	    LocalTime cutoff = switch (fund.getFundType()) {
          case "주식형" -> LocalTime.of(15, 30);
          case "채권형" -> LocalTime.of(17, 0);
@@ -273,12 +269,18 @@ public class FundJoinService {
     	
     	// 컷오프 기준 NAV 적용일(T): now < cutoff ? D : D+1
         LocalDate T = now.toLocalTime().isBefore(cutoff) ? D : D.plusDays(1);
+        
+        // NAV 적용일(navDate) = T를 영업일로 보정
+        LocalDate navDate = holidayService.normalizeToBusinessDay(T);
 
 		// 기준가
 		BigDecimal navPrice = fundStatusDailyRepo
-					    .findNavPriceByFundIdAndBaseDate(fundId, T)
+					    .findNavPriceByFundIdAndBaseDate(fundId, navDate)
 					    .orElseThrow(() -> new IllegalStateException("NAV not found for fundId=" + fundId))
 					    .setScale(2, RoundingMode.HALF_UP);
+		if (navPrice.signum() <= 0) {
+	        throw new IllegalStateException("Invalid NAV price: " + navPrice);
+	    }
 		
 		// 선취수수료 (null → 0, 퍼센트표기 방어)
         BigDecimal frontLoadFee = Optional.ofNullable(fundFeeInfoRepo.findFrontLoadFeeByFundId(fund.getFundId()))
@@ -302,6 +304,19 @@ public class FundJoinService {
 		LocalDate base = now.toLocalTime().isBefore(cutoff)
 		        ? D.plusDays(1)   // 컷오프 이전 → T+1
 		        : D.plusDays(2);  // 컷오프 이후 → T+2
+		
+
+		// 정산일
+		int settleLag = switch (fund.getFundType()) {
+		    case "주식형" -> 3; // T+3 영업일
+		    case "채권형" -> 2; // T+2 영업일
+		    default -> 3;
+		};
+		
+		LocalDate settlementDate = T;
+		for (int i = 0; i < settleLag; i++) {
+		    settlementDate = holidayService.nextBusinessDay(settlementDate); // 다음 영업일로 1칸
+		}
 
 		// 주말/공휴일 제외한 실제 매수확정일
 		LocalDate executionDate = holidayService.nextBusinessDay(base);
@@ -322,6 +337,7 @@ public class FundJoinService {
 												.tradeDate(D) // 거래일 (컷오프기준)
 												.navDate(T) // 기준가 적용일
 												.processedAt(executionDate) // 매수확정일(체결일)
+												.settlementDate(T)
 				        						.build();
 	fundTransactionRepo.save(fundTx);
 	}
@@ -377,9 +393,11 @@ public class FundJoinService {
 	}
 	
 	
-	
 	// 임시저장
 	
 	// 사후 관리지점
-	
+	public Branch managingBranch() {
+		Branch branch = null;
+		return branch;
+	}
 }

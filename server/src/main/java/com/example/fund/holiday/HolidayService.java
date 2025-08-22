@@ -53,6 +53,17 @@ public class HolidayService {
         }
         return set;
     }
+    // 영업일 여부
+    public boolean isBusinessDay(LocalDate d) {
+        return !isWeekend(d) && !isHoliday(d);
+    }
+
+    // d가 영업일이 아니면 '해당 날짜 또는 이후'의 첫 영업일로 보정
+    public LocalDate normalizeToBusinessDay(LocalDate d) {
+	     LocalDate x = d;
+	     while (!isBusinessDay(x)) x = x.plusDays(1);
+	     return x; // d가 영업일이면 d 그대로 반환
+	 }
 
     public boolean isWeekend(LocalDate d) {
         int dow = d.getDayOfWeek().getValue(); // 1=Mon ... 7=Sun
@@ -67,5 +78,11 @@ public class HolidayService {
     public LocalDate nextBusinessDay(LocalDate d) {
         while (isWeekend(d) || isHoliday(d)) d = d.plusDays(1);
         return d;
+    }
+ // 영업일 N일 가산 (startExclusive 이후부터 N영업일)
+    public LocalDate addBusinessDays(LocalDate startExclusive, int n) {
+        LocalDate x = startExclusive;
+        for (int i = 0; i < n; i++) x = nextBusinessDay(x);
+        return x;
     }
 }
