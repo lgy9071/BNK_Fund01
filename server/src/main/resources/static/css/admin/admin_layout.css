@@ -354,15 +354,32 @@ body {
 .modal__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;transition:opacity .22s}
 .modal.is-open .modal__backdrop{opacity:1}
 .modal__dialog{
-  position:relative;width:min(860px,92vw);max-height:86vh;overflow:auto;
-  margin:6vh auto 0;background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.2);
-  transform:translateY(8px) scale(.98);transition:transform .22s
+  position:relative;
+  width:min(860px,92vw);
+  max-height:86vh;
+  overflow:visible;              /* ← 핵심 */
+  margin:6vh auto 0;
+  background:#fff;
+  border-radius:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.2);
+  transform:translateY(8px) scale(.98);
+  transition:transform .22s;
 }
 .modal.is-open .modal__dialog{transform:translateY(0) scale(1)}
 .modal__header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #edf2f7}
 .modal__header h3{margin:0;font-size:18px;font-weight:800;color:#0f3a53}
 .modal__close{background:transparent;border:0;font-size:22px;cursor:pointer}
-.modal__body{padding:16px 18px 24px}
+.modal__body{
+  padding:16px 18px;
+  position:relative;
+  max-height:calc(86vh - 56px);
+  overflow:auto;
+}
+.modal__body::after{
+  content:"";
+  display:block;
+  height:340px;                  /* 플라이아웃 예상높이만큼 여유 */
+}
 .modal__search{display:flex;gap:8px;margin-bottom:12px}
 .modal__search input{flex:1;padding:10px 12px;border:1px solid #d9e2ec;border-radius:10px}
 .modal__search button{padding:10px 12px;border:1px solid #d9e2ec;background:#f7fafc;border-radius:10px;font-weight:700;cursor:pointer}
@@ -425,11 +442,16 @@ a h1.semi-title {
 .list-row .sep{color:#bbb}.list-row:hover{background:#f7fafc}.list-row.selected{background:#eef6ff;border-left:3px solid #4f8cff}
 
 /* 상세 플라이아웃 사이즈 업 */
-.modal__body{position:relative}
 .customer-detail-flyout{
-  position:absolute; right:12px; top:76px; z-index:3;
-  width:min(760px,96%); max-height:72vh; overflow:auto; /* ← 스크롤 보장 */
-  background:#fff; border:1px solid #e6eef6; border-radius:14px;
+  position:absolute;
+  right:12px;
+  z-index:3;
+  width:min(760px, 96%);
+  max-height:calc(86vh - 160px);
+  overflow:auto;
+  background:#fff;
+  border:1px solid #e6eef6;
+  border-radius:14px;
   box-shadow:0 12px 30px rgba(0,0,0,.18);
 }
 .customer-detail-flyout .flyout__header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #edf2f7}
@@ -445,3 +467,16 @@ a h1.semi-title {
 /* 칩(가입 펀드명) */
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{padding:6px 10px;border-radius:999px;background:#f1f5f9;border:1px solid #e6eef6;font-size:13px}
+
+/* 좁은 화면에선 중앙 배치로 전환(선택 사항) */
+@media (max-width: 720px){
+  .customer-detail-flyout{
+    left:50%;
+    right:auto;
+    transform:translateX(-50%);
+    width:min(92vw, 680px);
+    top:8vh;
+    max-height:84vh;
+  }
+  .modal__body::after{ height:0; } /* 모바일에선 여유 높이 불필요 */
+}

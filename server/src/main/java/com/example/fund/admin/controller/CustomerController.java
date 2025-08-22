@@ -19,15 +19,13 @@ public class CustomerController {
 
     private final CustomerService service;
 
-    // 리스트(이름/이메일/전화만)
     @GetMapping("/search")
-    public List<CustomerService.ListItem> search(@RequestParam("q") String q) {
-        return service.search(q);  
+    public List<CustomerService.ListItem> search(@RequestParam("q") String q){
+        return service.search(q);
     }
 
-    // 상세
     @GetMapping("/{id}")
-    public CustomerService.Detail detail(@PathVariable("id") Long id) {
+    public CustomerService.Detail detail(@PathVariable Long id){
         return service.getDetail(id);
     }
 }

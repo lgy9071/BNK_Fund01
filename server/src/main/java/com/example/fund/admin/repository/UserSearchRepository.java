@@ -13,27 +13,26 @@ import com.example.fund.user.entity.User;
 public interface UserSearchRepository extends JpaRepository<User, Long> {
 
     @Query(value = """
-        SELECT u.USER_ID   AS userId,
-               u.EMAIL     AS email,
-               u.NAME      AS name,
-               u.PHONE     AS phone
-          FROM TBL_USER u
-         WHERE
-               ( :qLower IS NOT NULL AND (
+        SELECT u.USER_ID AS userId,
+            u.EMAIL   AS email,
+            u.NAME    AS name,
+            u.PHONE   AS phone
+        FROM TBL_USER u
+        WHERE
+            ( :qLower IS NOT NULL AND (
                     LOWER(u.EMAIL) LIKE '%' || :qLower || '%'
-                 OR LOWER(u.NAME)  LIKE '%' || :qLower || '%'
-               ))
+                OR LOWER(u.NAME)  LIKE '%' || :qLower || '%'
+            ))
             OR ( :digits IS NOT NULL AND (
                     REPLACE(u.PHONE,'-','') LIKE '%' || :digits || '%'
-                 OR ( :hyphen IS NOT NULL AND u.PHONE = :hyphen )
-               ))
-         ORDER BY u.USER_ID DESC
+                OR ( :hyphen IS NOT NULL AND u.PHONE = :hyphen )
+            ))
+        ORDER BY u.USER_ID DESC
+        FETCH FIRST 100 ROWS ONLY
         """, nativeQuery = true)
-    List<UserListRow> searchList(        // ← 이름만 변경
-            @Param("qLower") String qLower,
-            @Param("digits") String digits,
-            @Param("hyphen") String hyphen
-    );
+    List<UserListRow> searchList(@Param("qLower") String qLower,
+                                @Param("digits") String digits,
+                                @Param("hyphen") String hyphen);
 
     interface UserListRow {              // ← 프로젝션 이름도 searchList에 맞춤
         Long getUserId();

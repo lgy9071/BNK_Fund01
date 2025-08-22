@@ -8,8 +8,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -51,16 +53,19 @@ public class CustomerService {
                .toList();
     }
 
-    /* =========================
-       2) 상세: 기본 정보 + 펀드 가입 정보
-       ========================= */
+    /** 상세: 기본 정보 + (펀드 집계는 없으면 건너뜀) */
+    @Transactional(readOnly = true, propagation = Propagation.NOT_SUPPORTED) // 트랜잭션 사용 안 함
     public Detail getDetail(Long userId){
         var u = repo.findDetail(userId);
         if (u == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "고객이 없습니다.");
 
-        var agg = repo.findUserFundAgg(userId);
+        List<UserSearchRepository.UserFundAggRow> agg = List.of(); // 기본은 빈 목록
+        try {
+            agg = repo.findUserFundAgg(userId); // FUND_TRANSACTION 없어도 try-catch로 흡수
+        } catch (DataAccessException ex) {
+            // log.warn("펀드 집계 스킵: {}", ex.getMessage());
+        }
 
-        // 펀드 목록
         var funds = agg.stream()
                 .map(a -> new FundDto(
                         a.getFundId(),
@@ -70,14 +75,12 @@ public class CustomerService {
                 ))
                 .toList();
 
-        // 총 자산 규모(순투자 합)
         long totalAsset = agg.stream()
                 .map(UserSearchRepository.UserFundAggRow::getNetAmount)
                 .filter(Objects::nonNull)
                 .mapToLong(CustomerService::toLong)
                 .sum();
 
-        // 최초 가입일(모든 펀드 중 최솟값)
         LocalDate firstSubscribedAt = agg.stream()
                 .map(UserSearchRepository.UserFundAggRow::getFirstSubscribedAt)
                 .filter(Objects::nonNull)
