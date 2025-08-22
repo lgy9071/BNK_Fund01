@@ -1,6 +1,7 @@
 package com.example.fund.account.entity;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.example.fund.fund.entity_fund.FundProduct;
@@ -59,10 +60,10 @@ public class FundTransaction {
     @Column(name = "amount")
     private BigDecimal amount; // 주문금액 (원 단위)
 
-    @Column(name = "unit_price")
+    @Column(name = "unit_price", precision = 10, scale = 2)
     private BigDecimal unitPrice; // 기준가 (거래일 기준)
 
-    @Column(name = "units", precision = 10, scale = 3)
+    @Column(name = "units", precision = 10, scale = 0)
     private BigDecimal units; // 좌수 (거래금액 ÷ 기준가)
 
     // FK: 관리 지점
@@ -75,24 +76,38 @@ public class FundTransaction {
     @JoinColumn(name = "deposit_account_id")
     private DepositAccount depositAccount; // deposit_account_id NUMBER
 
-    @Column(name = "invest_rule", length = 20)
-    private String investRule; // 투자규칙
+    @Enumerated(EnumType.STRING)
+    @Column(name = "invest_rule_type", length = 10)
+    private InvestRuleType investRule; // 투자규칙
+    
+    @Column(name = "invest_rule_value", length = 10)
+    private String investRuleValue;  // 요일(MON/TUE...) 또는 일자(15)
 
     @Column(name = "requested_at")
     private LocalDateTime requestedAt; // 접수 시각
 
     @Column(name = "trade_date")
-    private LocalDateTime tradeDate; // 거래일 (컷오프 기준)
+    private LocalDate tradeDate; // 거래일 (컷오프 기준)
 
     @Column(name = "nav_date")
-    private LocalDateTime navDate; // 기준가 적용일
+    private LocalDate navDate; // 기준가 적용일
 
     @Column(name = "processed_at")
-    private LocalDateTime processedAt; // 정산일 (실제 체결일)
+    private LocalDate processedAt; // 매수확정일(체결일, 대기→펀드 반영일)
+    
+    @Column(name = "settlement_date")
+    private LocalDate settlementDate; // 정산일 (주식형 T+3, 채권형 T+2)
     
     public enum TransactionType{
     	PURCHASE,     // 매수
     	ADD_PUR,      // 추가매수
     	REDEMPTION    // 환매
+    }
+    
+    public enum InvestRuleType {
+        DAILY,      // 매일
+        WEEKLY,     // 매주
+        MONTHLY,    // 매월
+        ONCE        // 한번만
     }
 }

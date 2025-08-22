@@ -18,19 +18,23 @@ import com.example.fund.account.entity.Branch;
 import com.example.fund.account.entity.DepositAccount;
 import com.example.fund.account.entity.DepositTransaction;
 import com.example.fund.account.entity.FundAccount;
+import com.example.fund.account.entity.FundAccountTransaction;
 import com.example.fund.account.entity.FundTransaction;
 import com.example.fund.account.entity.TransitAccount;
 import com.example.fund.account.entity.TransitTransaction;
 import com.example.fund.account.repository.DepositAccountRepository;
 import com.example.fund.account.repository.DepositTransactionRepository;
 import com.example.fund.account.repository.FundAccountRepository;
+import com.example.fund.account.repository.FundAccountTransactionRepository;
 import com.example.fund.account.repository.FundTransactionRepository;
 import com.example.fund.account.repository.TransitAccountRepository;
 import com.example.fund.account.repository.TransitTransactionRepository;
 import com.example.fund.fund.entity_fund.Fund;
 import com.example.fund.fund.entity_fund.FundProduct;
+import com.example.fund.fund.repository_fund.FundFeeInfoRepository;
 import com.example.fund.fund.repository_fund.FundStatusDailyRepository;
 import com.example.fund.fund.repository_fund_etc.InvestProfileResultRepository;
+import com.example.fund.holiday.HolidayService;
 import com.example.fund.user.entity.User;
 
 import jakarta.transaction.Transactional;
@@ -49,63 +53,84 @@ public class FundJoinService {
 	private final TransitAccountRepository transitAccountRepo;
 	private final TransitTransactionRepository transitTransactionRepo;
 	private final FundStatusDailyRepository fundStatusDailyRepo;
+	private final FundFeeInfoRepository fundFeeInfoRepo;
+	private final FundAccountTransactionRepository fundAccountTransactionRepo;
+	
+	private final HolidayService holidayService;
 
 	private final BCryptPasswordEncoder passwordEncoder;
 	
+	// ---- 설정 상수 ----
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 	
-	// 펀드가입 조건 조회
+	
+	 // ---- 1) 가입 조건 조회 ----
 	public void checkJoin(User user) {
 		checkDepositAccount(user.getUserId()); // T/F
 		checkInvestProfile(user.getUserId());  // T/F
 	}
 	
-	// 펀드가입
-	public void fundJoin(User user, FundProduct fund, BigDecimal orderAmount, String rawPin, Branch branch) {
-		createFundAccount(user, fund, rawPin); // 펀드 계좌 생성
-		accountTransaction(user, orderAmount, fund); // 입출금 프로세스
-		DepositAccount depositAccount = depositAccountRepo.findByUser_UserId(user.getUserId()).get();
-		FundAccount fundAccount = fundAccountRepo.findByUser_UserId(user.getUserId()).get();
-		createFundTransaction(user, depositAccount, fund, fundAccount, orderAmount, branch);
-	}
-	
 	// 1) 입출금계좌 여부 확인 -- T/F
-	public boolean checkDepositAccount(Integer userId) {
-		boolean check = depositAccountRepo.existsByUser_UserId(userId);
-		return check;
-	}
-	
+		public boolean checkDepositAccount(Integer userId) {
+			boolean check = depositAccountRepo.existsByUser_UserId(userId);
+			return check;
+		}
+		
 	// 2) 투자성향분석 여부 확인 
 	// - 분석 X or 1년 만료
-	public boolean checkInvestProfile(Integer userId) {
-		Optional<LocalDateTime> result = investProfileResultRepo.findAnalysisDateByUserId(userId);
-		boolean check = true;
-		if(result.isEmpty()) {
-			// 분석이력X
-			check = false;
-		}else {
+		public boolean checkInvestProfile(Integer userId) {
+			Optional<LocalDateTime> result = investProfileResultRepo.findAnalysisDateByUserId(userId);
+			boolean check = true;
+			if(result.isEmpty()) return false;
 			LocalDateTime analysisDate = result.get();
-			if(!analysisDate.plusYears(1).isAfter(LocalDateTime.now())) { // 1년 만료 시
-				check = false;
-			}
+			return analysisDate.plusYears(1).isAfter(LocalDateTime.now());
 		}
-		return check;
+	
+	// ---- 2) 펀드가입 오케스트레이션(원자성 보장) ----
+	@Transactional(rollbackOn = Exception.class)
+	public void fundJoin(User user, FundProduct fund, BigDecimal orderAmount, String rawPin, Branch branch,
+						 FundTransaction.InvestRuleType ruleType, String ruleValue) {
+		if (user == null || user.getUserId() == null) {
+            throw new IllegalArgumentException("user is required");
+        }
+        if (!checkDepositAccount(user.getUserId())) {
+            throw new IllegalStateException("입출금 계좌가 없습니다.");
+        }
+        if (!checkInvestProfile(user.getUserId())) {
+            throw new IllegalStateException("투자성향분석이 없거나 1년이 경과했습니다.");
+        }
+        
+        // 2-1) 펀드 계좌 생성(없으면 생성)
+		FundAccount fundAccount = createFundAccount(user, fund, rawPin);
+		
+		// 2-2) 입출금 -> 대기 이동(금액 홀딩)
+		accountTransaction(user, orderAmount);
+		
+		// 2-3) 펀드 거래 생성/저장
+		DepositAccount depositAccount = depositAccountRepo.findByUser_UserId(user.getUserId())
+				.orElseThrow(()-> new IllegalStateException("Deposit Account Not Fount"));
+		createFundTransaction(user, depositAccount, fund, fundAccount, orderAmount, branch, ruleType, ruleValue);
 	}
 	
-	// 3) 펀드 계좌 생성 (잔액 : 0원)
-	
+	// ---- 3) 펀드 계좌 생성 ----
 	// Service 내부에 보관 (스레드 안전한 SecureRandom 재사용 권장)
 	private static final SecureRandom RND = new SecureRandom();
 	
-	@Transactional
 	   public FundAccount createFundAccount(User user, FundProduct fund, String rawPin) {
 	      if(user == null || user.getUserId() == null) throw new IllegalArgumentException("userId가 필요합니다.");
 	      if(fund == null || fund.getProductId() == null) throw new IllegalArgumentException("productId가 필요합니다.");
 	      if(rawPin == null || rawPin.isBlank()) throw new IllegalArgumentException("PIN이 필요합니다.");
 	      
+	      // 이미 존재하면 재사용 (없으면 생성)
+	      Optional<FundAccount> existing = fundAccountRepo.findByUser_UserIdAndFundProduct_ProductId(user.getUserId(), fund.getProductId());
+	      if(existing.isPresent()) {
+	    	  return existing.get();
+	      }
+	      
 	      // 계좌번호 생성
 	      String accountNumber = generateUniqueAccountNumber();
 	      
-	      // 사용자가 입력한 비밀번호 → 암호화
+	      // PIN 해
 	      String pinHash = passwordEncoder.encode(rawPin);
 	      
 	      FundAccount fundAccount = FundAccount.builder()
@@ -114,13 +139,13 @@ public class FundJoinService {
 	                                 .fundAccountNumber(accountNumber)
 	                                 .fundPinHash(pinHash)
 	                                 .units(BigDecimal.ZERO.setScale(4))
-	                                    .lockedUnits(BigDecimal.ZERO.setScale(4))
-	                                    .availableAmount(BigDecimal.ZERO.setScale(0))
-	                                    .totalInvested(BigDecimal.ZERO.setScale(0))
-	                                    .avgUnitPrice(BigDecimal.ZERO.setScale(2))
-	                                    .fundValuation(BigDecimal.ZERO.setScale(2))
-	                                    .status(FundAccount.FundAccountStatus.NORMAL)
-	                                    .build();
+	                                 .lockedUnits(BigDecimal.ZERO.setScale(4))
+	                                 .availableAmount(BigDecimal.ZERO.setScale(0))
+	                                 .totalInvested(BigDecimal.ZERO.setScale(0))
+	                                 .avgUnitPrice(BigDecimal.ZERO.setScale(2))
+	                                 .fundValuation(BigDecimal.ZERO.setScale(2))
+	                                 .status(FundAccount.FundAccountStatus.NORMAL)
+	                                 .build();
 	      
 	      return fundAccountRepo.save(fundAccount);
 	   }
@@ -169,42 +194,40 @@ public class FundJoinService {
 	}
 
 	
-	// 3) 입출금 -> 대기 : 대기계좌에 임시입금
+	// ---- 4) 입출금 -> 대기: 금액 홀딩 & 거래 내역 적재 ----
 	// 입출금 거래 내역 & 대기계좌내역 생성
 	@Transactional(rollbackOn = Exception.class)
-	public void accountTransaction(User user, BigDecimal orderAmount, FundProduct fund) {
-		// --- 1) 파라미터 검증 ---
-		 if(user == null || user.getUserId() == null) {
-			 throw new IllegalArgumentException("user is required");
-		 }
+	public void accountTransaction(User user, BigDecimal orderAmount) {
+
 		 if(orderAmount == null || orderAmount.signum() <= 0) {
 			 throw new IllegalArgumentException("orderAmount must be > 0");
 		 }
+		 /// 원 단위 고정(소수 입력 차단)
 		 orderAmount = orderAmount.setScale(0, RoundingMode.UNNECESSARY);  // scale 고정
 		
-		// --- 2) 계좌 조회 ---
+		 // 잠금 걸고 조회
 		 DepositAccount depositAccount =depositAccountRepo
 				 .findByUserIdForUpdate(user.getUserId())
 				 .orElseThrow(() -> new IllegalStateException("Deposit account not found"));		 
 		 TransitAccount transitAccount = transitAccountRepo
 				 .findByIdForUpdate(1)
 				 .orElseThrow(() -> new IllegalStateException("Transit account not found"));
-		 FundAccount fundAccount = fundAccountRepo.findByUser_UserId(user.getUserId())
-				 .orElseThrow(() -> new IllegalStateException("Fund account not found"));
+
 		 
-		// --- 3) 잔액 검증 ---
+		// 잔액 검증
 		 BigDecimal currentBalance = depositAccount.getBalance(); // 입출금 계좌 현재 잔액
 		 if(currentBalance.compareTo(orderAmount) < 0) {
 			 throw new IllegalArgumentException("Insufficient balance");
 		 }
 		 BigDecimal transitBalance = transitAccount.getBalance(); // 대기계좌 현재 잔액
-		 
-		 String transferId = UUID.randomUUID().toString();
-		 // --- 4) 잔액 변경 ---
+		 // 잔액 변경
 		depositAccount.setBalance(currentBalance.subtract(orderAmount));
 		transitAccount.setBalance(transitBalance.add(orderAmount));
+		
+		// 거래내역 적재 (공통 transferId로 체인 추적)
+		String transferId = UUID.randomUUID().toString();
 			 
-		// --- 5) 거래내역 저장 ---
+		// 거래내역 저장
 		DepositTransaction depositTx = DepositTransaction.builder()
 														 .account(depositAccount)
 														 .amount(orderAmount)
@@ -215,6 +238,7 @@ public class FundJoinService {
 		depositTransactionRepo.save(depositTx);
 
 		TransitTransaction transitTx = TransitTransaction.builder()
+														 .transitAccountId(transitAccount.getTransitAccountId())
 											 			 .counterparty(depositAccount.getAccountNumber()) // 상대 계좌번호
 											 		     .txType(TransitTransaction.TxType.DEPOSIT)
 											 			 .amount(orderAmount)
@@ -229,61 +253,133 @@ public class FundJoinService {
 									  FundProduct fundProduct,
 									  FundAccount fundAccount,
 									  BigDecimal orderAmount,
-									  Branch branch) {
+									  Branch branch,
+									  FundTransaction.InvestRuleType ruleType,
+									  String ruleValue) {// 규칙값(요일/일자 등)
 		Fund fund = fundProduct.getFund();
 		String fundId = fund.getFundId();
 		
+		 ZonedDateTime now = ZonedDateTime.now(KST);
+	     LocalDate D = now.toLocalDate(); // 주문일
 		
 		// 컷오프 시간
 		// 주식형 - 15:30, 채권형 - 17:00
-		// 기준가 시간
-		ZoneId KST = ZoneId.of("Asia/Seoul");
-		ZonedDateTime now = ZonedDateTime.now(KST);
-		
-		// 기준가 적용일
-		LocalDate T = now.toLocalDate();
-		
-		// 컷오프 시간 결정
-		LocalTime cutoff = switch (fund.getFundType()) {
-		    case "주식형" -> LocalTime.of(15, 30);
-		    case "채권형" -> LocalTime.of(17, 0);
-		    default       -> LocalTime.of(17, 0); // 기본값
-		};
+	    // 컷오프 시간 결정
+	    LocalTime cutoff = switch (fund.getFundType()) {
+         case "주식형" -> LocalTime.of(15, 30);
+         case "채권형" -> LocalTime.of(17, 0);
+         default       -> LocalTime.of(17, 0);
+    	};
+    	
+    	// 컷오프 기준 NAV 적용일(T): now < cutoff ? D : D+1
+        LocalDate T = now.toLocalTime().isBefore(cutoff) ? D : D.plusDays(1);
 
-		if (!now.toLocalTime().isBefore(cutoff)) {
-			 T = T.plusDays(1);
-		}
-		
-		
 		// 기준가
 		BigDecimal navPrice = fundStatusDailyRepo
 					    .findNavPriceByFundIdAndBaseDate(fundId, T)
-					    .orElseThrow(() -> new IllegalStateException("NAV not found for fundId=" + fundId));
-				
+					    .orElseThrow(() -> new IllegalStateException("NAV not found for fundId=" + fundId))
+					    .setScale(2, RoundingMode.HALF_UP);
+		
+		// 선취수수료 (null → 0, 퍼센트표기 방어)
+        BigDecimal frontLoadFee = Optional.ofNullable(fundFeeInfoRepo.findFrontLoadFeeByFundId(fund.getFundId()))
+            .orElse(BigDecimal.ZERO);
+        if (frontLoadFee.compareTo(BigDecimal.ONE) > 0) {
+            // % 단위로 저장된 경우 환산
+            if (frontLoadFee.compareTo(new BigDecimal("100")) > 0) {
+                throw new IllegalStateException("Invalid frontLoadFee: " + frontLoadFee);
+            }
+            frontLoadFee = frontLoadFee.movePointLeft(2);
+        }
+        
+		// 실제 투자금액
+		BigDecimal investAmount = orderAmount
+								  .multiply(BigDecimal.ONE.subtract(frontLoadFee))
+								  .setScale(0, RoundingMode.DOWN); // 원 단위로 절사
+		// 좌수
+		BigDecimal units = investAmount.divide(navPrice, 0, RoundingMode.DOWN);  // 소수점 버림
+		
+		// now: ZonedDateTime, D: 주문일(LocalDate), cutoff: LocalTime
+		LocalDate base = now.toLocalTime().isBefore(cutoff)
+		        ? D.plusDays(1)   // 컷오프 이전 → T+1
+		        : D.plusDays(2);  // 컷오프 이후 → T+2
+
+		// 주말/공휴일 제외한 실제 매수확정일
+		LocalDate executionDate = holidayService.nextBusinessDay(base);
+		
 		FundTransaction fundTx = FundTransaction.builder()
 												.fund(fundProduct)
 												.fundAccount(fundAccount)
 												.user(user)
 												.type(FundTransaction.TransactionType.PURCHASE)
-												.amount(orderAmount)
+												.amount(investAmount)
 												.unitPrice(navPrice) // 기준가(거래일 기준) - FundStatusDaily : nav_price
-												.units(null) // 좌수 (거래금액 / 기준가)
+												.units(units) // 좌수 (거래금액 / 기준가)
 												.branch(branch) //사후관리지점
 												.depositAccount(depositAccount) // 입출금 계좌
-												.investRule(null) // 투자 규칙
-												.requestedAt(null) // 접수시각
-												.tradeDate(null) // 거래일 (컷오프기준)
-												.navDate(null) // 기준가 적용일
-												.processedAt(null) // 정산일(실제 체결일)
+												.investRule(ruleType)        // 투자 규칙 (Enum)
+									            .investRuleValue(ruleValue)  // 요일 or 일자 값
+												.requestedAt(now.toLocalDateTime()) // 접수시각
+												.tradeDate(D) // 거래일 (컷오프기준)
+												.navDate(T) // 기준가 적용일
+												.processedAt(executionDate) // 매수확정일(체결일)
 				        						.build();
+	fundTransactionRepo.save(fundTx);
 	}
 
 	// 5) 매수일에 대기 -> 펀드 로 잔액 이동
+	@Transactional(rollbackOn = Exception.class)
+	public void settleToFund(User user,
+	                         FundAccount fundAccount,
+	                         TransitAccount transitAccount,
+	                         BigDecimal orderAmount,
+	                         BigDecimal navPrice,
+	                         FundTransaction fundTransaction) {
+		
+		// 금액/좌수 계산 (원단위 절사 일관)
+	    BigDecimal investAmount = orderAmount.setScale(0, RoundingMode.DOWN);
+	    BigDecimal units = investAmount.divide(navPrice, 3, RoundingMode.DOWN);
+	    
+	    // 1) 대기계좌 잔액 차감
+	    if (transitAccount.getBalance().compareTo(investAmount) < 0) {
+	        throw new IllegalStateException("대기계좌 잔액 부족");
+	    }
+	    transitAccount.setBalance(transitAccount.getBalance().subtract(investAmount));
+
+	    // 2) 펀드계좌 잔액 증가 (좌수 기준)
+	    fundAccount.setAvailableAmount(fundAccount.getAvailableAmount().add(investAmount));
+	    fundAccount.setUnits(fundAccount.getUnits().add(units));
+	    
+	    
+	    String transferId = UUID.randomUUID().toString();
+	    
+	    // 2-1) 거래내역: 대기(WITHDRAW), 펀드(DEPOSIT)
+	    TransitTransaction transitTx = TransitTransaction.builder()
+	    		.transitAccountId(transitAccount.getTransitAccountId())
+	            .txType(TransitTransaction.TxType.WITHDRAW)
+	            .amount(investAmount)
+	            .counterparty(fundAccount.getFundAccountNumber()) // 또는 fundAccount.getFundAccountId().toString()
+	            .transferId(transferId)
+	            .build();
+
+	    FundAccountTransaction fundAccTx = FundAccountTransaction.builder()
+	            .fundAccount(fundAccount)
+	            .txType(FundAccountTransaction.TxType.DEPOSIT)
+	            .amount(investAmount)
+	            .counterparty(transitAccount.getTransitAccountNumber()) // 또는 transitAccount.getTransitAccountNumber()
+	            .transferId(transferId)
+	            .build();
+
+	    // 3) 저장
+	    transitAccountRepo.save(transitAccount);
+	    fundAccountRepo.save(fundAccount);
+	    transitTransactionRepo.save(transitTx);
+	    fundAccountTransactionRepo.save(fundAccTx);
+	}
 	
 	
 	
 	// 임시저장
 	
 	// 사후 관리지점
-
+	
 }
