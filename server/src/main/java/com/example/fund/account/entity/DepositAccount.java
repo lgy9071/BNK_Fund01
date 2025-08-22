@@ -58,8 +58,7 @@ public class DepositAccount {
     @Enumerated(EnumType.STRING)
     @Column(name="status", length=10, nullable=false)
 	private AccountStatus status; // 계좌 상태 (정상, 정지, 해지)
-    
-    
+
     @PrePersist
     protected void onCreate() {
     	if (status == null) status = AccountStatus.ACTIVE;
