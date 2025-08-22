@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -304,7 +305,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
     final isUp = data!.daily.navChangeRate1d >= 0;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF6F7F9), // 아주 연한 회색
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
@@ -319,6 +320,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: FilledButton(
             style: FilledButton.styleFrom(
+              backgroundColor: tossBlue, // 토스 블루
               minimumSize: const Size.fromHeight(52),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
@@ -361,7 +363,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // 파란 테두리 없이, 기존 2카드로 분리
+                  // 기준가 & 위험수준 요약
                   _KeyFactsRow(
                     navPrice: data!.daily.navPrice,
                     navChangeRate1d: data!.daily.navChangeRate1d,
@@ -388,18 +390,26 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
 
             const SizedBox(height: 12),
 
+            // 위험 게이지: reveal 시 애니메이션
             RevealOnScroll(
               controller: _scrollCtl,
               delay: const Duration(milliseconds: 60),
-              child: _RiskCard(riskText: data!.basic.riskGrade),
+              builder: (revealed) => _RiskCard(
+                riskText: data!.basic.riskGrade,
+                start: revealed,
+              ),
             ),
 
             const SizedBox(height: 12),
 
+            // 자산 도넛: reveal 시 애니메이션
             RevealOnScroll(
               controller: _scrollCtl,
               delay: const Duration(milliseconds: 120),
-              child: _AssetCard(asset: data!.asset),
+              builder: (revealed) => _AssetCard(
+                asset: data!.asset,
+                start: revealed,
+              ),
             ),
 
             const SizedBox(height: 12),
@@ -530,11 +540,12 @@ class _ReturnLineChartState extends State<_ReturnLineChart>
     final double minY = math.min(0.0, minVal - pad);
     final double maxY = math.max(0.0, maxVal + pad);
 
-    // 균등 간격: 0=1M, 1=3M, 2=6M, 3=1Y
+    // 균등 간격: 0=1개월, 1=3개월, 2=6개월, 3=1년
     List<FlSpot> _spots(double t) =>
         List<FlSpot>.generate(4, (i) => FlSpot(i.toDouble(), vals[i] * t));
 
-    String _label(int i) => switch (i) { 0 => '1M', 1 => '3M', 2 => '6M', _ => '1Y' };
+    String _label(int i) =>
+        switch (i) { 0 => '1개월', 1 => '3개월', 2 => '6개월', _ => '1년' };
 
     double _intervalY() {
       final s = (maxY - minY).abs();
@@ -550,8 +561,10 @@ class _ReturnLineChartState extends State<_ReturnLineChart>
         final t = _curve.value;
         return LineChart(
           LineChartData(
-            minX: 0, maxX: 3,
-            minY: minY, maxY: maxY,
+            minX: 0,
+            maxX: 3,
+            minY: minY,
+            maxY: maxY,
             backgroundColor: Colors.white,
             gridData: FlGridData(
               show: true,
@@ -581,7 +594,9 @@ class _ReturnLineChartState extends State<_ReturnLineChart>
                   interval: 1, // 0,1,2,3만
                   getTitlesWidget: (v, _) {
                     final i = v.round();
-                    if (i < 0 || i > 3 || v != i.toDouble()) return const SizedBox.shrink();
+                    if (i < 0 || i > 3 || v != i.toDouble()) {
+                      return const SizedBox.shrink();
+                    }
                     return Text(_label(i), style: const TextStyle(fontWeight: FontWeight.w700));
                   },
                 ),
@@ -643,6 +658,7 @@ class _KeyFactsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final level = _riskLevelFromText(riskText).clamp(1, 5);
+    const maxLevel = 5;
     final boxDecoration = BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(12),
@@ -703,7 +719,7 @@ class _KeyFactsRow extends StatelessWidget {
             ),
           ),
         ),
-        // 위험수준
+        // 위험수준 (Level N / 5)
         Expanded(
           child: Container(
             height: 100,
@@ -720,7 +736,7 @@ class _KeyFactsRow extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('레벨', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                    const Text('Level', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                     const SizedBox(width: 6),
                     Text('$level', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
                   ],
@@ -734,7 +750,7 @@ class _KeyFactsRow extends StatelessWidget {
   }
 }
 
-/// 간편 적립식 카드
+/// 간편 적립식 카드 — 문구: “n년간 이 상품에 매월 n만원씩 투자했다면?”
 class _SimpleDcaCard extends StatelessWidget {
   final int years;
   final int monthly; // 원
@@ -770,19 +786,31 @@ class _SimpleDcaCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Wrap(
-              spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
+                const Text('이 상품에'),
                 _DD<int>(
                   value: years,
                   items: const [1, 3, 5],
-                  labelBuilder: (v) => '$v년',
+                  labelBuilder: (v) => '$v년간',
                   onChanged: onYears,
                 ),
-                const Text('이 상품에'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // 2줄: 매월 n만원씩 투자했다면?
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const Text('매월'),
                 _DD<int>(
                   value: monthly,
                   items: const [100000, 300000, 500000, 1000000],
-                  labelBuilder: (v) => '${_won.format(v ~/ 10000)}만원',
+                  labelBuilder: (v) => '${(v / 10000).round()}만원',
                   onChanged: onMonthly,
                 ),
                 const Text('씩 투자했다면?'),
@@ -842,19 +870,41 @@ class _DD<T> extends StatelessWidget {
   }
 }
 
-/// 위험수준 카드 (도넛 + 표)
+/// ───────────────────────────
+/// 게이지: degree → radian
+double _toRad(num deg) => deg.toDouble() * math.pi / 180.0;
+
+/// 위험수준 카드 — 큰 게이지 + 활성 구간 라벨 칩(흰색 글자) + reveal 애니메이션
 class _RiskCard extends StatelessWidget {
   final String riskText;
-  const _RiskCard({required this.riskText});
+  final bool start; // reveal 시 true
+  const _RiskCard({required this.riskText, this.start = false});
 
   int _riskLevelFromText(String s) {
     final m = RegExp(r'\((\d)\)').firstMatch(s);
     return m != null ? int.parse(m.group(1)!) : 3;
   }
 
+  String _riskDescription(int level) {
+    switch (level) {
+      case 1:
+        return '위험이 매우 낮은 단계(보수적)';
+      case 2:
+        return '위험이 낮은 단계';
+      case 3:
+        return '보통 수준의 위험';
+      case 4:
+        return '위험이 높은 단계(공격적)';
+      default:
+        return '위험이 매우 높은 단계(매우 공격적)';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final level = _riskLevelFromText(riskText).clamp(1, 5);
+    const maxLevel = 5;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
@@ -865,54 +915,62 @@ class _RiskCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text('위험수준', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('위험수준', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+              ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 140,
-                    height: 170,
-                    child: PieChart(
-                      PieChartData(
-                        centerSpaceRadius: 46,
-                        sectionsSpace: 2,
-                        sections: [
-                          PieChartSectionData(value: level.toDouble(), color: Colors.red, radius: 18, title: ''),
-                          PieChartSectionData(value: (5 - level).toDouble(), color: Colors.grey[300], radius: 18, title: ''),
-                        ],
-                      ),
+              SizedBox(
+                height: 200, // 게이지 크기
+                width: double.infinity,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: start ? 1 : 0),
+                  duration: const Duration(milliseconds: 900),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, t, __) => CustomPaint(
+                    painter: _SegmentGaugePainter(
+                      level: level,
+                      maxLevel: maxLevel,
+
+                      // 형태(내부 텍스트 공간 넉넉)
+                      coverage: 0.96,
+                      stroke: 28,
+                      gap: _toRad(3),   // ⬅️ 세그먼트 간격(더 촘촘하게)
+                      padding: 6,
+
+                      // 색상 — 🔴 빨간색
+                      inactiveColor: const Color(0xFFE7E9EE),
+                      activeColor: const Color(0xFFEF4444),
+
+                      // 배경이 어두워도 가독성 유지
+                      drawUnderlay: true,
+                      underlayColor: Colors.white70,
+
+                      // 라벨(활성 구간 칩 + 흰색 텍스트)
+                      showLabelChip: true,
+                      labelChipColor: const Color(0xB3000000),
+                      labelTextColor: Colors.white,
+                      labelFontSize: 16,
+                      labelRadialFactor: .50,
+                      labels: const ['매우 낮음', '낮음', '보통', '높음', '매우 높음'],
+
+                      // 애니메이션 진행도
+                      progress: t,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: DataTable(
-                      columnSpacing: 24, // 줄바꿈 방지 여유
-                      headingRowHeight: 28,
-                      dataRowMinHeight: 32,
-                      dataRowMaxHeight: 36,
-                      columns: const [
-                        DataColumn(label: Text('항목')),
-                        DataColumn(label: Text('값')),
-                      ],
-                      rows: [
-                        DataRow(cells: [
-                          const DataCell(Text('적용기간')),
-                          const DataCell(Text('1년', maxLines: 1, softWrap: false)), // "1 년" 줄바꿈 방지
-                        ]),
-                        DataRow(cells: [
-                          const DataCell(Text('위험레벨(1~5)')),
-                          DataCell(Text('$level')),
-                        ]),
-                        DataRow(cells: [
-                          const DataCell(Text('설명')),
-                          DataCell(Text(riskText)),
-                        ]),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text('Level $level / $maxLevel',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              // 등급 텍스트 + 설명
+              Text(
+                '위험 등급: ${level}등급 · 1(낮음) ~ $maxLevel(높음)\n${_riskDescription(level)}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.black87),
               ),
             ],
           ),
@@ -922,10 +980,171 @@ class _RiskCard extends StatelessWidget {
   }
 }
 
-/// 자산 구성 — 도넛 + 표
+/// 반원 세그먼트 게이지 (세그먼트/라벨/언더레이 지원, 🔴 빨강 적용, progress로 스윕 애니메이션)
+class _SegmentGaugePainter extends CustomPainter {
+  final int level, maxLevel;
+
+  // 형태
+  final double stroke;      // 링 두께
+  final double gap;         // 세그먼트 간격(라디안)
+  final double coverage;    // 반원 사용 비율(0~1)
+  final double padding;     // 캔버스 가장자리와의 여백(아크 외곽 기준)
+
+  // 색
+  final Color activeColor, inactiveColor;
+
+  // 언더레이
+  final bool drawUnderlay;
+  final Color underlayColor;
+
+  // 라벨
+  final List<String> labels;
+  final bool showLabelChip;
+  final Color labelChipColor;
+  final Color labelTextColor;
+  final EdgeInsets labelChipPadding;
+  final double labelFontSize;
+  final double labelRadialFactor; // 0(중심)~1(바깥)
+
+  // 진행도(0~1): 활성 세그먼트 스윕/라벨 페이드
+  final double progress;
+
+  _SegmentGaugePainter({
+    required this.level,
+    this.maxLevel = 5,
+    this.stroke = 28,
+    this.gap = 0.12,
+    this.coverage = 0.96,
+    this.padding = 6,
+    this.activeColor = const Color(0xFFEF4444), // 🔴
+    this.inactiveColor = const Color(0xFFE7E9EE),
+    this.drawUnderlay = true,
+    this.underlayColor = Colors.white70,
+    this.labels = const ['매우 낮음', '낮음', '보통', '높음', '매우 높음'],
+    this.showLabelChip = true,
+    this.labelChipColor = const Color(0x99000000),
+    this.labelTextColor = Colors.white,
+    this.labelChipPadding = const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    this.labelFontSize = 16,
+    this.labelRadialFactor = .50,
+    this.progress = 1,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = progress.clamp(0.0, 1.0);
+    // 반지름을 최대화(하단 기준) — 내부 텍스트 공간 확보
+    final double maxRByWidth = size.width / 2 - padding;
+    final double maxRByHeight = size.height - padding;
+    final double r = math.min(maxRByWidth, maxRByHeight);
+
+    final Offset c = Offset(size.width / 2, size.height - padding);
+    final Rect arc = Rect.fromCircle(center: c, radius: r);
+
+    final totalSweep = math.pi * coverage;
+    final start = math.pi + (math.pi - totalSweep) / 2; // 중앙 정렬
+    final sweepPer = totalSweep / maxLevel;
+    final int activeIdx = ((level - 1).clamp(0, maxLevel - 1)).toInt();
+
+    final base = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.butt;
+
+    // 언더레이 — 배경색과 분리
+    if (drawUnderlay) {
+      final u = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke + 8
+        ..strokeCap = StrokeCap.butt
+        ..color = underlayColor.withOpacity(0.3 + 0.7 * p);
+      canvas.drawArc(arc, start, totalSweep, false, u);
+    }
+
+    // 비활성 세그먼트 (페이드 인)
+    for (int i = 0; i < maxLevel; i++) {
+      final s = start + i * sweepPer + gap / 2;
+      final sw = sweepPer - gap;
+      canvas.drawArc(arc, s, sw, false, base..color = inactiveColor.withOpacity(0.25 + 0.75 * p));
+    }
+
+    // 활성 세그먼트 (스윕 0→목표)
+    final aStart = start + activeIdx * sweepPer + gap / 2;
+    final aSweep = (sweepPer - gap) * p;
+    canvas.drawArc(arc, aStart, aSweep, false, base..color = activeColor);
+
+    // 라벨 (진행도에 따라 페이드/칩 노출)
+    for (int i = 0; i < maxLevel; i++) {
+      final mid = start + i * sweepPer + sweepPer / 2;
+      final rMid = r - stroke * labelRadialFactor;
+      final pos = Offset(c.dx + rMid * math.cos(mid), c.dy + rMid * math.sin(mid));
+
+      final isActive = i == activeIdx;
+      final text = (i < labels.length) ? labels[i] : 'L${i + 1}';
+
+      final tp = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            color: (isActive ? labelTextColor : const Color(0xFF9AA1AE))
+                .withOpacity(isActive ? p : 0.6 * p),
+            fontWeight: isActive ? FontWeight.w900 : FontWeight.w600,
+            fontSize: isActive ? labelFontSize : (labelFontSize - 2),
+            shadows: isActive && p > .7 ? const [Shadow(blurRadius: 2, color: Colors.black38)] : null,
+          ),
+        ),
+        textDirection: ui.TextDirection.ltr,
+      )..layout();
+
+      if (isActive && showLabelChip && p > .7) {
+        final bg = Rect.fromCenter(
+          center: pos,
+          width: tp.width + labelChipPadding.horizontal,
+          height: tp.height + labelChipPadding.vertical,
+        );
+        final rr = RRect.fromRectAndRadius(bg, Radius.circular(bg.height / 2));
+        final chip = Paint()..color = labelChipColor.withOpacity(p);
+        canvas.drawRRect(rr, chip);
+        // 테두리 살짝
+        canvas.drawRRect(
+          rr,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1
+            ..color = Colors.white.withOpacity(.55 * p),
+        );
+      }
+
+      tp.paint(canvas, Offset(pos.dx - tp.width / 2, pos.dy - tp.height / 2));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SegmentGaugePainter o) =>
+      o.level != level ||
+          o.maxLevel != maxLevel ||
+          o.stroke != stroke ||
+          o.gap != gap ||
+          o.coverage != coverage ||
+          o.padding != padding ||
+          o.activeColor != activeColor ||
+          o.inactiveColor != inactiveColor ||
+          o.drawUnderlay != drawUnderlay ||
+          o.underlayColor != underlayColor ||
+          o.labels != labels ||
+          o.showLabelChip != showLabelChip ||
+          o.labelChipColor != labelChipColor ||
+          o.labelTextColor != labelTextColor ||
+          o.labelFontSize != labelFontSize ||
+          o.labelRadialFactor != labelRadialFactor ||
+          o.progress != progress;
+}
+
+/// 자산 구성 — 도넛 + 표 (주식은 토스블루) + reveal 애니메이션
 class _AssetCard extends StatelessWidget {
   final FundAssetSummary asset;
-  const _AssetCard({required this.asset});
+  final bool start; // reveal 시 true
+  const _AssetCard({required this.asset, this.start = false});
 
   @override
   Widget build(BuildContext context) {
@@ -942,32 +1161,41 @@ class _AssetCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('자산 구성 비율', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 40),
+              const SizedBox(height: 55),
               LayoutBuilder(
                 builder: (context, c) {
                   final size = math.min(c.maxWidth, 180.0);
                   return SizedBox(
                     height: size + 8,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        PieChart(
-                          PieChartData(
-                            centerSpaceRadius: size * 0.42,
-                            sectionsSpace: 2,
-                            sections: _pieSections(asset, size),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: start ? 1 : 0),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, t, __) => Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          PieChart(
+                            PieChartData(
+                              centerSpaceRadius: size * 0.42,
+                              sectionsSpace: 2,
+                              sections: _pieSectionsAnimated(asset, size, t),
+                            ),
                           ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(fmtDate(asset.baseDate),
-                                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-                            const Text('기준',
-                                style: TextStyle(fontSize: 16, color: Colors.black54, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ],
+                          Opacity(
+                            opacity: t,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(fmtDate(asset.baseDate),
+                                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                                const Text('기준',
+                                    style:
+                                    TextStyle(fontSize: 16, color: Colors.black54, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -975,10 +1203,10 @@ class _AssetCard extends StatelessWidget {
               const SizedBox(height: 50),
               _AssetTable(
                 rows: const [
-                  ('주식', tossBlue500),
-                  ('채권', tossBlue400),
-                  ('유동성', tossBlue300),
-                  ('기타', tossBlue200),
+                  ('주식', tossBlue), // 주식 토스블루
+                  ('채권', Color(0xFF16A34A)), // green
+                  ('유동성', Color(0xFFF59E0B)), // amber
+                  ('기타', Color(0xFF6B7280)), // gray
                 ],
                 values: const ['stock', 'bond', 'cash', 'etc'],
                 asset: asset,
@@ -991,15 +1219,57 @@ class _AssetCard extends StatelessWidget {
   }
 }
 
-List<PieChartSectionData> _pieSections(FundAssetSummary a, double size) {
+List<PieChartSectionData> _pieSectionsAnimated(FundAssetSummary a, double size, double t) {
+  final colorMap = <String, Color>{
+    '주식': tossBlue,
+    '채권': const Color(0xFF16A34A),
+    '유동성': const Color(0xFFF59E0B),
+    '기타': const Color(0xFF6B7280),
+  };
+
   final items = [
-    ('주식', a.stock, tossBlue500),
-    ('채권', a.bond, tossBlue400),
-    ('유동성', a.cash, tossBlue300),
-    ('기타', a.etc, tossBlue200),
+    ('주식', a.stock),
+    ('채권', a.bond),
+    ('유동성', a.cash),
+    ('기타', a.etc),
   ].where((e) => e.$2 > 0).toList();
 
-  if (items.isEmpty) items.add(('기타', 100.0, tossBlue100));
+  if (items.isEmpty) items.add(('기타', 100.0));
+  final maxVal = items.map((e) => e.$2).reduce(math.max);
+
+  return List.generate(items.length, (i) {
+    final it = items[i];
+    final isMax = it.$2 == maxVal;
+    final baseR = (size * 0.26) + (isMax ? 8 : 0);
+    return PieChartSectionData(
+      value: it.$2,
+      color: colorMap[it.$1]!,
+      radius: baseR * t, // 반지름 0→목표
+      title: '${it.$1}\n${it.$2.toStringAsFixed(1)}%',
+      titleStyle: TextStyle(color: Colors.white.withOpacity(t), fontSize: 13, fontWeight: FontWeight.w700),
+      titlePositionPercentageOffset: .48,
+      badgePositionPercentageOffset: 1.0,
+    );
+  });
+}
+
+/// (기존 정적 섹션이 필요하면 사용)
+List<PieChartSectionData> _pieSections(FundAssetSummary a, double size) {
+  final colorMap = <String, Color>{
+    '주식': tossBlue,
+    '채권': const Color(0xFF16A34A),
+    '유동성': const Color(0xFFF59E0B),
+    '기타': const Color(0xFF6B7280),
+  };
+
+  final items = [
+    ('주식', a.stock),
+    ('채권', a.bond),
+    ('유동성', a.cash),
+    ('기타', a.etc),
+  ].where((e) => e.$2 > 0).toList();
+
+  if (items.isEmpty) items.add(('기타', 100.0));
   final maxVal = items.map((e) => e.$2).reduce(math.max);
 
   return List.generate(items.length, (i) {
@@ -1007,7 +1277,7 @@ List<PieChartSectionData> _pieSections(FundAssetSummary a, double size) {
     final isMax = it.$2 == maxVal;
     return PieChartSectionData(
       value: it.$2,
-      color: it.$3,
+      color: colorMap[it.$1]!,
       radius: (size * 0.26) + (isMax ? 8 : 0),
       title: '${it.$1}\n${it.$2.toStringAsFixed(1)}%',
       titleStyle: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
@@ -1117,7 +1387,7 @@ class _StockBondTable extends StatelessWidget {
   }
 }
 
-/// 보수 및 수수료 — 3블록 카드 (가운데 블록 기존 색 유지)
+/// 보수 및 수수료 — 3블록 카드
 class _FeeCards extends StatelessWidget {
   final FundFeeInfo fee;
   const _FeeCards({required this.fee});
@@ -1279,11 +1549,20 @@ class _InfoCard extends StatelessWidget {
   );
 }
 
-/// 공시자료 카드
+/// 공시자료 카드 (타입 한글화 + PNG 아이콘) — 파일명 아래 줄에 업로드일자
 class FundDocumentUI {
   final String type, fileName, path;
   final DateTime uploadedAt;
   FundDocumentUI({required this.type, required this.fileName, required this.path, required this.uploadedAt});
+}
+
+String _localizeDocType(String type) {
+  final t = type.toLowerCase();
+  if (t.contains('summary')) return '간이투자설명서';
+  if (t.contains('terms')) return '이용약관';
+  if (t.contains('prospectus') || t.contains('설명서')) return '투자설명서';
+  if (t.contains('report')) return '보고서';
+  return type; // 기본 그대로
 }
 
 class _DocsCard extends StatelessWidget {
@@ -1313,9 +1592,30 @@ class _DocsCard extends StatelessWidget {
                 ),
               ...docs.map((d) => ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.description_outlined),
-                title: Text(d.type),
-                subtitle: Text('${d.fileName} · 업로드 ${fmtDate(d.uploadedAt)}'),
+                leading: Image.asset(
+                  'assets/icons/ic_pdf.png', // PNG 아이콘
+                  width: 22,
+                  height: 22,
+                  filterQuality: FilterQuality.medium,
+                ),
+                title: Text(_localizeDocType(d.type)),
+                isThreeLine: true,
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      d.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '업로드 ${fmtDate(d.uploadedAt)}',
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                  ],
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
                   final raw = d.path;
@@ -1382,8 +1682,10 @@ class _NoticeCard extends StatelessWidget {
 }
 
 /// 스크롤 시 뷰포트에 들어오면 슬라이드+페이드로 나타나는 위젯
+/// + builder(revealed)를 통해 자식에게 "보임" 신호 전달
 class RevealOnScroll extends StatefulWidget {
-  final Widget child;
+  final Widget? child;
+  final Widget Function(bool revealed)? builder;
   final ScrollController controller;
   final Duration duration;
   final Duration? delay;
@@ -1391,12 +1693,13 @@ class RevealOnScroll extends StatefulWidget {
 
   const RevealOnScroll({
     super.key,
-    required this.child,
     required this.controller,
+    this.child,
+    this.builder,
     this.duration = const Duration(milliseconds: 380),
     this.delay,
     this.triggerOffset = 60,
-  });
+  }) : assert(child != null || builder != null);
 
   @override
   State<RevealOnScroll> createState() => _RevealOnScrollState();
@@ -1426,6 +1729,7 @@ class _RevealOnScrollState extends State<RevealOnScroll>
       } else {
         _ac.forward();
       }
+      setState(() {});
     }
   }
 
@@ -1445,10 +1749,11 @@ class _RevealOnScrollState extends State<RevealOnScroll>
 
   @override
   Widget build(BuildContext context) {
+    final content = widget.builder != null ? widget.builder!(_revealed) : widget.child!;
     final slide = Tween<Offset>(begin: const Offset(0, .06), end: Offset.zero).animate(_curve);
     return FadeTransition(
       opacity: _curve,
-      child: SlideTransition(position: slide, child: widget.child),
+      child: SlideTransition(position: slide, child: content),
     );
   }
 }
