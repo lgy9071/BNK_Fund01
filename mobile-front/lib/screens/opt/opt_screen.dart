@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/core/services/user_service.dart';
+import 'package:mobile_front/widgets/common_loading_button.dart';
 import '../../core/constants/colors.dart';
 
 
@@ -207,10 +208,11 @@ class _OptScreenState extends State<OptScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('신원 확인'),
+        title: const Text('사용자 신원 확인'),
+        centerTitle: true,
         backgroundColor: Colors.white,
-        foregroundColor: AppColors.fontColor,
         elevation: 0,
+        // foregroundColor: AppColors.fontColor,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -287,6 +289,13 @@ class _OptScreenState extends State<OptScreen> {
                 ],
 
                 // OTP 요청 버튼
+                CommonLoadingButton(
+                  text: '인증번호 요청',
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  onPressed: _requestOtp,
+                  isLoading: _isRequestingOtp,
+                ),
+                /*
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -318,6 +327,7 @@ class _OptScreenState extends State<OptScreen> {
                     ),
                   ),
                 ),
+                */
 
                 // OTP 입력 섹션 (인증번호 전송 후에만 표시)
                 if (_otpSent) ...[
@@ -374,7 +384,14 @@ class _OptScreenState extends State<OptScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 인증 확인 버튼 
+                  // 인증 확인 버튼
+                  CommonLoadingButton(
+                    text: '인증 확인',
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    onPressed: _remainingSeconds > 0 && !_isVerifyingOtp && _currentOtp.length == 6 ? _verifyOtp : null,
+                    isLoading: _isVerifyingOtp,
+                  ),
+                  /*
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -407,6 +424,7 @@ class _OptScreenState extends State<OptScreen> {
                       ),
                     ),
                   ),
+                  */
                   const SizedBox(height: 16),
 
                   // 재전송 버튼
