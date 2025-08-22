@@ -184,9 +184,9 @@ public class MainAdminController {
     }
 
     // 공사 페이지
-    @GetMapping("/construction")
+    @GetMapping("/fund_statistics")
     public String construction() {
-        return "admin/constructionPage";
+        return "admin/fund_statistics";
     }
 
 //    @GetMapping("/fund/view/{id}")

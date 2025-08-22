@@ -61,8 +61,8 @@
             <ul class="submenu">
               <li>
                 <a
-                  th:href="@{/admin/construction}"
-                  data-url="/admin/construction"
+                  th:href="@{/admin/fund_statistics}"
+                  data-url="/admin/fund_statistics"
                   class="group_a"
                   >통계 보기</a
                 >
@@ -173,205 +173,322 @@
           </button>
         </div>
         <!-- 아코디언 토글 스크립트 -->
-        <script th:inline="javascript">
-          document
-            .querySelectorAll(".admin-aside .group-btn")
-            .forEach((btn) => {
-              btn.addEventListener("click", () => {
-                const grp = btn.closest(".menu-group");
-                // 그룹 안에 소분류 active 가 있으면(=이미 그 페이지에 있으면) 아무 동작 안 함
-                if (grp.querySelector(".group_a.active")) {
-                  return;
-                }
-                grp.classList.toggle("open");
-              });
-            });
-          function link() {
-            location.href = "/admin/adminSetting";
-          }
-          function qnaLink() {
-            location.href = "/admin/qnaList";
-          }
-          function faqLink() {
-            location.href = "/admin/faq/list";
-          }
-          function approverLink() {
-            location.href = "/admin/approval/manage";
-          }
-          function plannerLink() {
-            location.href = "/admin/approval/list";
-          }
-          function superNoticeLink() {
-            location.href = "/admin/notice/list";
-          }
-          function noticeLink() {
-            location.href = "/admin/notice/list";
-          }
-          document.addEventListener("DOMContentLoaded", () => {
-            const path = window.location.pathname.replace(/\/$/, ""); // 끝 슬래시 제거
+    <script th:inline="javascript">
+    /* ───────── 아코디언 & 활성화 표시 ───────── */
+    document.querySelectorAll(".admin-aside .group-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const grp = btn.closest(".menu-group");
+        if (grp.querySelector(".group_a.active")) return; // 현재 페이지면 토글 안함
+        grp.classList.toggle("open");
+      });
+    });
+    function link(){ location.href="/admin/adminSetting"; }
+    function qnaLink(){ location.href="/admin/qnaList"; }
+    function faqLink(){ location.href="/admin/faq/list"; }
+    function approverLink(){ location.href="/admin/approval/manage"; }
+    function plannerLink(){ location.href="/admin/approval/list"; }
+    function superNoticeLink(){ location.href="/admin/notice/list"; }
+    function noticeLink(){ location.href="/admin/notice/list"; }
 
-            // 1) 일단 기존에 붙은 active 전부 초기화
-            document
-              .querySelectorAll(
-                ".admin-aside .group-btn.active, .admin-aside .group_a.active"
-              )
+    document.addEventListener("DOMContentLoaded", () => {
+      const path = window.location.pathname.replace(/\/$/, "");
+      document.querySelectorAll(".admin-aside .group-btn.active, .admin-aside .group_a.active")
               .forEach((el) => el.classList.remove("active"));
+      document.querySelectorAll(".admin-aside [data-url]").forEach((el) => {
+        const url = el.dataset.url.replace(/\/$/, "");
+        if (!path.startsWith(url)) return;
+        const menuGroup = el.closest(".menu-group");
+        if (el.tagName === "BUTTON") {
+          el.classList.add("active"); if (menuGroup) menuGroup.classList.add("open");
+        } else {
+          el.classList.add("active");
+          if (menuGroup) {
+            menuGroup.classList.add("open");
+            const btn = menuGroup.querySelector(".group-btn");
+            if (btn) btn.classList.remove("active");
+          }
+        }
+      });
+    });
 
-            // 2) data-url 가진 모든 요소 순회
-            document
-              .querySelectorAll(".admin-aside [data-url]")
-              .forEach((el) => {
-                const url = el.dataset.url.replace(/\/$/, "");
-                if (!path.startsWith(url)) return;
-
-                const menuGroup = el.closest(".menu-group");
-
-                if (el.tagName === "BUTTON") {
-                  // 대분류 버튼
-                  el.classList.add("active");
-                  if (menuGroup) menuGroup.classList.add("open");
-                } else if (el.tagName === "A") {
-                  // 소분류 링크
-                  el.classList.add("active");
-                  if (menuGroup) {
-                    menuGroup.classList.add("open");
-                    // 소분류일 땐 그룹 버튼의 active는 제거
-                    const btn = menuGroup.querySelector(".group-btn");
-                    if (btn) btn.classList.remove("active");
-                  }
-                }
-              });
-          });
-
-// --- 모달 열고 닫기 (페이드 클래스 토글 + 스크롤 잠금) ---
-  function openCustomerModal(){
-    const m = document.getElementById('customerModal');
-    m.classList.add('is-open');
-    document.body.style.overflow = 'hidden';
-    // 초기 안내/버튼 상태 리셋
-    document.getElementById('customerResults').innerHTML =
-      '<div class="modal__empty">검색어를 입력하고 ‘검색’을 눌러주세요.</div>';
-    document.getElementById('btnCustomerPdf').disabled = true;
-    // 포커스
-    setTimeout(()=>document.getElementById('customerQuery').focus(), 0);
-    document.addEventListener('keydown', escCloseOnce);
-  }
-  function closeCustomerModal(){
-    const m = document.getElementById('customerModal');
-    m.classList.remove('is-open');
-    document.body.style.overflow = '';
-    document.removeEventListener('keydown', escCloseOnce);
-  }
-  function escCloseOnce(e){ if(e.key === 'Escape') closeCustomerModal(); }
-
-  // --- 고객 검색 (카드 클릭 시 선택/토글) ---
-  async function searchCustomers(){
-    const q = document.getElementById('customerQuery').value.trim();
-    const box = document.getElementById('customerResults');
-    const pdfBtn = document.getElementById('btnCustomerPdf');
-    pdfBtn.disabled = true;
-
-    if(!q){
-      box.innerHTML = '<div class="modal__empty">검색어를 입력해주세요.</div>';
-      return;
+    /* ───────── 고객 모달 열고/닫기 ───────── */
+    function openCustomerModal(){
+      const m = document.getElementById('customerModal');
+      m.classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+      // 리스트/상세 초기화
+      document.getElementById('customerResults').innerHTML =
+        '<div class="modal__empty">검색어를 입력하고 ‘검색’을 눌러주세요.</div>';
+      closeCustomerDetailFlyout({silent:true});
+      document.addEventListener('keydown', escCloseOnce);
     }
+    function closeCustomerModal(){
+      const m = document.getElementById('customerModal');
+      m.classList.remove('is-open');
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', escCloseOnce);
+      // 선택/상세 초기화
+      const box = document.getElementById('customerResults');
+      if (box) box.querySelectorAll('.list-row.selected').forEach(el=>el.classList.remove('selected'));
+      closeCustomerDetailFlyout({silent:true});
+    }
+    function escCloseOnce(e){ if(e.key === 'Escape') closeCustomerModal(); }
 
-    box.innerHTML = '<div class="modal__empty">검색 중...</div>';
-    try{
-      const res = await fetch(`/admin/api/customers/search?q=${encodeURIComponent(q)}`, { credentials:'include' });
-      if(!res.ok) throw new Error('search failed');
-      const data = await res.json();
+    /* ───────── 검색: 이름/이메일/전화 한 줄 리스트 ───────── */
+    async function searchCustomers(){
+      const q = document.getElementById('customerQuery').value.trim();
+      const listBox = document.getElementById('customerResults');
 
-      if(!Array.isArray(data) || data.length === 0){
-        box.innerHTML = '<div class="modal__empty">검색 결과가 없습니다.</div>';
+      closeCustomerDetailFlyout({silent:true});
+
+      if (!q){
+        listBox.innerHTML = '<div class="modal__empty" style="color:#333">검색어를 입력해주세요.</div>';
         return;
       }
+      listBox.innerHTML = '<div class="modal__empty" style="color:#333">검색 중...</div>';
 
-      const frag = document.createDocumentFragment();
-      data.forEach((c, idx) => {
-        const el = document.createElement('div');
-        el.className = 'customer-card';
-        el.innerHTML = `
-          <h4>${(c.name ?? '고객')} (${idx+1})</h4>
-          <div class="kv"><b>이메일</b><span>${c.email ?? '-'}</span></div>
-          <div class="kv"><b>전화</b><span>${c.phone ?? '-'}</span></div>
-          <div class="kv"><b>가입일</b><span>${c.joinedAt ?? '-'}</span></div>
-          <div class="kv"><b>등급</b><span>${c.grade ?? '-'}</span></div>
-          <div class="kv"><b>보유펀드</b><span>${(c.fundsCount ?? 0)}개</span></div>
-          <div class="kv" style="grid-column:1/-1;"><b>메모</b><span>${c.note ?? '-'}</span></div>
-        `;
-        el.addEventListener('click', () => {
-          // 단일 선택
-          box.querySelectorAll('.customer-card.selected').forEach(v => v.classList.remove('selected'));
-          el.classList.add('selected');
-          pdfBtn.disabled = false;
+      try{
+        const res = await fetch(`/admin/api/customers/search?q=${encodeURIComponent(q)}`, { credentials:'include' });
+        if(!res.ok) throw new Error('search failed');
+        const rows = await res.json();
+
+        if(!Array.isArray(rows) || rows.length === 0){
+          listBox.innerHTML = '<div class="modal__empty" style="color:#333">검색 결과가 없습니다.</div>';
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+        rows.forEach(r=>{
+          const el = document.createElement('div');
+          el.className = 'list-row';
+          el.innerHTML = `
+            <span class="name"  title="${r.name ?? ''}">${r.name ?? '-'}</span>
+            <span class="sep">•</span>
+            <span class="email" title="${r.email ?? ''}">${r.email ?? '-'}</span>
+            <span class="sep">•</span>
+            <span class="phone" title="${r.phone ?? ''}">${formatPhone(r.phone)}</span>
+          `;
+          el.addEventListener('click', async ()=>{
+            const prev = listBox.querySelector('.list-row.selected');
+            if (prev) prev.classList.remove('selected');
+            el.classList.add('selected');
+
+            try{
+              const dres = await fetch(`/admin/api/customers/${r.id}`, { credentials:'include' });
+              if(!dres.ok) throw new Error();
+              openCustomerDetailFlyout(await dres.json());
+            }catch(e){
+              openCustomerDetailFlyout({ name:'-', email:'-', phone:'-', username:'-' });
+            }
+          });
+          frag.appendChild(el);
         });
-        frag.appendChild(el);
-      });
-      box.innerHTML = '';
-      box.appendChild(frag);
 
-      // 검색 직후엔 첫 카드 자동 선택 (원하면 유지)
-      const first = box.querySelector('.customer-card');
-      if(first){ first.classList.add('selected'); pdfBtn.disabled = false; }
-    }catch(e){
-      console.warn(e);
-      box.innerHTML = '<div class="modal__empty">조회 중 오류가 발생했습니다.</div>';
-    }
-  }
+        listBox.innerHTML = '';
+        listBox.appendChild(frag);
 
-  // --- PDF 저장: 선택된 고객 카드만 캡처 (없으면 결과 전체) ---
-  async function exportCustomerPdf(){
-    await ensureLib('html2canvas', 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
-    await ensureLib('jspdf', 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
-
-    const { jsPDF } = window.jspdf;
-    const selected = document.querySelector('#customerResults .customer-card.selected');
-    const target = selected || document.getElementById('customerResults'); // fallback
-
-    const canvas = await window.html2canvas(target, { scale: 2, backgroundColor:'#ffffff' });
-    const img = canvas.toDataURL('image/png');
-
-    const pdf = new jsPDF({ orientation:'p', unit:'pt', format:'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 24;
-    const usableW = pageW - margin*2;
-
-    const ratio = canvas.height / canvas.width;
-    const imgW = usableW;
-    const imgH = imgW * ratio;
-
-    let y = margin;
-    // 한 장에 들어가면 한 장, 아니면 자동 새 페이지
-    if (imgH <= pageH - margin*2) {
-      pdf.addImage(img, 'PNG', margin, y, imgW, imgH, undefined, 'FAST');
-    } else {
-      // 긴 내용일 때 페이지 분할
-      let remaining = imgH;
-      let posY = y;
-      while (remaining > 0) {
-        pdf.addImage(img, 'PNG', margin, posY, imgW, imgH, undefined, 'FAST');
-        remaining -= (pageH - margin*2);
-        if (remaining > 0) { pdf.addPage(); posY = margin; }
+      }catch(e){
+        console.warn(e);
+        listBox.innerHTML = '<div class="modal__empty" style="color:#333">조회 중 오류가 발생했습니다.</div>';
       }
     }
 
-    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-    pdf.save(`고객정보_${stamp}.pdf`);
+    /* ───────── 상세 플라이아웃 (X 닫기 + 내부 PDF 버튼) ───────── */
+    function openCustomerDetailFlyout(detail){
+      closeCustomerDetailFlyout({silent:true});
+      const body = document.getElementById('customerModalBody');
+
+      const wrap = document.createElement('div');
+      wrap.id = 'customerDetailFlyout';
+      wrap.className = 'customer-detail-flyout';
+      wrap.innerHTML = `
+        <div class="flyout__header">
+          <h4 class="flyout__title">고객 상세</h4>
+          <div class="flyout__btns">
+            <button type="button" id="btnCustomerPdfFlyout" class="btn">PDF 저장</button>
+            <button type="button" class="flyout__close" aria-label="닫기">×</button>
+            </div>
+            </div>
+         <div class="flyout__content" id="customerDetailContent">
+           ${renderCustomerDetailV2(detail)}
+         </div>
+      `;
+      body.appendChild(wrap);
+
+      wrap.querySelector('.flyout__close').addEventListener('click', ()=> closeCustomerDetailFlyout());
+      wrap.querySelector('#btnCustomerPdfFlyout').addEventListener('click', ()=> exportCustomerPdf('customerDetailFlyout'));
+    }
+    function closeCustomerDetailFlyout(opts={}){
+      const el = document.getElementById('customerDetailFlyout');
+      if (el) el.remove();
+      if (!opts.silent){
+        const listBox = document.getElementById('customerResults');
+        if (listBox) listBox.querySelectorAll('.list-row.selected').forEach(v=>v.classList.remove('selected'));
+      }
+    }
+
+    /* ───────── 상세 렌더 & 유틸 ───────── */
+function renderCustomerDetail(d){
+  // funds: [{name, assetAmount, subscribedAt}], firstSubscribedAt, totalAssetAmount
+  const funds = Array.isArray(d.funds) ? d.funds : [];
+
+  const totalAmt = (d.totalAssetAmount != null)
+    ? Number(d.totalAssetAmount)
+    : funds.reduce((s,f)=> s + (Number(f.assetAmount)||0), 0);
+
+  // 최초 가입일: 서버가 주면 사용, 없으면 funds에서 MIN
+   const firstDt = d.firstSubscribedAt
+    || (funds.map(f=>f.firstSubscribedAt).filter(Boolean).sort()[0] || null);
+
+  const dday = firstDt ? computeDday(firstDt) : '-';
+
+  const fundNames = funds.map(f => escapeHtml(f.name || '-'));
+  const chips = fundNames.length
+    ? `<div class="chips">${fundNames.map(n=>`<span class="chip">${n}</span>`).join('')}</div>`
+    : '-';
+
+  return `
+    <h4 class="section-title" style="margin-top:0">기본 정보</h4>
+    <div class="kv"><b>이름</b><span>${escapeHtml(d.name ?? '-')}</span></div>
+    <div class="kv"><b>이메일</b><span>${escapeHtml(d.email ?? '-')}</span></div>
+    <div class="kv"><b>전화</b><span>${formatPhone(d.phone)}</span></div>
+    <div class="kv"><b>아이디</b><span>${escapeHtml(d.username ?? '-')}</span></div>
+
+    <h4 class="section-title">펀드 가입 정보</h4>
+    <div class="kv"><b>가입 펀드</b><span>${chips}</span></div>
+    <div class="kv"><b>자산 규모</b><span>${formatKRW(totalAmt)}</span></div>
+    <div class="kv"><b>가입 기간</b><span>${firstDt ? `${dday} (최초 ${formatDate(firstDt)})` : '-'}</span></div>
+  `;
+}
+
+window._lastCustomerDetail = null;
+
+function renderCustomerDetailV2(d){
+  try{
+    window._lastCustomerDetail = d;
+
+    const funds = Array.isArray(d?.funds) ? d.funds : [];
+
+    // 총 자산(서버 totalAssetAmount 우선, 없으면 funds 합)
+    const totalAmt =
+      Number.isFinite(Number(d?.totalAssetAmount))
+        ? Number(d.totalAssetAmount)
+        : funds.reduce((s,f)=> s + (Number(f?.assetAmount)||0), 0);
+
+    // 최초 가입일: 전체(firstSubscribedAt) 없으면 각 펀드의 firstSubscribedAt 중 최솟값
+    const firstDt =
+      d?.firstSubscribedAt ||
+      (funds.map(f=>f?.firstSubscribedAt).filter(Boolean).sort()[0] || null);
+
+    const dday = firstDt ? computeDday(firstDt) : '-';
+
+    // 가입 펀드명 칩
+    const chips = funds.length
+      ? `<div class="chips">${funds.map(f=>`<span class="chip">${escapeHtml(f?.name||'-')}</span>`).join('')}</div>`
+      : '-';
+
+    return `
+      <h4 class="section-title" style="margin-top:0">기본 정보</h4>
+      <div class="kv"><b>이름</b><span>${escapeHtml(d?.name ?? '-')}</span></div>
+      <div class="kv"><b>이메일</b><span>${escapeHtml(d?.email ?? '-')}</span></div>
+      <div class="kv"><b>전화</b><span>${formatPhone(d?.phone)}</span></div>
+      <div class="kv"><b>아이디</b><span>${escapeHtml(d?.username ?? '-')}</span></div>
+
+      <h4 class="section-title">펀드 가입 정보</h4>
+      <div class="kv"><b>가입 펀드</b><span>${chips}</span></div>
+      <div class="kv"><b>자산 규모</b><span>${formatKRW(totalAmt)}</span></div>
+      <div class="kv"><b>가입 기간</b><span>${firstDt ? `${dday} (최초 ${formatDate(firstDt)})` : '-'}</span></div>
+    `;
+  }catch(e){
+    console.warn('renderCustomerDetailV2 error', e, d);
+    // 오류가 나도 섹션은 보이게 최소 마크업 반환
+    return `
+      <h4 class="section-title" style="margin-top:0">기본 정보</h4>
+      <div class="kv"><b>이름</b><span>${escapeHtml(d?.name ?? '-')}</span></div>
+      <div class="kv"><b>이메일</b><span>${escapeHtml(d?.email ?? '-')}</span></div>
+      <div class="kv"><b>전화</b><span>${formatPhone(d?.phone)}</span></div>
+      <div class="kv"><b>아이디</b><span>${escapeHtml(d?.username ?? '-')}</span></div>
+      <h4 class="section-title">펀드 가입 정보</h4>
+      <div class="kv"><b>가입 펀드</b><span>-</span></div>
+      <div class="kv"><b>자산 규모</b><span>-</span></div>
+      <div class="kv"><b>가입 기간</b><span>-</span></div>
+    `;
+  }
+}
+
+/* ===== 유틸 ===== */
+  function computeDday(dateStr){
+    const d = new Date(dateStr);
+    if (isNaN(d)) return '-';
+    const today = new Date();
+    // 자정 기준 일수차
+    const a = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const days = Math.floor((a - b) / 86400000);
+    return `D+${Math.max(0, days)}`;
+  }
+  function formatKRW(n){
+    const v = Number(n);
+    if (!isFinite(v)) return '-';
+    return v.toLocaleString('ko-KR') + '원';
+  }
+  function formatDate(dateStr){
+    const d = new Date(dateStr); if (isNaN(d)) return '-';
+    const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${da}`;
+  }
+  function escapeHtml(s){
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  function ensureLib(globalKey, url){
-    return new Promise((resolve, reject) => {
-      if (window[globalKey]) return resolve();
-      const s = document.createElement('script');
-      s.src = url; s.async = true;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('failed to load ' + url));
-      document.head.appendChild(s);
-    });
-  }
-        </script>
+    function formatPhone(raw){
+      if(!raw) return '-';
+      const digits = String(raw).replace(/\D/g,'');
+      return digits.length === 11 ? `${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7)}` : raw;
+    }
+
+    /* ───────── PDF (상세 창만 출력) ───────── */
+    async function exportCustomerPdf(targetId='customerDetailFlyout'){
+      await ensureLib('html2canvas','https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+      await ensureLib('jspdf','https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+
+      const target = document.getElementById(targetId);
+      const content = target?.querySelector('.flyout__content');
+      if (!content){ alert('출력할 상세 내용이 없습니다.'); return; }
+
+      const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+      if (!jsPDFCtor) { alert('PDF 모듈을 불러오지 못했습니다.'); return; }
+      const canvas = await window.html2canvas(content,{ scale:2, backgroundColor:'#ffffff' });
+      const img = canvas.toDataURL('image/png');
+
+      const pdf = new jsPDF({ orientation:'p', unit:'pt', format:'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 24;
+
+      let imgW = pageW - margin*2;
+      let imgH = imgW * (canvas.height / canvas.width);
+      if (imgH > pageH - margin*2){
+        const ratio = (pageH - margin*2) / imgH;
+        imgH = pageH - margin*2; imgW = imgW * ratio;
+      }
+      pdf.addImage(img,'PNG',(pageW - imgW)/2,margin,imgW,imgH,'','FAST');
+      const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+      pdf.save(`고객상세_${stamp}.pdf`);
+    }
+
+    function ensureLib(globalKey, url){
+      return new Promise((resolve, reject) => {
+        if (window[globalKey]) return resolve();
+        const s = document.createElement('script');
+        s.src = url; s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('failed to load ' + url));
+        document.head.appendChild(s);
+      });
+    }
+    </script>
+
       </nav>
 
         <!-- 고객 조회 모달 -->
@@ -387,7 +504,6 @@
               <form id="customerSearchForm" class="modal__search" onsubmit="return false;">
                 <input id="customerQuery" type="text" placeholder="이름, 이메일, 전화번호 등으로 검색" />
                 <button type="button" onclick="searchCustomers()">검색</button>
-                <button type="button" id="btnCustomerPdf" onclick="exportCustomerPdf()" disabled>PDF 저장</button>
               </form>
 
               <div id="customerResults" class="modal__results">

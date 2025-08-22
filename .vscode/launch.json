@@ -36,6 +36,17 @@
       "mainClass": "com.example.fund.BnkProject02Application",
       "projectName": "server",
       "args": "",
+      "envFile": "${workspaceFolder}/.env",
+      "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=55469 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=server"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-WebsocketApplication<websocket>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.demo.WebsocketApplication",
+      "projectName": "websocket",
+      "args": "",
       "envFile": "${workspaceFolder}/.env"
     }
   ]

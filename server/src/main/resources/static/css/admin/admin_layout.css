@@ -372,7 +372,6 @@ body {
   display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;border:1px solid #e6eef6;
   border-radius:12px;background:#fff;margin-bottom:10px;cursor:pointer
 }
-.customer-card.selected{border-color:#4f8cff;box-shadow:0 0 0 3px rgba(79,140,255,.15)}
 .customer-card h4{grid-column:1/-1;margin:0 0 6px;font-size:16px;color:#12344d}
 .kv{display:flex;gap:8px}.kv b{min-width:72px;color:#425466}
 
@@ -415,3 +414,34 @@ a h1.semi-title {
   border: none !important;
   color: #fff; 
 }
+
+/* 검색 결과 리스트: 한 줄, 축약, #333 */
+.customer-list{ border:1px solid #edf2f7;border-radius:12px;overflow:auto;background:#fbfdff }
+
+/* 리스트 줄표시(#333) — 기존과 동일 */
+.list-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer;color:#333;font-size:14px;line-height:1.6}
+.list-row .name,.list-row .email,.list-row .phone{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;color:#333}
+.list-row .name{flex:0 1 28%}.list-row .email{flex:1 1 52%}.list-row .phone{flex:0 0 auto}
+.list-row .sep{color:#bbb}.list-row:hover{background:#f7fafc}.list-row.selected{background:#eef6ff;border-left:3px solid #4f8cff}
+
+/* 상세 플라이아웃 사이즈 업 */
+.modal__body{position:relative}
+.customer-detail-flyout{
+  position:absolute; right:12px; top:76px; z-index:3;
+  width:min(760px,96%); max-height:72vh; overflow:auto; /* ← 스크롤 보장 */
+  background:#fff; border:1px solid #e6eef6; border-radius:14px;
+  box-shadow:0 12px 30px rgba(0,0,0,.18);
+}
+.customer-detail-flyout .flyout__header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #edf2f7}
+.customer-detail-flyout .flyout__title{margin:0;font-size:18px;font-weight:800;color:#0f3a53}
+.customer-detail-flyout .flyout__btns{display:flex;gap:8px}
+.customer-detail-flyout .flyout__close{background:transparent;border:0;font-size:20px;cursor:pointer;line-height:1}
+.customer-detail-flyout .flyout__content{padding:14px 16px;color:#333}
+
+/* 섹션 타이틀 & key-value rows */
+.section-title{margin:12px 0 8px;font-size:15px;color:#0f3a53;font-weight:800}
+.kv{display:flex;gap:10px;margin:6px 0}.kv b{min-width:92px;color:#425466}
+
+/* 칩(가입 펀드명) */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 10px;border-radius:999px;background:#f1f5f9;border:1px solid #e6eef6;font-size:13px}
