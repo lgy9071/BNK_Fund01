@@ -298,7 +298,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
     if (data == null) {
       return const Scaffold(
         backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: tossBlue,)),
       );
     }
     final isUp = data!.daily.navChangeRate1d >= 0;

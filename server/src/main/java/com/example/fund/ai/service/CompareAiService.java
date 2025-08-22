@@ -32,47 +32,46 @@ public class CompareAiService {
   }
 
   public String fundsCompare(List<String> fundIds, Integer investType) {
-    /*
-    List<FundPolicyResponseDTO> compareList = new ArrayList<>();
 
-    // 펀드 ID리스트를 FundResponseDTO 리스트로 변환하는 for문
-    for (String id : fundIds) {
-      Fund fund = fundRepository.findById(id)
-          .orElseThrow(() -> new RuntimeException("Fund not found: " + id)); // 예외처리
+    // List<FundPolicyResponseDTO> compareList = new ArrayList<>();
 
-      FundReturn fundReturn = fundReturnRepository.findByFund_FundId(id);
-      if (fundReturn == null) {
-        throw new RuntimeException("Fund return not found: " + id); // 예외처리
-      }
+    // // 펀드 ID리스트를 FundResponseDTO 리스트로 변환하는 for문
+    // for (String id : fundIds) {
+    // Fund fund = fundRepository.findById(id)
+    // .orElseThrow(() -> new RuntimeException("Fund not found: " + id)); // 예외처리
 
-      FundPolicyResponseDTO dto = FundPolicyResponseDTO.builder()
-          .fundId(fund.getFundId())
-          .fundName(fund.getFundName())
-          .fundType(fund.getFundType())
-          .investmentRegion(fund.getInvestmentRegion())
-          .establishDate(fund.getEstablishDate())
-          .launchDate(fund.getLaunchDate())
-          .nav(fund.getNav())
-          .aum(fund.getAum())
-          .totalExpenseRatio(fund.getTotalExpenseRatio())
-          .riskLevel(fund.getRiskLevel())
-          .managementCompany(fund.getManagementCompany())
-          .return1m(fundReturn.getReturn1m())
-          .return3m(fundReturn.getReturn3m())
-          .return6m(fundReturn.getReturn6m())
-          .return12m(fundReturn.getReturn12m())
-          .returnSince(fundReturn.getReturnSince())
-          .build();
+    // FundReturn fundReturn = fundReturnRepository.findByFund_FundId(id);
+    // if (fundReturn == null) {
+    // throw new RuntimeException("Fund return not found: " + id); // 예외처리
+    // }
 
-      compareList.add(dto);
-    }
-    String user_Invert = invertConvert(investType); // invert를 String으로 변환
-    String message = buildFundComparisonPrompt(compareList, user_Invert); // 프롬프트 작성 함수 호출
-    String result = talk(message);
+    // FundPolicyResponseDTO dto = FundPolicyResponseDTO.builder()
+    // .fundId(fund.getFundId())
+    // .fundName(fund.getFundName())
+    // .fundType(fund.getFundType())
+    // .investmentRegion(fund.getInvestmentRegion())
+    // .establishDate(fund.getEstablishDate())
+    // .launchDate(fund.getLaunchDate())
+    // .nav(fund.getNav())
+    // .aum(fund.getAum())
+    // .totalExpenseRatio(fund.getTotalExpenseRatio())
+    // .riskLevel(fund.getRiskLevel())
+    // .managementCompany(fund.getManagementCompany())
+    // .return1m(fundReturn.getReturn1m())
+    // .return3m(fundReturn.getReturn3m())
+    // .return6m(fundReturn.getReturn6m())
+    // .return12m(fundReturn.getReturn12m())
+    // .returnSince(fundReturn.getReturnSince())
+    // .build();
 
-    return result;
-    */
+    // compareList.add(dto);
+    // }
+    // String user_Invert = invertConvert(investType); // invert를 String으로 변환
+    // String message = buildFundComparisonPrompt(compareList, user_Invert); // 프롬프트
+    // 작성 함수 호출
+    // String result = talk(message);
 
+    // return result;
     return "";
   }
 

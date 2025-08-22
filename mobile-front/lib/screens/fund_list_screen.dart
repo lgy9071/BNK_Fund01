@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 
 import 'package:mobile_front/core/services/fund_service.dart';
 import 'package:mobile_front/models/api_response.dart';
+import 'package:mobile_front/models/compare_fund_view.dart';
 import 'package:mobile_front/models/fund_list_item.dart';
+import 'package:mobile_front/screens/compare_sheets.dart';
 
 import 'fund_detail_screen.dart';
 
@@ -127,6 +129,9 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
   final _svc = FundService();
   final _searchCtrl = TextEditingController();
   final _debouncer = _Debouncer(const Duration(milliseconds: 350));
+  final _searchFocus = FocusNode();
+
+  bool _fabOpen = false; // ✅ FAB 메뉴 열림 상태
 
   // 새로고침 더 가볍게 트리거
   final _refreshKey = GlobalKey<RefreshIndicatorState>();
@@ -161,6 +166,34 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
   int _firstPageCount = 0;
   bool _animateFirstPage = true;
 
+  // 선택된 펀드들( fundId 기준 )
+  final Set<String> _picked = {};
+
+  //토글
+  void _togglePick(String fundId) {
+    final already = _picked.contains(fundId);
+
+    // 3개째 추가를 막고 안내
+    if (!already && _picked.length >= 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('최대 2개까지만 담을 수 있어요.')),
+      );
+      return;
+    }
+
+    setState(() {
+      if (already) {
+        _picked.remove(fundId);   // 선택 해제는 항상 허용
+      } else {
+        _picked.add(fundId);      // 2개 이하일 때만 추가
+      }
+    });
+  }
+
+  //선택됨 여부
+  bool _isPicked(String fundId) => _picked.contains(fundId);
+
+
   @override
   void initState() {
     super.initState();
@@ -194,6 +227,7 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
 
   @override
   void dispose() {
+    _searchFocus.dispose();
     _searchCtrl.dispose();
     _debouncer.dispose();
     _scroll.dispose();
@@ -298,6 +332,7 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
                               widthFactor: 0.86,
                               child: TextField(
                                 controller: _searchCtrl,
+                                focusNode: _searchFocus,
                                 onChanged: (_) => _debouncer.run(() => _load(page: 0)),
                                 onSubmitted: (_) => _load(page: 0),
                                 textInputAction: TextInputAction.search,
@@ -330,7 +365,7 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
                             child: _ChipsRow(
                               items: _typeChips,
                               selected: _selType,
-                              onSelected: (v) { setState(() => _selType = v); _load(page: 0); },
+                              onSelected: (v) {FocusScope.of(context).unfocus(); setState(() => _selType = v); _load(page: 0); },
                               leadingBuilder: (t, sel) {
                                 final path = chipIconPaths[t];
                                 if (path == null) {
@@ -365,231 +400,340 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: LayoutBuilder(
-        builder: (context, _) {
-          final screenH = MediaQuery.of(context).size.height;
-          final headerH = (screenH * 0.33).clamp(220.0, 380.0);
+      floatingActionButton: _picked.isEmpty
+          ? null
+          : _CompareFab(
+        open: _fabOpen,
+        canOpen: _picked.length >= 2,
+        selectedCount: _picked.length,
+        onCompare: () {
+          final selected = _items.where((f) => _picked.contains(f.fundId)).toList();
 
-          return AnimatedBuilder(
-            animation: _scroll,
-            builder: (context, __) {
-              final offset = _scroll.hasClients ? _scroll.offset : 0.0;
-              // 헤더가 위로 이동하는 거리(0 ~ headerH)
-              final y = offset.clamp(0.0, headerH);
+          // JoinFund -> CompareFundView 매핑
+          final views = selected.map((f) {
+            final risk = f.badges.firstWhere(
+                  (x) => x.startsWith('위험'),
+              orElse: () => '위험(-)',
+            );
+            return CompareFundView(
+              fundId: f.fundId,
+              name: f.name,
+              type: f.type,
+              managementCompany: f.subName.isEmpty ? null : f.subName,
+              riskText: risk,
+              return1m: f.return1m,
+              return3m: f.return3m,
+              return12m: f.return12m,
+            );
+          }).toList();
 
-              // 헤더 노출 비율 t: 1(완전 노출) ~ 0(완전 숨김)
-              final t = (1.0 - (y / headerH)).clamp(0.0, 1.0);
+          showCompareModal(context, views);
+        },
 
-              // 첫 카드 위 파스텔 배경 노출 여백(최대 20 → 0)
-              const double kRevealGapMax = 15.0;
-              final revealGap = kRevealGapMax * t;
+        onAiCompare: () {
+          final selected = _items.where((f) => _picked.contains(f.fundId)).toList();
+          final views = selected.map((f) => CompareFundView(
+            fundId: f.fundId,
+            name: f.name,
+            type: f.type,
+            managementCompany: f.subName.isEmpty ? null : f.subName,
+            riskText: f.badges.firstWhere((x) => x.startsWith('위험'), orElse: () => '위험(-)'),
+            return1m: f.return1m,
+            return3m: f.return3m,
+            return12m: f.return12m,
+          )).toList();
 
-              // 헤더가 올라간 만큼 + 추가 여백 + 기본여백(8)
-              const double kHeaderBottomPad = 8.0;   // 필요하면 0~12 안에서 조절
-              final topPad = kHeaderBottomPad + (headerH - y) + revealGap;
-
-              // 1) 스피너 위치 계산 (0 ~ topPad 범위로 안전하게)
-              final double spinnerY = (topPad - 12).clamp(0.0, topPad).toDouble();
-
-              // 2) RefreshIndicator에서 사용
-              edgeOffset: topPad;
-              displacement: spinnerY;
-
-              return (!_initialized && _loading)
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                key: _refreshKey,
-                onRefresh: () => _load(page: 0),
-                // 스피너를 헤더 바로 아래에서 보이게
-                edgeOffset: headerH,
-                displacement: headerH + 12,
-                color: tossBlue,
-                backgroundColor: Colors.white,
-                strokeWidth: 2.6,
-                notificationPredicate: (n) => n.depth == 0,
-                child: Container(
-                  color: pastel(tossBlue), // 리스트 배경
-                  child: NotificationListener<ScrollNotification>(
-                    // "살짝만" 당겨도 새로고침
-                    onNotification: (n) {
-                      final atTop = n.metrics.extentBefore == 0;
-
-                      if (atTop) {
-                        if (n is OverscrollNotification && n.overscroll < 0) {
-                          _pullAccum += -n.overscroll;
-                        } else if (n is ScrollUpdateNotification) {
-                          final d = n.scrollDelta ?? 0;
-                          if (d < 0) _pullAccum += -d;
-                        }
-                        if (!_autoRefreshing && !_loading && _pullAccum > 8) {
-                          _autoRefreshing = true;
-                          _refreshKey.currentState?.show();
-                        }
-                      }
-                      if (n is ScrollEndNotification) {
-                        _pullAccum = 0.0;
-                        _autoRefreshing = false;
-                      }
-                      return false;
-                    },
-                    child: CustomScrollView(
-                      controller: _scroll,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        // ① 헤더를 스크롤 콘텐츠 안으로 포함
-                        SliverToBoxAdapter(
-                          child: Container(
-                            color: Colors.white,
-                            child: _buildHeader(headerH),
-                          ),
-                        ),
-                        // ② 목록 (separator는 각 아이템 하단 padding으로 대체)
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                                  (ctx, i) {
-                                if (i == _items.length) {
-                                  if (_loading) {
-                                    return const Padding(
-                                      padding: EdgeInsets.all(16),
-                                      child: Center(child: CircularProgressIndicator()),
-                                    );
-                                  }
-                                  if (!(_page?.hasNext ?? false)) {
-                                    return const SizedBox(height: 24);
-                                  }
-                                  return const SizedBox.shrink();
-                                }
-
-                                final f = _items[i];
-
-                                Animation<double> it;
-                                if (_animateFirstPage && i < _firstPageCount) {
-                                  final start = (i * 0.06).clamp(0.0, 0.9);
-                                  final end = (start + 0.4).clamp(0.0, 1.0);
-                                  it = CurvedAnimation(
-                                    parent: _listCtl,
-                                    curve: Interval(start, end, curve: Curves.easeOut),
-                                  );
-                                } else {
-                                  it = const AlwaysStoppedAnimation(1.0);
-                                }
-
-                                final card = _Pressable(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: Material(
-                                      color: Colors.white,
-                                      surfaceTintColor: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () {
-                                          HapticFeedback.lightImpact();
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => FundDetailScreen(
-                                                fundId: f.fundId,
-                                                title: f.name,
-                                              ),
-                                            ),
+          showAiCompareModal(context, views);
+        },
+        onBlocked: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('최소 2개 이상 담아야 비교할 수 있어요.')),
+          );
+        },
+        onMenuOpenChanged: (open) {            // ✅ FAB에서 요청 받음
+          if (mounted) setState(() => _fabOpen = open);
+        },
+      ),
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Stack(
+          children: [
+            LayoutBuilder(
+              builder: (context, _) {
+                final screenH = MediaQuery.of(context).size.height;
+                final headerH = (screenH * 0.33).clamp(220.0, 380.0);
+        
+                return AnimatedBuilder(
+                  animation: _scroll,
+                  builder: (context, __) {
+                    final offset = _scroll.hasClients ? _scroll.offset : 0.0;
+                    // 헤더가 위로 이동하는 거리(0 ~ headerH)
+                    final y = offset.clamp(0.0, headerH);
+        
+                    // 헤더 노출 비율 t: 1(완전 노출) ~ 0(완전 숨김)
+                    final t = (1.0 - (y / headerH)).clamp(0.0, 1.0);
+        
+                    // 첫 카드 위 파스텔 배경 노출 여백(최대 20 → 0)
+                    const double kRevealGapMax = 15.0;
+                    final revealGap = kRevealGapMax * t;
+        
+                    // 헤더가 올라간 만큼 + 추가 여백 + 기본여백(8)
+                    const double kHeaderBottomPad = 8.0;   // 필요하면 0~12 안에서 조절
+                    final topPad = kHeaderBottomPad + (headerH - y) + revealGap;
+        
+                    // 1) 스피너 위치 계산 (0 ~ topPad 범위로 안전하게)
+                    final double spinnerY = (topPad - 12).clamp(0.0, topPad).toDouble();
+        
+                    // 2) RefreshIndicator에서 사용
+                    edgeOffset: topPad;
+                    displacement: spinnerY;
+        
+                    return (!_initialized && _loading)
+                        ? const Center(child: CircularProgressIndicator(color: tossBlue,))
+                        : RefreshIndicator(
+                      key: _refreshKey,
+                      onRefresh: () => _load(page: 0),
+                      // 스피너를 헤더 바로 아래에서 보이게
+                      edgeOffset: headerH,
+                      displacement: headerH + 12,
+                      color: tossBlue,
+                      backgroundColor: Colors.white,
+                      strokeWidth: 2.6,
+                      notificationPredicate: (n) => n.depth == 0,
+                      child: Container(
+                        color: pastel(tossBlue), // 리스트 배경
+                        child: NotificationListener<ScrollNotification>(
+                          // "살짝만" 당겨도 새로고침
+                          onNotification: (n) {
+                            final atTop = n.metrics.extentBefore == 0;
+        
+                            if (atTop) {
+                              if (n is OverscrollNotification && n.overscroll < 0) {
+                                _pullAccum += -n.overscroll;
+                              } else if (n is ScrollUpdateNotification) {
+                                final d = n.scrollDelta ?? 0;
+                                if (d < 0) _pullAccum += -d;
+                              }
+                              if (!_autoRefreshing && !_loading && _pullAccum > 8) {
+                                _autoRefreshing = true;
+                                _refreshKey.currentState?.show();
+                              }
+                            }
+                            if (n is ScrollEndNotification) {
+                              _pullAccum = 0.0;
+                              _autoRefreshing = false;
+                            }
+                            return false;
+                          },
+                          child: CustomScrollView(
+                            controller: _scroll,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                            slivers: [
+                              // ① 헤더를 스크롤 콘텐츠 안으로 포함
+                              SliverToBoxAdapter(
+                                child: Container(
+                                  color: Colors.white,
+                                  child: _buildHeader(headerH),
+                                ),
+                              ),
+                              // ② 목록 (separator는 각 아이템 하단 padding으로 대체)
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                        (ctx, i) {
+                                      if (i == _items.length) {
+                                        if (_loading) {
+                                          return const Padding(
+                                            padding: EdgeInsets.all(16),
+                                            child: Center(child: CircularProgressIndicator(color: tossBlue,)),
                                           );
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(12),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                      color: tossBlue.withOpacity(0.12),
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Text(
-                                                      _divisionOf(f),
-                                                      style: const TextStyle(
-                                                        fontSize: 10,
-                                                        color: tossBlue,
-                                                        fontWeight: FontWeight.w700,
-                                                      ),
-                                                    ),
+                                        }
+                                        if (!(_page?.hasNext ?? false)) {
+                                          return const SizedBox(height: 24);
+                                        }
+                                        return const SizedBox.shrink();
+                                      }
+        
+                                      final f = _items[i];
+        
+                                      Animation<double> it;
+                                      if (_animateFirstPage && i < _firstPageCount) {
+                                        final start = (i * 0.06).clamp(0.0, 0.9);
+                                        final end = (start + 0.4).clamp(0.0, 1.0);
+                                        it = CurvedAnimation(
+                                          parent: _listCtl,
+                                          curve: Interval(start, end, curve: Curves.easeOut),
+                                        );
+                                      } else {
+                                        it = const AlwaysStoppedAnimation(1.0);
+                                      }
+        
+                                      final selected = _isPicked(f.fundId);
+        
+                                      final card = _Pressable(
+                                        child: Material(
+                                          color: Colors.white,
+                                          // ✅ 모서리 라운드 + 테두리를 Material shape로 처리 (잘림 방지)
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(14),
+                                            side: selected
+                                                ? const BorderSide(color: tossBlue, width: 1.6)
+                                                : BorderSide.none,
+                                          ),
+                                          clipBehavior: Clip.antiAlias, // inkwell 클립 일치
+                                          child: InkWell(
+                                            onTap: () {
+                                              HapticFeedback.lightImpact();
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => FundDetailScreen(
+                                                    fundId: f.fundId,
+                                                    title: f.name,
                                                   ),
-                                                  const Spacer(),
-                                                  if (f.launchedAt != null)
-                                                    Text('설정일 ${_fmtDate(f.launchedAt!)}',
-                                                        style: const TextStyle(fontSize: 12)),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Text(
-                                                f.name,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                f.subName,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                  fontSize: 12,
                                                 ),
-                                              ),
-                                              const SizedBox(height: 10),
-                                              Row(
+                                              );
+                                            },
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(12),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  Wrap(
-                                                    spacing: 6,
-                                                    runSpacing: 6,
+                                                  // 위 라벨/설정일 행 (그대로)
+                                                  Row(
                                                     children: [
-                                                      if (f.badges.any((b) => b.startsWith('위험')))
-                                                        _badgeChip(f.badges.firstWhere((b) => b.startsWith('위험'))),
-                                                      _badgeChip(f.type),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                        decoration: BoxDecoration(
+                                                          color: tossBlue.withOpacity(0.12),
+                                                          borderRadius: BorderRadius.circular(8),
+                                                        ),
+                                                        child: Text(
+                                                          _divisionOf(f),
+                                                          style: const TextStyle(
+                                                            fontSize: 10,
+                                                            color: tossBlue,
+                                                            fontWeight: FontWeight.w700,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const Spacer(),
+                                                      if (f.launchedAt != null)
+                                                        Text('설정일 ${_fmtDate(f.launchedAt!)}',
+                                                            style: const TextStyle(fontSize: 12)),
                                                     ],
                                                   ),
-                                                  const Spacer(),
-                                                  const Text('1개월 수익률',
-                                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                                                  const SizedBox(width: 8),
-                                                  Text('${f.return1m.toStringAsFixed(2)}%', style: _ret(f.return1m)),
+                                                  const SizedBox(height: 6),
+        
+                                                  // 제목/서브 (그대로)
+                                                  Text(
+                                                    f.name,
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    f.subName,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+        
+                                                  const SizedBox(height: 10),
+        
+                                                  // ✅ 위험/유형 칩 + 담기 버튼을 같은 라인으로 (행 높이 고정)
+                                                  Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    children: [
+                                                      // 칩들
+                                                      Flexible(
+                                                        child: Wrap(
+                                                          spacing: 6,
+                                                          runSpacing: 6,
+                                                          alignment: WrapAlignment.start,
+                                                          crossAxisAlignment: WrapCrossAlignment.center,
+                                                          children: [
+                                                            if (f.badges.any((b) => b.startsWith('위험')))
+                                                              _badgeChip(f.badges.firstWhere((b) => b.startsWith('위험'))),
+                                                            _badgeChip(f.type),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+        
+                                                    ],
+                                                  ),
+        
+                                                  const SizedBox(height: 15),
+        
+                                                  // 수익률 행 (그대로)
+                                                  Row(
+                                                    children: [
+                                                      // ✅ 칩 스타일 "담기+" 버튼 (선택 시 체크만)
+                                                      _PickChipButton(
+                                                        selected: selected,
+                                                        enabled: selected || _picked.length < 2,  // 2개 꽉 찼으면 새 추가만 비활성
+                                                        onTap: () {
+                                                          HapticFeedback.selectionClick();
+                                                          _togglePick(f.fundId);
+                                                        },
+                                                      ),
+                                                      const Spacer(),
+                                                      const Text('1개월 수익률',
+                                                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                                      const SizedBox(width: 8),
+                                                      Text('${f.return1m.toStringAsFixed(2)}%', style: _ret(f.return1m)),
+                                                    ],
+                                                  ),
                                                 ],
                                               ),
-                                            ],
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ),
+                                      );
+        
+                                      // separator 대체: 아이템 하단 여백
+                                      return __SlideFade(
+                                        t: it,
+                                        dy: .06,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(bottom: 12),
+                                          child: card,
+                                        ),
+                                      );
+                                    },
+                                    childCount: _items.length + 1,
                                   ),
-                                );
-
-                                // separator 대체: 아이템 하단 여백
-                                return __SlideFade(
-                                  t: it,
-                                  dy: .06,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: card,
-                                  ),
-                                );
-                              },
-                              childCount: _items.length + 1,
-                            ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
+                );
+        
+              },
+            ),
+            // ✅ 투명 배리어 (열렸을 때만 깔려서 뒤 터치 차단 + 탭하면 닫힘)
+            if (_fabOpen)
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,  // ← 투명 영역도 터치 흡수
+                  onTap: () => setState(() => _fabOpen = false), // 배리어 탭 시 닫기
+                  child: const SizedBox.shrink(),
                 ),
-              );
-            },
-          );
-
-        },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -685,3 +829,204 @@ class _ChipsRow extends StatelessWidget {
     );
   }
 }
+
+class _CompareFab extends StatefulWidget {
+  final bool open;
+  final bool canOpen;            // 2개 이상 담겼는지
+  final int selectedCount;       // 담긴 개수 배지 표시용
+  final VoidCallback onCompare;  // 펀드 비교
+  final VoidCallback onAiCompare;// AI 비교
+  final VoidCallback onBlocked;  // 2개 미만일 때 안내
+  final void Function(bool open)? onMenuOpenChanged;
+
+  const _CompareFab({
+    required this.open,
+    required this.canOpen,
+    required this.selectedCount,
+    required this.onCompare,
+    required this.onAiCompare,
+    required this.onBlocked,
+    this.onMenuOpenChanged,
+  });
+
+  @override
+  State<_CompareFab> createState() => _CompareFabState();
+}
+
+class _CompareFabState extends State<_CompareFab> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctl;
+  late final Animation<double> _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl = AnimationController(vsync: this, duration: const Duration(milliseconds: 220));
+    _t = CurvedAnimation(parent: _ctl, curve: Curves.easeOutCubic);
+    // 시작 상태 동기화
+    if (widget.open) _ctl.value = 1.0;
+  }
+
+  @override
+  void didUpdateWidget(covariant _CompareFab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // ✅ 외부 open 값이 바뀌면 애니메이션만 맞춤
+    if (oldWidget.open != widget.open) {
+      if (widget.open) {
+        _ctl.forward();
+      } else {
+        _ctl.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  void _requestToggle() {
+    FocusScope.of(context).unfocus(); // 키보드 먼저 내리기
+    if (!widget.canOpen) {
+      widget.onBlocked();
+      return;
+    }
+    // ✅ 내부에서 상태를 직접 바꾸지 말고 "요청"만 부모에 알림
+    widget.onMenuOpenChanged?.call(!widget.open);
+  }
+
+  Widget _miniPill(String label, IconData icon, VoidCallback onTap, {double width = 132}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          widget.onMenuOpenChanged?.call(false); // ✅ 먼저 닫기 요청
+          onTap();
+        },
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: tossBlue.withOpacity(0.7), width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: const Color(0xFF0F172A)),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(label, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool open = widget.open;
+
+    return SizedBox(
+      width: 88,
+      height: open ? 220 : 88,
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        clipBehavior: Clip.none,
+        children: [
+          // 펼쳐지는 메뉴
+          Positioned(
+            right: 0, bottom: 72,
+            child: IgnorePointer(
+              ignoring: !open,
+              child: FadeTransition(
+                opacity: _t,
+                child: SlideTransition(
+                  position: Tween<Offset>(begin: const Offset(0, .1), end: Offset.zero).animate(_t),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _miniPill('AI 비교', Icons.auto_awesome, widget.onAiCompare),
+                      const SizedBox(height: 8),
+                      _miniPill('비교 보기', Icons.inventory_2_rounded, widget.onCompare),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // FAB 본체
+          FloatingActionButton(
+            onPressed: _requestToggle,                   // ✅ 토글 “요청”
+            backgroundColor: tossBlue,
+            foregroundColor: Colors.white,
+            shape: const CircleBorder(),
+            elevation: 0,
+            child: AnimatedRotation(
+              duration: const Duration(milliseconds: 180),
+              turns: open ? 0.25 : 0,
+              child: const Icon(Icons.compare_arrows_rounded, size: 35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PickChipButton extends StatelessWidget {
+  final bool selected;
+  final bool enabled;      // ← 추가
+  final VoidCallback onTap;
+  const _PickChipButton({required this.selected, required this.onTap, this.enabled = true});
+
+  @override
+  Widget build(BuildContext context) {
+    const double kChipH = 30.0;
+    const double kChipW = 72.0;
+
+    final Color border = enabled || selected ? tossBlue : tossBlue.withOpacity(.35);
+    final Color bg     = selected ? tossBlue : Colors.white;
+    final Color fg     = selected ? Colors.white : (enabled ? tossBlue : tossBlue.withOpacity(.45));
+
+    return SizedBox(
+      height: kChipH,
+      child: Material(
+        color: bg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: border, width: 1.2),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled || selected ? onTap : null, // 이미 2개면 새 추가만 비활성 (해제는 가능)
+          child: SizedBox(
+            width: kChipW, height: kChipH,
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 140),
+                transitionBuilder: (c, a) => FadeTransition(opacity: a, child: c),
+                layoutBuilder: (current, prev) => Stack(
+                  alignment: Alignment.center,
+                  children: [...prev, if (current != null) current],
+                ),
+                child: selected
+                    ? Icon(Icons.check, key: const ValueKey('picked'), size: 18, color: fg)
+                    : Text('비교 담기 +', key: const ValueKey('add'),
+                    style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12.5, letterSpacing: -0.2)),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
