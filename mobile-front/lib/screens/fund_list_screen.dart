@@ -128,7 +128,12 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
   final _searchCtrl = TextEditingController();
   final _debouncer = _Debouncer(const Duration(milliseconds: 350));
 
-  // ⚠️ 컨트롤러는 내부 ListView에 연결 (NestedScrollView엔 연결하지 않음)
+  // 새로고침 더 가볍게 트리거
+  final _refreshKey = GlobalKey<RefreshIndicatorState>();
+  bool _autoRefreshing = false;
+  double _pullAccum = 0.0; // 살짝 당긴 거리 누적
+
+  // 컨트롤러는 내부 ListView에 연결 (NestedScrollView엔 연결하지 않음)
   final _scroll = ScrollController();
   bool _showHeader = true; // 헤더 노출 제어용 플래그
 
@@ -383,157 +388,203 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
               const double kHeaderBottomPad = 8.0;   // 필요하면 0~12 안에서 조절
               final topPad = kHeaderBottomPad + (headerH - y) + revealGap;
 
-              return Stack(
-                children: [
-                  // ① 리스트(항상 전체 화면)
-                  Positioned.fill(
-                    child: (!_initialized && _loading)
-                        ? const Center(child: CircularProgressIndicator())
-                        : RefreshIndicator(
-                      onRefresh: () => _load(page: 0),
-                      child: Container(
-                        color: pastel(tossBlue),
-                        child: ListView.separated(
-                          controller: _scroll,
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: EdgeInsets.fromLTRB(16, topPad, 16, 16),
-                          itemCount: _items.length + 1,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (ctx, i) {
-                            if (i == _items.length) {
-                              if (_loading) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Center(child: CircularProgressIndicator()),
-                                );
-                              }
-                              if (!(_page?.hasNext ?? false)) return const SizedBox(height: 24);
-                              return const SizedBox.shrink();
-                            }
+              // 1) 스피너 위치 계산 (0 ~ topPad 범위로 안전하게)
+              final double spinnerY = (topPad - 12).clamp(0.0, topPad).toDouble();
 
-                            final f = _items[i];
+              // 2) RefreshIndicator에서 사용
+              edgeOffset: topPad;
+              displacement: spinnerY;
 
-                            Animation<double> it;
-                            if (_animateFirstPage && i < _firstPageCount) {
-                              final start = (i * 0.06).clamp(0.0, 0.9);
-                              final end = (start + 0.4).clamp(0.0, 1.0);
-                              it = CurvedAnimation(parent: _listCtl, curve: Interval(start, end, curve: Curves.easeOut));
-                            } else {
-                              it = const AlwaysStoppedAnimation(1.0);
-                            }
+              return (!_initialized && _loading)
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                key: _refreshKey,
+                onRefresh: () => _load(page: 0),
+                // 스피너를 헤더 바로 아래에서 보이게
+                edgeOffset: headerH,
+                displacement: headerH + 12,
+                color: tossBlue,
+                backgroundColor: Colors.white,
+                strokeWidth: 2.6,
+                notificationPredicate: (n) => n.depth == 0,
+                child: Container(
+                  color: pastel(tossBlue), // 리스트 배경
+                  child: NotificationListener<ScrollNotification>(
+                    // "살짝만" 당겨도 새로고침
+                    onNotification: (n) {
+                      final atTop = n.metrics.extentBefore == 0;
 
-                            final card = _Pressable(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
-                                child: Material(
-                                  color: Colors.white,
-                                  surfaceTintColor: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => FundDetailScreen(
-                                            fundId: f.fundId,
-                                            title: f.name,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: tossBlue.withOpacity(0.12),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  _divisionOf(f),
-                                                  style: const TextStyle(
-                                                    fontSize: 10,
-                                                    color: tossBlue,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
+                      if (atTop) {
+                        if (n is OverscrollNotification && n.overscroll < 0) {
+                          _pullAccum += -n.overscroll;
+                        } else if (n is ScrollUpdateNotification) {
+                          final d = n.scrollDelta ?? 0;
+                          if (d < 0) _pullAccum += -d;
+                        }
+                        if (!_autoRefreshing && !_loading && _pullAccum > 8) {
+                          _autoRefreshing = true;
+                          _refreshKey.currentState?.show();
+                        }
+                      }
+                      if (n is ScrollEndNotification) {
+                        _pullAccum = 0.0;
+                        _autoRefreshing = false;
+                      }
+                      return false;
+                    },
+                    child: CustomScrollView(
+                      controller: _scroll,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        // ① 헤더를 스크롤 콘텐츠 안으로 포함
+                        SliverToBoxAdapter(
+                          child: Container(
+                            color: Colors.white,
+                            child: _buildHeader(headerH),
+                          ),
+                        ),
+                        // ② 목록 (separator는 각 아이템 하단 padding으로 대체)
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                                  (ctx, i) {
+                                if (i == _items.length) {
+                                  if (_loading) {
+                                    return const Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Center(child: CircularProgressIndicator()),
+                                    );
+                                  }
+                                  if (!(_page?.hasNext ?? false)) {
+                                    return const SizedBox(height: 24);
+                                  }
+                                  return const SizedBox.shrink();
+                                }
+
+                                final f = _items[i];
+
+                                Animation<double> it;
+                                if (_animateFirstPage && i < _firstPageCount) {
+                                  final start = (i * 0.06).clamp(0.0, 0.9);
+                                  final end = (start + 0.4).clamp(0.0, 1.0);
+                                  it = CurvedAnimation(
+                                    parent: _listCtl,
+                                    curve: Interval(start, end, curve: Curves.easeOut),
+                                  );
+                                } else {
+                                  it = const AlwaysStoppedAnimation(1.0);
+                                }
+
+                                final card = _Pressable(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Material(
+                                      color: Colors.white,
+                                      surfaceTintColor: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () {
+                                          HapticFeedback.lightImpact();
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => FundDetailScreen(
+                                                fundId: f.fundId,
+                                                title: f.name,
                                               ),
-                                              const Spacer(),
-                                              if (f.launchedAt != null)
-                                                Text('설정일 ${_fmtDate(f.launchedAt!)}',
-                                                    style: const TextStyle(fontSize: 12)),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            f.name,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            f.subName,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                              fontSize: 12,
                                             ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Row(
+                                          );
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Wrap(
-                                                spacing: 6,
-                                                runSpacing: 6,
+                                              Row(
                                                 children: [
-                                                  if (f.badges.any((b) => b.startsWith('위험')))
-                                                    _badgeChip(f.badges.firstWhere((b) => b.startsWith('위험'))),
-                                                  _badgeChip(f.type),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: tossBlue.withOpacity(0.12),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Text(
+                                                      _divisionOf(f),
+                                                      style: const TextStyle(
+                                                        fontSize: 10,
+                                                        color: tossBlue,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const Spacer(),
+                                                  if (f.launchedAt != null)
+                                                    Text('설정일 ${_fmtDate(f.launchedAt!)}',
+                                                        style: const TextStyle(fontSize: 12)),
                                                 ],
                                               ),
-                                              const Spacer(),
-                                              const Text('1개월 수익률',
-                                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                                              const SizedBox(width: 8),
-                                              Text('${f.return1m.toStringAsFixed(2)}%', style: _ret(f.return1m)),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                f.name,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                f.subName,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              Row(
+                                                children: [
+                                                  Wrap(
+                                                    spacing: 6,
+                                                    runSpacing: 6,
+                                                    children: [
+                                                      if (f.badges.any((b) => b.startsWith('위험')))
+                                                        _badgeChip(f.badges.firstWhere((b) => b.startsWith('위험'))),
+                                                      _badgeChip(f.type),
+                                                    ],
+                                                  ),
+                                                  const Spacer(),
+                                                  const Text('1개월 수익률',
+                                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                                  const SizedBox(width: 8),
+                                                  Text('${f.return1m.toStringAsFixed(2)}%', style: _ret(f.return1m)),
+                                                ],
+                                              ),
                                             ],
                                           ),
-                                        ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ),
-                            );
+                                );
 
-                            return __SlideFade(t: it, dy: .06, child: card);
-                          },
+                                // separator 대체: 아이템 하단 여백
+                                return __SlideFade(
+                                  t: it,
+                                  dy: .06,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: card,
+                                  ),
+                                );
+                              },
+                              childCount: _items.length + 1,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-
-                  // ② 헤더(흰 배경) — 스크롤에 맞춰 "그냥 위로" 올라가게만
-                  Positioned(
-                    top: -y,
-                    left: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      ignoring: y >= headerH - 1,
-                      child: Container(
-                        color: Colors.white,
-                        child: _buildHeader(headerH),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               );
             },
           );
