@@ -12,10 +12,16 @@ import com.example.fund.user.entity.User;
 
 public interface InvestProfileResultRepository extends JpaRepository<InvestProfileResult, Integer> {
 	Optional<InvestProfileResult> findTopByUserOrderByAnalysisDateDesc(User user);
+
 	Optional<InvestProfileResult> findByUser_UserId(Integer userId);
+
 	
 	// 사용자의 분석일 가져오기
 	@Query("select r.analysisDate from InvestProfileResult r where r.user.userId = :userId")
 	Optional<LocalDateTime> findAnalysisDateByUserId(@Param("userId") Integer userId);
-	
+
+
+	// 최신 분석 1건 (userId로)
+	Optional<InvestProfileResult> findTopByUser_UserIdOrderByAnalysisDateDesc(Integer userId);
+
 }

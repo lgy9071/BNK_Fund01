@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
-// import 'package:mobile_front/core/constants/colors.dart'; // AppColors 쓰면 주석 해제
 
 /// 공통 확인/취소 다이얼로그
 /// 반환값: 확인 = true, 취소 = false, 바깥 탭/뒤로가기 = null
@@ -48,7 +47,7 @@ Future<bool?> showAppConfirmDialog({
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 height: 1.4,
                 color: Color(0xFF6B7280),
               ),

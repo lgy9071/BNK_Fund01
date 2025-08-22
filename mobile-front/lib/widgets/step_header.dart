@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 
 /// 큰 단계(1~3) + (선택) 작은 단계(질문 진행) 헤더
@@ -27,19 +28,29 @@ class StepHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // 큰 단계 표시 (칩 스타일)
+        // 큰 단계 칩 (항상 1줄, 넘치면 통째로 축소)
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _BigStepChip(index: 1, label: '작성 동의', active: bigStep == 1),
-              _DividerArrow(),
-              _BigStepChip(index: 2, label: '확인서 작성', active: bigStep == 2),
-              _DividerArrow(),
-              _BigStepChip(index: 3, label: '분석 결과', active: bigStep == 3),
-            ],
+          padding: EdgeInsets.fromLTRB(14.w, 8.h, 14.w, 6.h),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _BigStepChip(index: 1, label: '작성 동의', active: bigStep == 1),
+                SizedBox(width: 8.w),
+                _DividerArrow(),
+                SizedBox(width: 8.w),
+                _BigStepChip(index: 2, label: '확인서 작성', active: bigStep == 2),
+                SizedBox(width: 8.w),
+                 _DividerArrow(),
+                SizedBox(width: 8.w),
+                _BigStepChip(index: 3, label: '분석 결과', active: bigStep == 3),
+              ],
+            ),
           ),
         ),
+
         // 큰 단계 프로그레스 (1/3, 2/3, 3/3)
         if (showBigProgress)
           Padding(
@@ -108,39 +119,55 @@ class _BigStepChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final base = active ? AppColors.primaryBlue : Colors.grey.shade300;
     final on = active ? Colors.white : Colors.grey.shade800;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: active ? base : Colors.transparent,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: base, width: 1),
+        borderRadius: BorderRadius.circular(999.r),
+        border: Border.all(color: base, width: 1.w),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           CircleAvatar(
-            radius: 10,
+            radius: 10.r,
             backgroundColor: active ? Colors.white : base,
-            child: Text(
-              '$index',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: active ? AppColors.primaryBlue : Colors.white,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$index',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                  color: active ? AppColors.primaryBlue : Colors.white,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 6),
-          Text(label,
+          SizedBox(width: 6.w),
+          // 라벨: 한 줄 고정(칩 내부에서도 혹시 모를 오버플로우 보호)
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.visible,
+              softWrap: false,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 fontWeight: FontWeight.w600,
                 color: on,
-              )),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
+
 
 class _DividerArrow extends StatelessWidget {
   @override

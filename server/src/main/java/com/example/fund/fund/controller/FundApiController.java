@@ -1,22 +1,12 @@
 package com.example.fund.fund.controller;
 
-import java.net.MalformedURLException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import com.example.fund.fund.dto.*;
-import org.springframework.core.io.UrlResource;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import com.example.fund.fund.service.FundDetailService;
+import com.example.fund.fund.service.FundQueryService;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +18,7 @@ import com.example.fund.fund.service.FundService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.example.fund.fund.dto.ApiResponse;
 
 @Slf4j
 @RestController
@@ -42,6 +33,27 @@ public class FundApiController {
     private final FundDocumentRepository fundDocumentRepository;
     private static final int MIN_INVEST_TYPE = 1;
     private static final int MAX_INVEST_TYPE = 5;
+
+    private final FundQueryService fundQueryService;
+    private final FundDetailService fundDetailService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<FundListResponseDTO>>> list(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        ApiResponse<List<FundListResponseDTO>> body =
+                fundQueryService.getFunds(keyword, page, size);
+        return ResponseEntity.ok(body); // ResponseEntity는 컨트롤러에서만
+    }
+
+    @GetMapping("/{fundId}")
+    public ResponseEntity<ApiResponse<FundDetailResponseDTO>> detail(@PathVariable String fundId) {
+        ApiResponse<FundDetailResponseDTO> body =
+                fundDetailService.getFundDetail(fundId);
+        return ResponseEntity.ok(body);
+    }
 
     /** 투자 성향에 따른 펀드 목록 - REST API */
     /*

@@ -11,7 +11,7 @@ import org.springframework.data.domain.Page;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaginationInfo {
-    private int page;
+    private int page;          // 0-based
     private int limit;
     private long total;
     private int totalPages;
@@ -19,14 +19,16 @@ public class PaginationInfo {
     private boolean hasPrev;
     private int currentItems;
 
-    public static PaginationInfo from(Page<?> page, int requestPage) {
+    public static PaginationInfo from(Page<?> page) {
+        int cur = page.getNumber();      // 0-based
+        int totalPages = page.getTotalPages();
         return PaginationInfo.builder()
-                .page(requestPage)
+                .page(cur)
                 .limit(page.getSize())
                 .total(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .hasNext(requestPage < page.getTotalPages())
-                .hasPrev(requestPage > 1)
+                .totalPages(totalPages)
+                .hasNext(cur < totalPages - 1) // 마지막 페이지면 false
+                .hasPrev(cur > 0)              // 첫 페이지면 false
                 .currentItems(page.getNumberOfElements())
                 .build();
     }

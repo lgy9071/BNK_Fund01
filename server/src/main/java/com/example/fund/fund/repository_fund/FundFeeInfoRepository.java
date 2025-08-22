@@ -10,11 +10,18 @@ import org.springframework.stereotype.Repository;
 import com.example.fund.fund.entity_fund.Fund;
 import com.example.fund.fund.entity_fund.FundFeeInfo;
 
+import java.util.Optional;
+
 @Repository
 public interface FundFeeInfoRepository extends JpaRepository<FundFeeInfo, Long> {
     void deleteByFund(Fund fund);
+
     
     // fund_id 기준으로 선취수수료 조회
     @Query("SELECT f.frontLoadFee FROM FundFeeInfo f WHERE f.fund.fundId = :fundId")
     BigDecimal findFrontLoadFeeByFundId(@Param("fundId") String fundId);
+
+
+    Optional<FundFeeInfo> findTopByFund_FundId(String fundId);
+
 }
