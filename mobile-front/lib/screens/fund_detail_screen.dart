@@ -18,7 +18,7 @@ import 'package:mobile_front/utils/api_client.dart';
 import 'package:mobile_front/core/services/fund_join_service.dart';
 
 import '../core/routes/routes.dart';
-import 'opt/opt_screen.dart';
+import 'create_account/create_deposit_account_screen.dart';
 
 /// ───────────────── colors
 const tossBlue = Color(0xFF0064FF);
@@ -294,7 +294,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
       switch (next) {
         case JoinNextAction.openDeposit:
           if (!mounted) return;
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const OptScreen()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateDepositAccountScreen()));
           break;
 
         case JoinNextAction.doProfile:
