@@ -5,19 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_front/core/constants/api.dart';
+import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/core/services/user_service.dart';
-import '../../core/constants/colors.dart';
+import 'package:mobile_front/widgets/common_loading_button.dart';
 
 
 class OptScreen extends StatefulWidget {
-  final String? accessToken;      // ← 추가 필요
+  final String? accessToken; // ← 추가 필요
   final UserService? userService; // ← 추가 필요
 
-  const OptScreen({
-    super.key,
-    this.accessToken,
-    this.userService,
-  });
+  const OptScreen({super.key, this.accessToken, this.userService});
 
   @override
   State<OptScreen> createState() => _OptScreenState();
@@ -53,7 +51,7 @@ class _OptScreenState extends State<OptScreen> {
     _preloadUserEmail(); // 미리 이메일을 가져와서 화면에 표시
   }
 
-  // 이메일 추출 후 otp 요청
+  // otp 요청
   Future<void> _requestOtp() async {
     setState(() => _isRequestingOtp = true);
 
@@ -100,7 +98,7 @@ class _OptScreenState extends State<OptScreen> {
     }
   }
 
-  // ✅ 수정: OTP 검증 메서드
+  // otp 인증
   Future<void> _verifyOtp() async {
     if (_currentOtp.length != 6) {
       _showSnackBar('인증번호 6자리를 모두 입력해주세요.');
@@ -118,10 +116,7 @@ class _OptScreenState extends State<OptScreen> {
       final response = await http.post(
         Uri.parse(_otpVerify),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': _userEmail!,
-          'otp': _currentOtp,
-        }),
+        body: jsonEncode({'email': _userEmail!, 'otp': _currentOtp}),
       );
 
       final data = jsonDecode(response.body);
@@ -130,7 +125,15 @@ class _OptScreenState extends State<OptScreen> {
         _showSnackBar(data['message'], isError: false);
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/next_screen');
+          // ✅ 수정: 동적 라우터로 CDD 화면으로 이동
+          Navigator.pushReplacementNamed(
+            context,
+            AppRoutes.cdd,
+            arguments: {
+              'accessToken': widget.accessToken,
+              'userService': widget.userService,
+            },
+          );
         }
       } else {
         _showSnackBar(data['message'] ?? '인증에 실패했습니다.');
@@ -192,16 +195,16 @@ class _OptScreenState extends State<OptScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('신원 확인'),
+        title: const Text('사용자 신원 확인'),
+        centerTitle: true,
         backgroundColor: Colors.white,
-        foregroundColor: AppColors.fontColor,
         elevation: 0,
+        // foregroundColor: AppColors.fontColor,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -260,7 +263,10 @@ class _OptScreenState extends State<OptScreen> {
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey.shade300),
                       borderRadius: BorderRadius.circular(12),
@@ -278,6 +284,13 @@ class _OptScreenState extends State<OptScreen> {
                 ],
 
                 // OTP 요청 버튼
+                CommonLoadingButton(
+                  text: '인증번호 요청',
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  onPressed: _requestOtp,
+                  isLoading: _isRequestingOtp,
+                ),
+                /*
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -309,6 +322,7 @@ class _OptScreenState extends State<OptScreen> {
                     ),
                   ),
                 ),
+                */
 
                 // OTP 입력 섹션 (인증번호 전송 후에만 표시)
                 if (_otpSent) ...[
@@ -326,7 +340,10 @@ class _OptScreenState extends State<OptScreen> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: _remainingSeconds > 60
                               ? const Color(0xFF0064FF).withOpacity(0.1)
@@ -358,14 +375,30 @@ class _OptScreenState extends State<OptScreen> {
                     },
                     onChanged: () {
                       setState(() {
-                        final currentOtp = _otpKey.currentState?._controllers.map((c) => c.text).join() ?? '';
+                        final currentOtp =
+                            _otpKey.currentState?._controllers
+                                .map((c) => c.text)
+                                .join() ??
+                            '';
                         _currentOtp = currentOtp;
                       });
                     },
                   ),
                   const SizedBox(height: 20),
 
-                  // 인증 확인 버튼 
+                  // 인증 확인 버튼
+                  CommonLoadingButton(
+                    text: '인증 확인',
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    onPressed:
+                        _remainingSeconds > 0 &&
+                            !_isVerifyingOtp &&
+                            _currentOtp.length == 6
+                        ? _verifyOtp
+                        : null,
+                    isLoading: _isVerifyingOtp,
+                  ),
+                  /*
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -398,6 +431,7 @@ class _OptScreenState extends State<OptScreen> {
                       ),
                     ),
                   ),
+                  */
                   const SizedBox(height: 16),
 
                   // 재전송 버튼
@@ -445,8 +479,8 @@ class _OptScreenState extends State<OptScreen> {
                         SizedBox(height: 8),
                         Text(
                           '• 인증번호는 6자리 숫자로 구성됩니다\n'
-                              '• 인증번호 유효시간은 3분입니다\n'
-                              '• 시간 초과 시 재전송을 눌러주세요',
+                          '• 인증번호 유효시간은 3분입니다\n'
+                          '• 시간 초과 시 재전송을 눌러주세요',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.fontColor,
@@ -466,16 +500,6 @@ class _OptScreenState extends State<OptScreen> {
   }
 }
 
-
-
-
-
-
-
-
-
-
-
 // 6자리 개별 입력 위젯
 class _OtpInputFields extends StatefulWidget {
   final Function(String) onCompleted;
@@ -483,7 +507,8 @@ class _OtpInputFields extends StatefulWidget {
 
   const _OtpInputFields({
     required this.onCompleted,
-    required this.onChanged, required GlobalKey<_OtpInputFieldsState> key,
+    required this.onChanged,
+    required GlobalKey<_OtpInputFieldsState> key,
   });
 
   @override
@@ -491,7 +516,10 @@ class _OtpInputFields extends StatefulWidget {
 }
 
 class _OtpInputFieldsState extends State<_OtpInputFields> {
-  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   @override
@@ -527,7 +555,8 @@ class _OtpInputFieldsState extends State<_OtpInputFields> {
   }
 
   void _onKeyPressed(RawKeyEvent event, int index) {
-    if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.backspace) {
+    if (event is RawKeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.backspace) {
       if (_controllers[index].text.isEmpty && index > 0) {
         // 현재 필드가 비어있고 백스페이스를 누르면 이전 필드로 이동
         _focusNodes[index - 1].requestFocus();
@@ -560,10 +589,7 @@ class _OtpInputFieldsState extends State<_OtpInputFields> {
               textAlign: TextAlign.center,
               maxLength: 1,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
               decoration: InputDecoration(
                 counterText: '',
                 border: OutlineInputBorder(
@@ -576,7 +602,10 @@ class _OtpInputFieldsState extends State<_OtpInputFields> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF0064FF), width: 2),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF0064FF),
+                    width: 2,
+                  ),
                 ),
                 filled: true,
                 fillColor: Colors.white,

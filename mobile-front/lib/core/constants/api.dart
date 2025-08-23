@@ -23,11 +23,15 @@ class ApiConfig {
   //마이페이지 카드용 프로필
   static const String userMe = '$baseUrl/api/users/me';
 
-  // otp 번호 요청
+  // otp 번호 요청, 검증
   static const String otpRequest = '$baseUrl/otp/request';
-
-  // otp 번호 비교 요청
   static const String otpVerify = '$baseUrl/otp/verify';
+
+  // cdd 요청
+  static const String cddProcess = '$baseUrl/api/cdd/process';
+
+  // 입출금 계좌 개설
+  static const String createDepositAccount = '$baseUrl/api/deposit/create';
 
   // 펀드 API
   static const String funds = '$baseUrl/api/funds';

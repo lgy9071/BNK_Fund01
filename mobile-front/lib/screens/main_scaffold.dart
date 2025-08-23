@@ -69,7 +69,9 @@ class _MainScaffoldState extends State<MainScaffold> {
         accessToken: _accessToken,
         userService: UserService(),
       ),
-      const FundListScreen(),
+      FundListScreen(
+        accessToken: _accessToken,     // ✅ 여기서 내려주기!
+        userService: UserService(),),
       const SizedBox.shrink(),
     ];
   }

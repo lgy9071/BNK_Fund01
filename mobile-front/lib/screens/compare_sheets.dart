@@ -37,38 +37,6 @@ Future<void> showCompareModal(
   );
 }
 
-Future<void> showAiCompareModal(
-    BuildContext context,
-    List<CompareFundView> funds,
-    ) async {
-  if (funds.length < 2) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('최소 2개 이상 담아야 AI 비교할 수 있어요.')),
-    );
-    return;
-  }
-  await showGeneralDialog(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: 'close',
-    barrierColor: Colors.black54,
-    transitionDuration: const Duration(milliseconds: 220),
-    pageBuilder: (_, __, ___) => _RoundedDialogShell(
-      child: _AiCompareSheet(funds: funds.take(2).toList()),
-    ),
-    transitionBuilder: (ctx, a, _, child) {
-      final t = CurvedAnimation(parent: a, curve: Curves.easeOutCubic);
-      return FadeTransition(
-        opacity: t,
-        child: SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, .06), end: Offset.zero).animate(t),
-          child: child,
-        ),
-      );
-    },
-  );
-}
-
 /// ===== Rounded Shell (공통 모달 컨테이너) ================================
 class _RoundedDialogShell extends StatelessWidget {
   final Widget child;
@@ -401,68 +369,3 @@ class _Cell {
   static Widget body(Widget child) => pad(child);
 }
 
-/// ===== AI Compare (skeleton) ================================================
-class _AiCompareSheet extends StatelessWidget {
-  final List<CompareFundView> funds;
-  const _AiCompareSheet({required this.funds});
-
-  Widget _block(String title, String body) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6FAFF),
-        border: Border.all(color: tossBlue.withOpacity(.18)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          Text(body),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final a = funds[0];
-    final b = funds[1];
-
-    return Column(
-      mainAxisSize: MainAxisSize.min, // 내용 높이에 맞춤
-      children: [
-        Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0x11000000))),
-          ),
-          child: Row(
-            children: [
-              const Text('AI 비교', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-              const Spacer(),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
-            ],
-          ),
-        ),
-        Flexible(
-          fit: FlexFit.loose,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            shrinkWrap: true,
-            children: [
-              Text('${a.name} vs ${b.name}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 12),
-              _block('요약', '두 상품의 기본 속성(유형/위험)을 기준으로 1/3/12개월 성과를 빠르게 비교합니다.'),
-              _block('강점 비교(가설)', '• 단기(1M) 우세\n• 중기(3M) 추세 안정성\n• 장기(12M) 누적 성과'),
-              _block('적합 고객(가설)', '• 보수형/중립형/공격형에 대한 적합도 힌트'),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}

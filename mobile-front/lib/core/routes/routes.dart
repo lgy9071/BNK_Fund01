@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_front/screens/create_account/cdd_screen.dart';
+import 'package:mobile_front/screens/create_account/create_deposit_account_screen.dart';
+import 'package:mobile_front/screens/create_account/opt_screen.dart';
 import 'package:mobile_front/screens/fund_status/fund_status_list_screen.dart';
 import 'package:mobile_front/screens/investprofile_test/consent_step_page.dart';
 import 'package:mobile_front/screens/investprofile_test/invest_result_screen.dart';
@@ -29,6 +32,8 @@ class AppRoutes {
   static const String investTest = '/invest-test'; // 동의 -> 설문 진입
   static const String investResult = '/invest-result'; // 결과 화면
   static const String otp = '/otp';
+  static const String cdd = '/cdd';
+  static const String createDepositAccount = '/create-deposit-account' ;
   static const String fundStatus = '/fund-status'; // 펀드 시황
 }
 
@@ -102,6 +107,33 @@ class AppRouter {
             result: (s.arguments as Map<String, dynamic>?) ?? const {},
           ),
           settings: s, // arguments 유지
+        );
+
+      case AppRoutes.otp:
+        final args = s.arguments as Map<String, dynamic>? ?? {};
+        return _page(
+          OptScreen(
+            accessToken: args['accessToken'],
+            userService: args['userService'],
+          ),
+        );
+
+      case AppRoutes.cdd:
+        final args = s.arguments as Map<String, dynamic>? ?? {};
+        return _page(
+          CddScreen(
+            accessToken: args['accessToken'],
+            userService: args['userService'],
+          ),
+        );
+
+      case AppRoutes.createDepositAccount:
+        final args = s.arguments as Map<String, dynamic>?;
+        return _page(
+          CreateDepositAccountScreen(
+            accessToken: args?['accessToken'],
+            userService: args?['userService'],
+          ),
         );
 
       case AppRoutes.fundStatus:

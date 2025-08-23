@@ -1,5 +1,6 @@
-package com.example.fund.fund.dto;
+package com.example.fund.common.dto;
 
+import com.example.fund.fund.dto.PaginationInfo;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

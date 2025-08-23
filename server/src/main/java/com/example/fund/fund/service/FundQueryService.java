@@ -1,5 +1,6 @@
 package com.example.fund.fund.service;
 
+import com.example.fund.common.dto.ApiResponse;
 import com.example.fund.fund.dto.*;
 import com.example.fund.fund.entity_fund.Fund;
 import com.example.fund.fund.repository_fund.FundRepository;

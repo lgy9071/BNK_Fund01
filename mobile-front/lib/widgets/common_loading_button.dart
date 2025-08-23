@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 
-class CommonButton extends StatelessWidget {
+class CommonLoadingButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final double fontSize;
   final Color backgroundColor;
   final Color textColor;
@@ -11,8 +11,12 @@ class CommonButton extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final EdgeInsetsGeometry padding;
   final double borderRadius;
+  final bool isLoading;
+  final Color? disabledBackgroundColor;
+  final double? loadingIndicatorSize;
+  final double? loadingStrokeWidth;
 
-  const CommonButton({
+  const CommonLoadingButton({
     super.key,
     required this.text,
     required this.onPressed,
@@ -23,6 +27,10 @@ class CommonButton extends StatelessWidget {
     this.margin = const EdgeInsets.all(0),
     this.padding = const EdgeInsets.symmetric(vertical: 16),
     this.borderRadius = 12,
+    this.isLoading = false,
+    this.disabledBackgroundColor,
+    this.loadingIndicatorSize = 20,
+    this.loadingStrokeWidth = 2,
   });
 
   @override
@@ -31,7 +39,7 @@ class CommonButton extends StatelessWidget {
       width: double.infinity,
       margin: margin,
       child: TextButton(
-        onPressed: onPressed,
+        onPressed: isLoading ? null : onPressed,
         style: TextButton.styleFrom(
           backgroundColor: backgroundColor,
           foregroundColor: textColor,
@@ -39,8 +47,18 @@ class CommonButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
+          disabledBackgroundColor: disabledBackgroundColor ?? Colors.grey.shade300,
         ),
-        child: Text(
+        child: isLoading
+            ? SizedBox(
+          height: loadingIndicatorSize,
+          width: loadingIndicatorSize,
+          child: CircularProgressIndicator(
+            color: textColor,
+            strokeWidth: loadingStrokeWidth!,
+          ),
+        )
+            : Text(
           text,
           style: TextStyle(
             fontSize: fontSize,
