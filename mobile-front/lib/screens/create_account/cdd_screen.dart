@@ -254,13 +254,12 @@ class _CddScreenState extends State<CddScreen> {
 
           // 성공 시 CreateDepositAccountScreen으로 이동
           Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.createDepositAccount,
-            // arguments: {
-            //   'cddId': cddData['cddId'],
-            //   'riskLevel': cddData['riskLevel'],
-            //   'processedAt': cddData['processedAt'],
-            // },
+              context,
+              AppRoutes.createDepositAccount,
+              arguments: {
+                'accessToken': widget.accessToken,
+                'userService': widget.userService,
+              }
           );
         } else {
           // API는 200이지만 success가 false인 경우

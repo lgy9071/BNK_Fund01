@@ -128,8 +128,12 @@ class AppRouter {
         );
 
       case AppRoutes.createDepositAccount:
+        final args = s.arguments as Map<String, dynamic>?;
         return _page(
-          CreateDepositAccountScreen(),
+          CreateDepositAccountScreen(
+            accessToken: args?['accessToken'],
+            userService: args?['userService'],
+          ),
         );
 
       case AppRoutes.fundStatus:
