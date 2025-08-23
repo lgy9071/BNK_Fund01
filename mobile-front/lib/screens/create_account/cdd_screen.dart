@@ -30,6 +30,28 @@ class _CddScreenState extends State<CddScreen> {
   // 총 단계 수
   final int totalSteps = 6;
 
+  // 주민등록번호 컨트롤러들 (앞자리, 뒷자리)
+  final TextEditingController ssnFrontController = TextEditingController();
+  final TextEditingController ssnBackController = TextEditingController();
+  final FocusNode ssnFrontFocusNode = FocusNode();
+  final FocusNode ssnBackFocusNode = FocusNode();
+
+  // 주소 관련 변수들
+  final TextEditingController address1Controller = TextEditingController(); // 주소1: 시/도 입력
+  final TextEditingController address2Controller = TextEditingController(); // 주소2: 상세주소
+
+  // 기타 입력 필드 컨트롤러들
+  final TextEditingController jobController = TextEditingController();
+
+  // 라디오 버튼 값들
+  String? nationality; // 국적 (domestic/foreign)
+  String? incomeSource; // 소득원
+  String? transactionPurpose; // 거래목적
+
+  final _cddProcess = ApiConfig.cddProcess;
+  final _cddHistory = ApiConfig.cddHistory;
+
+
   @override
   void initState() {
     super.initState();
@@ -80,26 +102,6 @@ class _CddScreenState extends State<CddScreen> {
       }
     }
   }
-
-  // 주민등록번호 컨트롤러들 (앞자리, 뒷자리)
-  final TextEditingController ssnFrontController = TextEditingController();
-  final TextEditingController ssnBackController = TextEditingController();
-  final FocusNode ssnFrontFocusNode = FocusNode();
-  final FocusNode ssnBackFocusNode = FocusNode();
-
-  // 주소 관련 변수들
-  final TextEditingController address1Controller = TextEditingController(); // 주소1: 시/도 입력
-  final TextEditingController address2Controller = TextEditingController(); // 주소2: 상세주소
-
-  // 기타 입력 필드 컨트롤러들
-  final TextEditingController jobController = TextEditingController();
-
-  // 라디오 버튼 값들
-  String? nationality; // 국적 (domestic/foreign)
-  String? incomeSource; // 소득원
-  String? transactionPurpose; // 거래목적
-
-  final _cddProcess = ApiConfig.cddProcess;
 
   @override
   void dispose() {
@@ -314,21 +316,91 @@ class _CddScreenState extends State<CddScreen> {
   }
 
   // 에러 다이얼로그 표시
+
+  // 에러 다이얼로그 표시
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('오류'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('확인'),
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 에러 아이콘
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // 제목
+                const Text(
+                  '오류',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+
+                // 에러 메시지
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+
+                // 확인 버튼
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      '확인',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -582,7 +654,7 @@ class _CddScreenState extends State<CddScreen> {
         TextField(
           controller: address1Controller,
           decoration: const InputDecoration(
-            hintText: '시/도를 입력해주세요 (예: 서울특별시, 부산광역시)',
+            hintText: '시/도를 입력해주세요',
             border: UnderlineInputBorder(),
             focusedBorder: UnderlineInputBorder(
               borderSide: BorderSide(color: primaryColor, width: 2),

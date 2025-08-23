@@ -10,10 +10,9 @@ import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/core/services/user_service.dart';
 import 'package:mobile_front/widgets/common_loading_button.dart';
 
-
 class OptScreen extends StatefulWidget {
-  final String? accessToken; // ← 추가 필요
-  final UserService? userService; // ← 추가 필요
+  final String? accessToken;
+  final UserService? userService;
 
   const OptScreen({super.key, this.accessToken, this.userService});
 
@@ -25,7 +24,8 @@ class _OptScreenState extends State<OptScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // OTP 위젯 키와 현재 OTP 값
-  final GlobalKey<_OtpInputFieldsState> _otpKey = GlobalKey<_OtpInputFieldsState>();
+  final GlobalKey<_OtpInputFieldsState> _otpKey =
+      GlobalKey<_OtpInputFieldsState>();
   String _currentOtp = '';
 
   bool _isRequestingOtp = false;
@@ -33,10 +33,11 @@ class _OptScreenState extends State<OptScreen> {
   bool _otpSent = false;
   int _remainingSeconds = 0;
   Timer? _timer;
-  String? _userEmail; // ✅ 추가: 토큰에서 추출한 이메일 저장
+  String? _userEmail;
 
   final _otpRequest = ApiConfig.otpRequest;
   final _otpVerify = ApiConfig.otpVerify;
+  final _cddHistory = ApiConfig.cddHistory;
 
   @override
   void dispose() {
@@ -44,39 +45,35 @@ class _OptScreenState extends State<OptScreen> {
     super.dispose();
   }
 
-  // ✅ 추가: 화면 로드 시 사용자 이메일 미리 가져오기 (선택사항)
   @override
   void initState() {
     super.initState();
-    _preloadUserEmail(); // 미리 이메일을 가져와서 화면에 표시
+    _preloadUserEmail();
   }
 
-  // otp 요청
+  // OTP 요청
   Future<void> _requestOtp() async {
     setState(() => _isRequestingOtp = true);
 
     try {
-      // 토큰 확인
       final token = widget.accessToken;
       if (token == null || token.isEmpty) {
-        _showSnackBar('로그인이 필요합니다.');
+        _showErrorDialog('로그인이 필요합니다.');
         return;
       }
 
-      // ✅ 수정: getMe()를 사용해서 사용자 정보 및 이메일 추출
       final userService = widget.userService ?? UserService();
       final userProfile = await userService.getMe(token);
-      final email = userProfile.email; // ✅ 수정: UserProfile에서 이메일 추출
+      final email = userProfile.email;
 
       setState(() {
-        _userEmail = email; // 추출한 이메일 저장
+        _userEmail = email;
       });
 
-      // OTP 요청 API 호출
       final response = await http.post(
         Uri.parse(_otpRequest),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}), // 추출한 이메일 사용
+        body: jsonEncode({'email': email}),
       );
 
       final data = jsonDecode(response.body);
@@ -84,21 +81,21 @@ class _OptScreenState extends State<OptScreen> {
       if (response.statusCode == 200 && data['success'] == true) {
         setState(() {
           _otpSent = true;
-          _remainingSeconds = 180; // 3분 = 180초
+          _remainingSeconds = 180;
         });
         _startTimer();
         _showSnackBar(data['message'], isError: false);
       } else {
-        _showSnackBar(data['message'] ?? '인증번호 요청에 실패했습니다.');
+        _showErrorDialog(data['message'] ?? '인증번호 요청에 실패했습니다.');
       }
     } catch (e) {
-      _showSnackBar('네트워크 오류가 발생했습니다: $e');
+      _showErrorDialog('네트워크 오류가 발생했습니다: $e');
     } finally {
       setState(() => _isRequestingOtp = false);
     }
   }
 
-  // otp 인증
+  // OTP 검증
   Future<void> _verifyOtp() async {
     if (_currentOtp.length != 6) {
       _showSnackBar('인증번호 6자리를 모두 입력해주세요.');
@@ -122,29 +119,348 @@ class _OptScreenState extends State<OptScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        _showSnackBar(data['message'], isError: false);
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted) {
-          // ✅ 수정: 동적 라우터로 CDD 화면으로 이동
-          Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.cdd,
-            arguments: {
-              'accessToken': widget.accessToken,
-              'userService': widget.userService,
-            },
-          );
-        }
+        // OTP 검증 성공 시 CDD 이력 조회
+        await _checkCddHistoryAndNavigate();
       } else {
-        _showSnackBar(data['message'] ?? '인증에 실패했습니다.');
+        _showSnackBar(data['message'] ?? '인증에 실패했습니다. 다시 시도해주세요.');
         _otpKey.currentState?.clearAll();
         _currentOtp = '';
       }
     } catch (e) {
-      _showSnackBar('네트워크 오류가 발생했습니다.');
+      _showErrorDialog('네트워크 오류가 발생했습니다.');
     } finally {
       setState(() => _isVerifyingOtp = false);
     }
+  }
+
+  // CDD 이력 조회 및 네비게이션
+  Future<void> _checkCddHistoryAndNavigate() async {
+    try {
+      final token = widget.accessToken;
+      if (token == null || token.isEmpty) {
+        _showErrorDialog('로그인이 필요합니다.');
+        return;
+      }
+
+      final userService = widget.userService ?? UserService();
+      final userProfile = await userService.getMe(token);
+      final userId = userProfile.userId; // UserProfile에서 userId 추출
+
+      final response = await http.get(
+        Uri.parse('$_cddHistory/$userId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        final List<dynamic> cddHistory = data['data'] ?? [];
+
+        if (cddHistory.isNotEmpty) {
+          // CDD 이력이 있는 경우 - 계좌 생성 페이지로 바로 이동
+          _showCddExistsDialog();
+        } else {
+          // CDD 이력이 없는 경우 - CDD 페이지로 이동
+          _showCddRequiredDialog();
+        }
+      } else {
+        _showErrorDialog(data['message'] ?? 'CDD 이력 조회 중 오류가 발생했습니다.');
+      }
+    } catch (e) {
+      _showErrorDialog('CDD 이력 조회 중 네트워크 오류가 발생했습니다.');
+    }
+  }
+
+  // CDD 이력이 있을 때 다이얼로그
+  void _showCddExistsDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primaryBlue,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check, color: Colors.white, size: 30),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'CDD 인증 완료',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '이미 고객확인제도(CDD) 인증이 완료되어\n바로 계좌 생성을 진행할 수 있습니다.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.pushReplacementNamed(
+                            context,
+                            AppRoutes.cdd,
+                            arguments: {
+                              'accessToken': widget.accessToken,
+                              'userService': widget.userService,
+                            },
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: const Text(
+                          'CDD 화면으로',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.pushReplacementNamed(
+                            context,
+                            AppRoutes.createDepositAccount,
+                            arguments: {
+                              'accessToken': widget.accessToken,
+                              'userService': widget.userService,
+                            },
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          '계좌 생성하기',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // CDD 이력이 없을 때 다이얼로그
+  void _showCddRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF0064FF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.security,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'CDD 인증 필요',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '계좌 생성을 위해 고객확인제도(CDD)\n인증을 먼저 진행해주세요.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.pushReplacementNamed(
+                        context,
+                        AppRoutes.cdd,
+                        arguments: {
+                          'accessToken': widget.accessToken,
+                          'userService': widget.userService,
+                        },
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0064FF),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'CDD 인증하기',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // 에러 다이얼로그
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  '오류 발생',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      '확인',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _startTimer() {
@@ -204,7 +520,6 @@ class _OptScreenState extends State<OptScreen> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        // foregroundColor: AppColors.fontColor,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -250,7 +565,7 @@ class _OptScreenState extends State<OptScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                // ✅ 수정: 사용자 이메일 표시 (미리 로드된 경우)
+                // 사용자 이메일 표시
                 if (_userEmail != null) ...[
                   const Text(
                     '인증 이메일',
@@ -286,45 +601,12 @@ class _OptScreenState extends State<OptScreen> {
                 // OTP 요청 버튼
                 CommonLoadingButton(
                   text: '인증번호 요청',
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   onPressed: _requestOtp,
                   isLoading: _isRequestingOtp,
                 ),
-                /*
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _otpSent ? null : (_isRequestingOtp ? null : _requestOtp),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0064FF),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      disabledBackgroundColor: Colors.grey.shade300,
-                    ),
-                    child: _isRequestingOtp
-                        ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                        : Text(
-                      _otpSent ? '인증번호 전송됨' : '인증번호 요청',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                */
 
-                // OTP 입력 섹션 (인증번호 전송 후에만 표시)
+                // OTP 입력 섹션
                 if (_otpSent) ...[
                   const SizedBox(height: 32),
 
@@ -365,7 +647,7 @@ class _OptScreenState extends State<OptScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // 새로운 OTP 입력 필드
+                  // OTP 입력 필드
                   _OtpInputFields(
                     key: _otpKey,
                     onCompleted: (otp) {
@@ -389,7 +671,7 @@ class _OptScreenState extends State<OptScreen> {
                   // 인증 확인 버튼
                   CommonLoadingButton(
                     text: '인증 확인',
-                    padding: EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     onPressed:
                         _remainingSeconds > 0 &&
                             !_isVerifyingOtp &&
@@ -398,40 +680,6 @@ class _OptScreenState extends State<OptScreen> {
                         : null,
                     isLoading: _isVerifyingOtp,
                   ),
-                  /*
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      // 6자리 모두 입력되어야만 버튼 활성화
-                      onPressed: _remainingSeconds > 0 && !_isVerifyingOtp && _currentOtp.length == 6 ? _verifyOtp : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0064FF),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        disabledBackgroundColor: Colors.grey.shade300,
-                      ),
-                      child: _isVerifyingOtp
-                          ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                          : const Text(
-                        '인증 확인',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  */
                   const SizedBox(height: 16),
 
                   // 재전송 버튼
@@ -535,19 +783,15 @@ class _OtpInputFieldsState extends State<_OtpInputFields> {
 
   void _onChanged(String value, int index) {
     if (value.isNotEmpty) {
-      // 다음 필드로 이동
       if (index < 5) {
         _focusNodes[index + 1].requestFocus();
       } else {
-        // 마지막 필드면 키보드 숨기기
         FocusScope.of(context).unfocus();
       }
     }
 
-    // ✅ 수정: onChanged를 먼저 호출하여 _currentOtp 업데이트
     widget.onChanged();
 
-    // ✅ 수정: 그 다음에 6자리 완성 여부 확인
     final otpCode = _controllers.map((c) => c.text).join();
     if (otpCode.length == 6) {
       widget.onCompleted(otpCode);
@@ -558,7 +802,6 @@ class _OtpInputFieldsState extends State<_OtpInputFields> {
     if (event is RawKeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.backspace) {
       if (_controllers[index].text.isEmpty && index > 0) {
-        // 현재 필드가 비어있고 백스페이스를 누르면 이전 필드로 이동
         _focusNodes[index - 1].requestFocus();
       }
     }
@@ -609,7 +852,6 @@ class _OtpInputFieldsState extends State<_OtpInputFields> {
                 ),
                 filled: true,
                 fillColor: Colors.white,
-                // ✅ 텍스트 중앙 정렬을 위해 패딩 제거
                 contentPadding: EdgeInsets.zero,
               ),
               onChanged: (value) => _onChanged(value, index),

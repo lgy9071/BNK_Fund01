@@ -1,6 +1,7 @@
 package com.example.fund.cdd.controller;
 
 
+import com.example.fund.cdd.dto.CddHistoryResponseDto;
 import com.example.fund.cdd.dto.CddRequestDto;
 import com.example.fund.cdd.dto.CddResponseDto;
 import com.example.fund.cdd.service.CddService;
@@ -9,10 +10,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/cdd")
@@ -33,12 +33,34 @@ public class CddController {
         try {
             CddResponseDto response = cddService.processCdd(request);
             return ResponseEntity.ok(ApiResponse.success(response, "CDD 요청이 성공적으로 처리되었습니다."));
-        } catch (IllegalStateException e) {
-            log.warn("CDD 처리 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.failure(e.getMessage(), "CDD_ALREADY_COMPLETED"));
         } catch (Exception e) {
             log.error("CDD 처리 중 오류 발생", e);
             return ResponseEntity.internalServerError().body(ApiResponse.failure("고객확인의무 처리 중 오류가 발생했습니다.", "CDD_PROCESS_ERROR"));
+        }
+    }
+
+    /**
+     * 사용자별 CDD 이력 조회 API
+     */
+    @GetMapping("/history/{userId}")
+    public ResponseEntity<ApiResponse<List<CddHistoryResponseDto>>> getCddHistory(
+            @PathVariable Long userId
+    ) {
+        log.info("CDD 이력 조회 요청 - 사용자 ID: {}", userId);
+
+        try {
+            List<CddHistoryResponseDto> history = cddService.getCddHistory(userId);
+
+            String message = history.isEmpty()
+                    ? "CDD 이력이 없습니다."
+                    : String.format("CDD 이력 %d건을 조회했습니다.", history.size());
+
+            return ResponseEntity.ok(ApiResponse.success(history, message));
+
+        } catch (Exception e) {
+            log.error("CDD 이력 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError()
+                    .body(ApiResponse.failure("CDD 이력 조회 중 오류가 발생했습니다.", "CDD_HISTORY_ERROR"));
         }
     }
 }
