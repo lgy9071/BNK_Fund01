@@ -65,9 +65,9 @@ public class FundJoinService {
 	
 	
 	 // ---- 1) 가입 조건 조회 ----
-	public void checkJoin(User user) {
-		checkDepositAccount(user.getUserId()); // T/F
-		checkInvestProfile(user.getUserId());  // T/F
+	public void checkJoin(Integer uid) {
+		checkDepositAccount(uid); // T/F
+		checkInvestProfile(uid);  // T/F
 	}
 	
 	// 입출금계좌 여부 확인

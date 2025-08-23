@@ -1,19 +1,38 @@
 package com.example.fund.account.controller;
 
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.fund.account.entity.Branch;
+import com.example.fund.account.dto.JoinCheckResponse;
+import com.example.fund.account.service.FundJoinService;
 import com.example.fund.common.CurrentUid;
+
+import lombok.RequiredArgsConstructor;
 
 @CrossOrigin(origins="*")
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/funds")
+@RequiredArgsConstructor
 public class FundJoinController {
+	
+	private final FundJoinService fundJoinService;
+	
 
 	// 펀드 가입
 	// 1) 입출금 계좌여부 판단
+	@PostMapping("/check")
+	public JoinCheckResponse checkUser(@CurrentUid Integer uid) {
+		boolean hasDepositAccount = fundJoinService.checkDepositAccount(uid);
+		boolean hasValidInvestProfile = fundJoinService.checkInvestProfile(uid);
+		
+		String nextAction = "OK";
+	    if (!hasDepositAccount) nextAction = "OPEN_DEPOSIT";
+	    else if (!hasValidInvestProfile) nextAction = "DO_PROFILE";
+		
+		return new JoinCheckResponse(hasDepositAccount, hasValidInvestProfile, nextAction);
+	}
 	// 1-1) CDD 유효 확인
 	// 2) 투자성향분석 여부 판단
 	// 3) 약관동의
