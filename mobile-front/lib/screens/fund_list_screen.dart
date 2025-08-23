@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_front/core/constants/api.dart';
 
 import 'package:mobile_front/core/services/fund_service.dart';
+import 'package:mobile_front/core/services/user_service.dart';
 import 'package:mobile_front/models/api_response.dart';
 import 'package:mobile_front/models/compare_fund_view.dart';
 import 'package:mobile_front/models/fund_list_item.dart';
+import 'package:mobile_front/screens/ai_compare_screen.dart';
 import 'package:mobile_front/screens/compare_sheets.dart';
 
 import 'fund_detail_screen.dart';
@@ -120,7 +123,11 @@ class __SlideFade extends StatelessWidget {
 }
 
 class FundListScreen extends StatefulWidget {
-  const FundListScreen({super.key});
+  const FundListScreen({super.key, this.accessToken,          // ✅ 토큰 주입
+    this.userService, });
+
+  final String? accessToken;
+  final UserService? userService;
   @override
   State<FundListScreen> createState() => _FundListScreenState();
 }
@@ -196,6 +203,7 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
 
   @override
   void initState() {
+    debugPrint('FundListScreen token? => ${widget.accessToken}');
     super.initState();
 
     // 헤더 스태거
@@ -430,9 +438,27 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
           showCompareModal(context, views);
         },
 
-        onAiCompare: () {
-          final selected = _items.where((f) => _picked.contains(f.fundId)).toList();
-          final views = selected.map((f) => CompareFundView(
+        onAiCompare: () async {
+          // 선택된 펀드 2개 이상인지 체크
+          if (_picked.length < 2) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('최소 2개 이상 담아야 AI 비교가 가능해요.')),
+            );
+            return;
+          }
+
+          // 담은 순서대로 정렬 (사용자 선택 순서 유지)
+          final pickedOrder = _picked.toList(); // Set이라면 담는 순서가 다를 수 있으니 목록으로
+          final selected = _items
+              .where((f) => _picked.contains(f.fundId))
+              .toList()
+            ..sort((x, y) => pickedOrder.indexOf(x.fundId).compareTo(pickedOrder.indexOf(y.fundId)));
+
+          // 앞의 2개만 사용 (A, B)
+          final top2 = selected.take(2).toList();
+
+          // CompareFundView로 변환 (네가 이미 쓰는 필드에 맞춰서)
+          final views = top2.map((f) => CompareFundView(
             fundId: f.fundId,
             name: f.name,
             type: f.type,
@@ -443,7 +469,21 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
             return12m: f.return12m,
           )).toList();
 
-          showAiCompareModal(context, views);
+          // 토큰/베이스URL은 네가 쓰는 방식대로 주입
+          // - 만약 FundListScreen에 widget.accessToken / ApiConfig.baseUrl 접근 가능하면 그걸 사용
+          // - 아니면 생성자에서 받아서 보관해둔 값을 사용
+          try {
+            await showAiCompareSheetFromViews(
+              context,
+              views: views,
+              accessToken: widget.accessToken!,
+              baseUrl: ApiConfig.baseUrl,      // <- 너의 소스에서 실제 baseUrl로 바꿔
+            );
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('AI 비교 호출 실패: $e')),
+            );
+          }
         },
         onBlocked: () {
           ScaffoldMessenger.of(context).showSnackBar(
