@@ -1,5 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import '../core/constants/api.dart';
+import 'branch_map.dart';
 
 /// 색상 팔레트 (파란 계열 통일)
 class AppColors {
@@ -13,7 +19,8 @@ class AppColors {
 }
 
 class NonDepositGuidePage extends StatefulWidget {
-  const NonDepositGuidePage({super.key});
+  final String fundId;
+  const NonDepositGuidePage({super.key, required this.fundId});
 
   @override
   State<NonDepositGuidePage> createState() => _NonDepositGuidePageState();
@@ -24,8 +31,46 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   static const double kAvatar = 40; // 프로필 이미지 크기
   static const double kGap = 8; // 이미지와 텍스트 사이의 간격
   static const double kGutter = kAvatar + kGap; // 48 -> 이미지 없는 줄의 좌측 들여쓰기
+
+  Future<void> _fetchMinAmount() async {
+    try {
+      final uri = Uri.parse("${ApiConfig.navPrice}?fundId=${Uri.encodeComponent(widget.fundId)}");
+      final res = await http.get(uri);
+
+      if (res.statusCode != 200) {
+        setState(() => _minAmount = 10000);
+        return;
+      }
+
+      final decoded = jsonDecode(res.body);
+      int? min;
+
+      if (decoded is int) {
+        min = decoded;
+      } else if (decoded is double) {
+        min = decoded.floor();
+      } else if (decoded is Map<String, dynamic>) {
+        final data = decoded["data"];
+        if (decoded["minAmount"] is num) {
+          min = (decoded["minAmount"] as num).toInt();
+        } else if (data is Map && data["minAmount"] is num) {
+          min = (data["minAmount"] as num).toInt();
+        }
+      }
+
+      setState(() {
+        _minAmount = (min == null || min <= 0) ? 10000 : min;
+      });
+      debugPrint("👉 서버에서 전달받은 minAmount = $_minAmount (fundId=${widget.fundId})");
+    } catch (e) {
+      debugPrint("최소금액 조회 실패: $e");
+      setState(() => _minAmount = 10000);
+    }
+  }
+
   // 금액 입력
-  static const int _minAmount = 10000; // 추후 기준가로 변동 예정
+
+  int? _minAmount; // 추후 기준가로 변동 예정
   final TextEditingController _amountController = TextEditingController();
   final FocusNode _amountFocus = FocusNode();
   bool _shouldFocusAmount = false;
@@ -76,6 +121,8 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   @override
   void initState() {
     super.initState();
+    debugPrint("👉 전달받은 fundId: ${widget.fundId}");
+    _fetchMinAmount();
 
     messages.add({
       "type": "notice",
@@ -196,7 +243,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
       final amountMsg = {
         "type": "amount",
         "question": "얼마를 투자할까요?",
-        "placeholder": "투자금액 입력 (천원부터 투자 가능)"
+        "placeholder": "투자금액 입력 (${_formatCurrency(_minAmount ?? 1000)}원부터 투자 가능)"
       };
       if (_amountMsgIndex == null) {
         messages.add(amountMsg);
@@ -337,7 +384,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     });
   }
 
-  bool get _isAmountValid => (_amountValue ?? 0) >= _minAmount;
+  bool get _isAmountValid => (_amountValue ?? 0) >= _minAmount!;
 
   // 금액 확인
   void _submitAmount() {
@@ -376,61 +423,27 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     _scrollToBottom();
   }
 
-  // ──────── 사후관리지점: 지점 선택 (바텀시트) ────────
+// ──────── 사후관리지점: 지점 선택 (지도 화면으로 이동) ────────
   Future<void> _selectBranch() async {
-    final branches = <String>[
-      "부산중앙지점",
-      "부산서면지점",
-      "서울강남지점",
-      "서울광화문지점",
-      "대구동성로지점",
-    ];
-
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    // BranchMapScreen에서 Navigator.pop(context, "지점명")으로 돌려줄 값을 대기
+    final selectedName = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const BranchMapScreen(), // 필요하면 파라미터 추가 가능
       ),
-      builder: (ctx) {
-        return SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              const Text("지점 선택", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Divider(height: 1, color: AppColors.border),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: branches.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
-                  itemBuilder: (context, i) {
-                    return ListTile(
-                      title: Text(branches[i]),
-                      onTap: () => Navigator.pop(ctx, branches[i]),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
 
-    if (selected == null) return;
+    if (selectedName == null) return;
 
     setState(() {
-      _selectedBranch = selected;
+      _selectedBranch = selectedName;
       _markLastBranchChoiceHandled();
-      messages.add({"type": "user", "text": "사후관리지점: $selected"});
+      messages.add({"type": "user", "text": "사후관리지점: $selectedName"});
       _enqueueDebitConfirm();
     });
     _scrollToBottom();
   }
+
 
   // 마지막 branchChoice 버블 handled=true 로 표시
   void _markLastBranchChoiceHandled() {
@@ -1107,11 +1120,4 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
       ),
     );
   }
-}
-
-void main() {
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: NonDepositGuidePage(),
-  ));
 }

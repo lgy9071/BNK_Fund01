@@ -195,7 +195,7 @@ class _FundJoinPageState extends State<FundJoinPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const NonDepositGuidePage(),
+                    builder: (context) => NonDepositGuidePage(fundId: widget.fundId),
                   ),
                 );
               }

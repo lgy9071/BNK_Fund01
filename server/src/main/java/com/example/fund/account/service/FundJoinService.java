@@ -64,12 +64,6 @@ public class FundJoinService {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 	
 	
-	 // ---- 1) 가입 조건 조회 ----
-	public void checkJoin(Integer uid) {
-		checkDepositAccount(uid); // T/F
-		checkInvestProfile(uid);  // T/F
-	}
-	
 	// 입출금계좌 여부 확인
 		public boolean checkDepositAccount(Integer userId) {
 			return depositAccountRepo.existsByUser_UserId(userId);

@@ -13,14 +13,51 @@ JoinNextAction _parseNextAction(dynamic v) {
 
 class FundJoinService {
   final ApiClient _client;
-  FundJoinService(this._client);
+
+  /// ─────────────────────────────────────────────────────────────
+  /// 토큰 주입 방식 2가지 중 하나 사용:
+  /// 1) staticToken: 화면에서 받은 accessToken을 바로 넣기
+  /// 2) tokenProvider: 필요 시 비동기로 읽어오는 콜백(예: SecureStorage)
+  /// ─────────────────────────────────────────────────────────────
+  String? _staticToken;
+  final Future<String?> Function()? _tokenProvider;
+
+  FundJoinService(
+      this._client, {
+        String? staticToken,
+        Future<String?> Function()? tokenProvider,
+      })  : _staticToken = staticToken,
+        _tokenProvider = tokenProvider;
+
+  /// 외부에서 토큰 갱신이 필요할 때 호출
+  void setStaticToken(String? token) {
+    _staticToken = token;
+  }
+
+  Future<Options> _authOptions({Options? base, ResponseType rt = ResponseType.json}) async {
+    // 1) 우선순위: staticToken → tokenProvider()
+    String? token = _staticToken;
+    token ??= await _tokenProvider?.call();
+
+    final headers = <String, dynamic>{};
+    if (base?.headers != null) headers.addAll(base!.headers!);
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    return (base ?? Options()).copyWith(
+      responseType: rt,
+      headers: headers,
+    );
+  }
 
   /// 1) 가입 조건 확인
   Future<JoinNextAction> checkJoin() async {
     try {
+      final opts = await _authOptions(rt: ResponseType.json);
       final resp = await _client.dio.post(
         ApiConfig.checkJoin,
-        options: Options(responseType: ResponseType.json),
+        options: opts,
       );
 
       if (resp.statusCode != 200 || resp.data == null) {
@@ -33,13 +70,11 @@ class FundJoinService {
       }
 
       final data = resp.data;
-      // 서버가 { nextAction: "OPEN_DEPOSIT" | "DO_PROFILE" | "OK" } 형태라고 가정
       final nextAction = _parseNextAction((data as Map<String, dynamic>)['nextAction']);
       return nextAction;
     } on DioException {
-      rethrow; // 상위(UI)에서 에러 스낵바/다이얼로그 처리
+      rethrow; // UI단에서 처리
     } catch (e, st) {
-      // 예상 밖의 형태 방어
       throw DioException(
         requestOptions: RequestOptions(path: ApiConfig.checkJoin),
         error: e,
@@ -56,13 +91,14 @@ class FundJoinService {
         required String pin,
       }) async {
     try {
+      final opts = await _authOptions(rt: ResponseType.json);
       final resp = await _client.dio.post(
-        '${ApiConfig.funds}/$fundId/join', // ✅ 상수 조합
+        '${ApiConfig.funds}/$fundId/join',
         data: <String, dynamic>{
           'orderAmount': orderAmount,
           'pin': pin,
         },
-        options: Options(responseType: ResponseType.json),
+        options: opts,
       );
 
       if (resp.statusCode != 200 && resp.statusCode != 201) {
@@ -85,12 +121,13 @@ class FundJoinService {
     }
   }
 
-  /// 3) 내 펀드 계좌/가입 내역 조회 (옵션)
+  /// 3) 내 펀드 계좌/가입 내역 조회
   Future<List<dynamic>> getMyFundAccounts() async {
     try {
+      final opts = await _authOptions(rt: ResponseType.json);
       final resp = await _client.dio.get(
-        '${ApiConfig.funds}/accounts', // ✅ 상수 조합
-        options: Options(responseType: ResponseType.json),
+        '${ApiConfig.funds}/accounts',
+        options: opts,
       );
 
       if (resp.statusCode != 200 || resp.data == null) {
@@ -105,7 +142,6 @@ class FundJoinService {
       final data = resp.data;
       if (data is List) return data;
       if (data is Map && data['items'] is List) return data['items'] as List;
-      // 예상 외 구조 방어
       return const <dynamic>[];
     } on DioException {
       rethrow;

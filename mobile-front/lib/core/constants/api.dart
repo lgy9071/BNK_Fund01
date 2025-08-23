@@ -38,6 +38,9 @@ class ApiConfig {
   static String fundDetail(String fundId) => '$baseUrl/api/funds/$fundId';
 
   // 가입 조건 조회
-static const String checkJoin = '$baseUrl/api/funds/check';
+  static const String checkJoin = '$baseUrl/api/funds/checkUser';
+
+  // 기준가 조회
+  static const String navPrice = '$baseUrl/api/funds/checkNavPrice';
 
 }

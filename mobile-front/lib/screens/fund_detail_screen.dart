@@ -18,7 +18,10 @@ import 'package:mobile_front/utils/api_client.dart';
 import 'package:mobile_front/core/services/fund_join_service.dart';
 
 import '../core/routes/routes.dart';
-import 'create_account/create_deposit_account_screen.dart';
+import '../core/services/user_service.dart';
+import 'create_account/opt_screen.dart';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// ───────────────── colors
 const tossBlue = Color(0xFF0064FF);
@@ -259,20 +262,15 @@ FundDetail toUiDetail(FundDetailNet d) {
   );
 }
 
-/// ───────────────── 가입 가능여부 체크 ─────────────────
-final _joinSvc = FundJoinService(
-  ApiClient(
-    baseUrl: ApiConfig.baseUrl,
-    storage: const FlutterSecureStorage(),
-    extendPath: ApiConfig.extend,
-  ),
-);
-
 /// ───────────────── 화면 본체 ─────────────────
 class FundDetailScreen extends StatefulWidget {
   final String fundId;
   final String? title;
-  const FundDetailScreen({super.key, required this.fundId, this.title});
+  final String? accessToken;
+  final UserService? userService;
+
+  const FundDetailScreen({super.key, required this.fundId, this.accessToken,
+    this.userService,this.title});
 
   @override
   State<FundDetailScreen> createState() => _FundDetailScreenState();
@@ -281,6 +279,9 @@ class FundDetailScreen extends StatefulWidget {
 class _FundDetailScreenState extends State<FundDetailScreen> {
   final _svc = FundService();
   final _scrollCtl = ScrollController();
+  late final ApiClient _api;
+
+  late final FundJoinService _joinSvc;
 
   FundDetail? data;
   int _years = 1;
@@ -289,12 +290,29 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
   Future<void> _checkJoinAndNavigate(String fundId) async {
     try {
       final next = await _joinSvc.checkJoin(); // JoinNextAction
-      debugPrint('[JOIN CHECK] next=$next');   // 항상 찍힘
+      debugPrint('[JOIN CHECK] next=$next');
 
       switch (next) {
         case JoinNextAction.openDeposit:
+        // ✅ 이동 직전에 최신 토큰 확보 (extend 포함)
+          final token = await _api.ensureFreshAccessToken()
+              ?? widget.accessToken; // (혹시 몰라 fallback)
           if (!mounted) return;
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateDepositAccountScreen()));
+          if (token == null || token.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('로그인이 필요합니다.')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OptScreen(
+                accessToken: token,               // ✅ 확보한 토큰 전달
+                userService: widget.userService,
+              ),
+            ),
+          );
           break;
 
         case JoinNextAction.doProfile:
@@ -304,7 +322,10 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
 
         case JoinNextAction.ok:
           if (!mounted) return;
-          Navigator.push(context, MaterialPageRoute(builder: (_) => FundJoinPage(fundId: fundId)));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => FundJoinPage(fundId: fundId)),
+          );
           break;
       }
     } catch (e, st) {
@@ -317,9 +338,19 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
   }
 
 
+
   @override
   void initState() {
     super.initState();
+    _api = ApiClient(
+      baseUrl: ApiConfig.baseUrl,
+      storage: const FlutterSecureStorage(),
+      extendPath: ApiConfig.extend,
+    );
+    _joinSvc = FundJoinService(
+      _api,
+      staticToken: widget.accessToken, // 있으면 사용, 없어도 됨(인터셉터+storage가 처리)
+    );
     _load();
   }
 
