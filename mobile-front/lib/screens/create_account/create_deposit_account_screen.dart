@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/core/services/user_service.dart';
 
 class CreateDepositAccountScreen extends StatefulWidget {
@@ -20,8 +21,7 @@ class CreateDepositAccountScreen extends StatefulWidget {
       _CreateDepositAccountScreenState();
 }
 
-class _CreateDepositAccountScreenState
-    extends State<CreateDepositAccountScreen> {
+class _CreateDepositAccountScreenState extends State<CreateDepositAccountScreen> {
   final TextEditingController _accountNameController = TextEditingController();
   final TextEditingController _accountPinController = TextEditingController();
 
@@ -32,6 +32,9 @@ class _CreateDepositAccountScreenState
 
   // 테마 색상
   static const Color primaryColor = Color(0xFF0064FF);
+
+  // api 주소
+  final _createDepositAccount = ApiConfig.createDepositAccount;
 
   @override
   void initState() {
@@ -230,9 +233,7 @@ class _CreateDepositAccountScreenState
         'pin': _accountPinController.text.trim(),
       };
 
-      final uri = Uri.parse(
-        'https://api.example.com/api/deposit/create',
-      ); // 실제 API URL로 변경 필요
+      final uri = Uri.parse(_createDepositAccount); // 실제 API URL로 변경 필요
       debugPrint('[POST] $uri');
       debugPrint('Request Body: ${jsonEncode(requestBody)}');
 
