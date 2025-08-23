@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/core/services/user_service.dart';
-import 'package:mobile_front/screens/opt/opt_screen.dart';
 import 'package:mobile_front/widgets/common_button.dart';
 import '../models/fund.dart';
 

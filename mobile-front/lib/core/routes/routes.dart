@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_front/screens/cdd/cdd_screen.dart';
+import 'package:mobile_front/screens/create_account/cdd_screen.dart';
+import 'package:mobile_front/screens/create_account/create_deposit_account_screen.dart';
+import 'package:mobile_front/screens/create_account/opt_screen.dart';
 import 'package:mobile_front/screens/fund_status/fund_status_list_screen.dart';
 import 'package:mobile_front/screens/investprofile_test/consent_step_page.dart';
 import 'package:mobile_front/screens/investprofile_test/invest_result_screen.dart';
 import 'package:mobile_front/screens/investprofile_test/questionnaire_screen.dart';
 import 'package:mobile_front/screens/login_screen.dart';
-import 'package:mobile_front/screens/opt/opt_screen.dart';
 import 'package:mobile_front/screens/splash_screen.dart';
 import 'package:mobile_front/screens/main_scaffold.dart';
 import 'package:mobile_front/screens/qna_compose_screen.dart';
@@ -32,6 +33,7 @@ class AppRoutes {
   static const String investResult = '/invest-result'; // 결과 화면
   static const String otp = '/otp';
   static const String cdd = '/cdd';
+  static const String createDepositAccount = '/create-deposit-account' ;
   static const String fundStatus = '/fund-status'; // 펀드 시황
 }
 
@@ -123,6 +125,11 @@ class AppRouter {
             accessToken: args['accessToken'],
             userService: args['userService'],
           ),
+        );
+
+      case AppRoutes.createDepositAccount:
+        return _page(
+          CreateDepositAccountScreen(),
         );
 
       case AppRoutes.fundStatus:
