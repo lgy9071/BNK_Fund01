@@ -21,6 +21,7 @@ class _CddScreenState extends State<CddScreen> {
   // 사용자 정보
   String? userId; // 토큰에서 추출한 사용자 ID (String으로 변환해서 저장)
   bool isLoading = true; // 초기 로딩 상태
+
   // 메인 테마 색상
   static const Color primaryColor = Color(0xFF0064FF);
 
@@ -51,7 +52,6 @@ class _CddScreenState extends State<CddScreen> {
   final _cddProcess = ApiConfig.cddProcess;
   final _cddHistory = ApiConfig.cddHistory;
 
-
   @override
   void initState() {
     super.initState();
@@ -60,7 +60,6 @@ class _CddScreenState extends State<CddScreen> {
 
   // 사용자 정보 초기화
   Future<void> _initializeUserData() async {
-    // 디버깅을 위한 로그 추가
     debugPrint('CddScreen - accessToken: ${widget.accessToken != null ? "있음" : "없음"}');
     debugPrint('CddScreen - userService: ${widget.userService != null ? "있음" : "없음"}');
 
@@ -79,7 +78,6 @@ class _CddScreenState extends State<CddScreen> {
           isLoading = false;
         });
       } else {
-        // 토큰이 없는 경우 에러 처리
         debugPrint('CddScreen - 액세스 토큰이 null입니다');
         setState(() {
           isLoading = false;
@@ -116,6 +114,108 @@ class _CddScreenState extends State<CddScreen> {
     super.dispose();
   }
 
+  // ===== 뒤로가기 확인 다이얼로그 =====
+  Future<bool> _showExitConfirmDialog() async {
+    final bool? result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 경고 아이콘
+                Container(
+                  width: 60, height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100, shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.warning_amber_rounded,
+                      color: Colors.orange.shade600, size: 30),
+                ),
+                const SizedBox(height: 20),
+
+                const Text(
+                  '진행 중단',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+
+                const Text(
+                  'CDD(고객확인의무) 진행을 중단하시겠습니까?\n입력한 정보가 모두 삭제됩니다.',
+                  style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.4),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: const Text(
+                          '계속 진행',
+                          style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor, foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                        child: const Text('나가기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+  // ===== 공통 AppBar =====
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: const Text('사용자 신원 확인'),
+      centerTitle: true,
+      backgroundColor: Colors.white,
+      elevation: 0,
+      foregroundColor: Colors.black,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () async {
+          final shouldExit = await _showExitConfirmDialog();
+          if (shouldExit && mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+      ),
+    );
+  }
+
   // 다음 단계로 이동
   void nextStep() {
     if (currentStep < totalSteps - 1) {
@@ -141,7 +241,6 @@ class _CddScreenState extends State<CddScreen> {
         bool frontValid = ssnFrontController.text.length == 6;
         bool backValid = ssnBackController.text.length == 7;
 
-        // 디버깅을 위한 로그 추가
         debugPrint('=== SSN 검증 디버깅 ===');
         debugPrint('앞자리 입력값: "${ssnFrontController.text}"');
         debugPrint('앞자리 길이: ${ssnFrontController.text.length}');
@@ -155,7 +254,8 @@ class _CddScreenState extends State<CddScreen> {
 
         return frontValid && backValid;
       case 1: // 주소 - 주소1과 주소2 모두 체크
-        return address1Controller.text.trim().isNotEmpty && address2Controller.text.trim().isNotEmpty;
+        return address1Controller.text.trim().isNotEmpty &&
+            address2Controller.text.trim().isNotEmpty;
       case 2: // 국적
         return nationality != null;
       case 3: // 직업
@@ -209,7 +309,8 @@ class _CddScreenState extends State<CddScreen> {
       String ssnBack = ssnBackController.text;
 
       // 주소1과 주소2 결합
-      String fullAddress = '${address1Controller.text.trim()} ${address2Controller.text.trim()}';
+      String fullAddress =
+          '${address1Controller.text.trim()} ${address2Controller.text.trim()}';
 
       // 현재 시간을 ISO 8601 형식으로 생성
       String currentTimestamp = DateTime.now().toIso8601String();
@@ -230,7 +331,7 @@ class _CddScreenState extends State<CddScreen> {
         'requestTimestamp': currentTimestamp,
       };
 
-      print('CDD 요청 데이터: $requestData');
+      debugPrint('CDD 요청 데이터: $requestData');
 
       // HTTP 요청
       final response = await http.post(
@@ -252,41 +353,35 @@ class _CddScreenState extends State<CddScreen> {
         if (responseData['success'] == true) {
           // CDD 응답 데이터
           final cddData = responseData['data'];
-          print('CDD 처리 완료: ${cddData}');
+          debugPrint('CDD 처리 완료: $cddData');
 
           // 성공 시 CreateDepositAccountScreen으로 이동
           Navigator.pushReplacementNamed(
-              context,
-              AppRoutes.createDepositAccount,
-              arguments: {
-                'accessToken': widget.accessToken,
-                'userService': widget.userService,
-              }
+            context,
+            AppRoutes.createDepositAccount,
+            arguments: {
+              'accessToken': widget.accessToken,
+              'userService': widget.userService,
+            },
           );
         } else {
-          // API는 200이지만 success가 false인 경우
           _showErrorDialog(responseData['message'] ?? '알 수 없는 오류가 발생했습니다.');
         }
       } else if (response.statusCode == 400) {
-        // Bad Request 처리
         final responseData = json.decode(response.body);
         _showErrorDialog(responseData['message'] ?? '요청 데이터가 올바르지 않습니다.');
       } else if (response.statusCode == 500) {
-        // Internal Server Error 처리
         final responseData = json.decode(response.body);
         _showErrorDialog(responseData['message'] ?? '서버 오류가 발생했습니다.');
       } else {
-        // 기타 HTTP 에러
         _showErrorDialog('네트워크 오류가 발생했습니다. (상태 코드: ${response.statusCode})');
       }
-
     } catch (e) {
       // 로딩 다이얼로그 닫기
       if (Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
-
-      print('CDD 요청 중 예외 발생: $e');
+      debugPrint('CDD 요청 중 예외 발생: $e');
       _showErrorDialog('네트워크 연결을 확인해주세요.');
     }
   }
@@ -294,28 +389,38 @@ class _CddScreenState extends State<CddScreen> {
   // 소득원 매핑 함수
   String _mapIncomeSource(String source) {
     switch (source) {
-      case 'salary': return '급여';
-      case 'business': return '사업소득';
-      case 'investment': return '투자수익';
-      case 'pension': return '연금';
-      case 'other': return '기타';
-      default: return '기타';
+      case 'salary':
+        return '급여';
+      case 'business':
+        return '사업소득';
+      case 'investment':
+        return '투자수익';
+      case 'pension':
+        return '연금';
+      case 'other':
+        return '기타';
+      default:
+        return '기타';
     }
   }
 
   // 거래목적 매핑 함수
   String _mapTransactionPurpose(String purpose) {
     switch (purpose) {
-      case 'investment': return '투자/재테크';
-      case 'savings': return '저축/적금';
-      case 'pension': return '연금 준비';
-      case 'education': return '자녀 교육비';
-      case 'etc': return '기타';
-      default: return '기타';
+      case 'investment':
+        return '투자/재테크';
+      case 'savings':
+        return '저축/적금';
+      case 'pension':
+        return '연금 준비';
+      case 'education':
+        return '자녀 교육비';
+      case 'etc':
+        return '기타';
+      default:
+        return '기타';
     }
   }
-
-  // 에러 다이얼로그 표시
 
   // 에러 다이얼로그 표시
   void _showErrorDialog(String message) {
@@ -408,104 +513,97 @@ class _CddScreenState extends State<CddScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 로딩 중이거나 userId가 없는 경우
+    // 로딩 중 화면
     if (isLoading) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text('사용자 신원 확인'),
-          centerTitle: true,
+      return WillPopScope(
+        onWillPop: _showExitConfirmDialog,
+        child: Scaffold(
           backgroundColor: Colors.white,
-          elevation: 0,
-          foregroundColor: Colors.black,
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+          appBar: _buildAppBar(),
+          body: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+            ),
           ),
         ),
       );
     }
 
+    // 토큰 없음/유저 식별 실패
     if (userId == null) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text('사용자 신원 확인'),
-          centerTitle: true,
+      return WillPopScope(
+        onWillPop: _showExitConfirmDialog,
+        child: Scaffold(
           backgroundColor: Colors.white,
-          elevation: 0,
-          foregroundColor: Colors.black,
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.red),
-              SizedBox(height: 16),
-              Text(
-                '액세스 토큰이 필요합니다.',
-                style: TextStyle(fontSize: 16),
-              ),
-            ],
+          appBar: _buildAppBar(),
+          body: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: Colors.red),
+                SizedBox(height: 16),
+                Text(
+                  '액세스 토큰이 필요합니다.',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('사용자 신원 확인'),
-        centerTitle: true,
+    // 정상 화면
+    return WillPopScope(
+      onWillPop: _showExitConfirmDialog,
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
-      ),
-      body: SafeArea(
-        child: GestureDetector(
-          // 다른 곳을 탭하면 포커스 해제
-          onTap: () {
-            FocusScope.of(context).unfocus();
-          },
-          child: Column(
-            children: [
-              // 진행률 표시바
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('${currentStep + 1} / $totalSteps'),
-                        Text(_getStepTitle()),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    LinearProgressIndicator(
-                      value: (currentStep + 1) / totalSteps,
-                      backgroundColor: Colors.grey[300],
-                      valueColor: const AlwaysStoppedAnimation<Color>(primaryColor),
-                    ),
-                  ],
+        appBar: _buildAppBar(),
+        body: SafeArea(
+          child: GestureDetector(
+            // 다른 곳을 탭하면 포커스 해제
+            onTap: () {
+              FocusScope.of(context).unfocus();
+            },
+            child: Column(
+              children: [
+                // 진행률 표시바
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('${currentStep + 1} / $totalSteps'),
+                          Text(_getStepTitle()),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      LinearProgressIndicator(
+                        value: (currentStep + 1) / totalSteps,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: const AlwaysStoppedAnimation<Color>(primaryColor),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              // 메인 컨텐츠
-              Expanded(
-                child: Padding(
+                // 메인 컨텐츠
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: _buildCurrentStepContent(),
+                  ),
+                ),
+
+                // 하단 버튼
+                Padding(
                   padding: const EdgeInsets.all(20),
-                  child: _buildCurrentStepContent(),
+                  child: _buildBottomButtons(),
                 ),
-              ),
-
-              // 하단 버튼
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: _buildBottomButtons(),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -515,26 +613,40 @@ class _CddScreenState extends State<CddScreen> {
   // 현재 단계 제목 반환
   String _getStepTitle() {
     switch (currentStep) {
-      case 0: return '주민등록번호';
-      case 1: return '주소';
-      case 2: return '국적';
-      case 3: return '직업';
-      case 4: return '소득원';
-      case 5: return '거래목적';
-      default: return '';
+      case 0:
+        return '주민등록번호';
+      case 1:
+        return '주소';
+      case 2:
+        return '국적';
+      case 3:
+        return '직업';
+      case 4:
+        return '소득원';
+      case 5:
+        return '거래목적';
+      default:
+        return '';
     }
   }
 
   // 현재 단계에 맞는 컨텐츠 빌드
   Widget _buildCurrentStepContent() {
     switch (currentStep) {
-      case 0: return _buildSSNStep();
-      case 1: return _buildAddressStep();
-      case 2: return _buildNationalityStep();
-      case 3: return _buildJobStep();
-      case 4: return _buildIncomeSourceStep();
-      case 5: return _buildTransactionPurposeStep();
-      default: return Container();
+      case 0:
+        return _buildSSNStep();
+      case 1:
+        return _buildAddressStep();
+      case 2:
+        return _buildNationalityStep();
+      case 3:
+        return _buildJobStep();
+      case 4:
+        return _buildIncomeSourceStep();
+      case 5:
+        return _buildTransactionPurposeStep();
+      default:
+        return Container();
     }
   }
 
@@ -577,7 +689,7 @@ class _CddScreenState extends State<CddScreen> {
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey, width: 1),
                   ),
-                  counterText: '', // 글자 수 카운터 숨김
+                  counterText: '',
                   contentPadding: EdgeInsets.symmetric(vertical: 12),
                 ),
                 onChanged: (value) {
@@ -593,7 +705,8 @@ class _CddScreenState extends State<CddScreen> {
 
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text(' - ', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              child: Text(' - ',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             ),
 
             // 뒷자리 입력 필드 (7자리, 전체 숨김 처리)
@@ -618,7 +731,7 @@ class _CddScreenState extends State<CddScreen> {
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey, width: 1),
                   ),
-                  counterText: '', // 글자 수 카운터 숨김
+                  counterText: '',
                   contentPadding: EdgeInsets.symmetric(vertical: 12),
                 ),
                 onChanged: (value) {
@@ -880,7 +993,8 @@ class _CddScreenState extends State<CddScreen> {
   }
 
   // 라디오 버튼 옵션 위젯
-  Widget _buildRadioOption(String value, String title, String? groupValue, Function(String?) onChanged) {
+  Widget _buildRadioOption(
+      String value, String title, String? groupValue, Function(String?) onChanged) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -932,7 +1046,7 @@ class _CddScreenState extends State<CddScreen> {
           ),
           // 완료 버튼
           Expanded(
-            child: Container(
+            child: SizedBox(
               height: 50,
               child: ElevatedButton(
                 onPressed: isValid ? submitCDDRequest : null,
@@ -955,7 +1069,7 @@ class _CddScreenState extends State<CddScreen> {
       // 일반 단계: 이전/다음 버튼
       return Row(
         children: [
-          // 이전 버튼 (첫 번째 단계가 아닐 때만 표시)
+          // 이전 버튼 (첫 단계가 아닐 때만)
           if (currentStep > 0)
             Expanded(
               child: Container(
@@ -978,9 +1092,7 @@ class _CddScreenState extends State<CddScreen> {
             ),
           // 다음 버튼
           Expanded(
-            // 첫 번째 단계일 때는 전체 너비 사용
-            flex: currentStep == 0 ? 1 : 1,
-            child: Container(
+            child: SizedBox(
               height: 50,
               child: ElevatedButton(
                 onPressed: isValid ? nextStep : null,

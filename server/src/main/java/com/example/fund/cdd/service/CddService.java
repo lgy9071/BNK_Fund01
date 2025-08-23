@@ -39,8 +39,7 @@ public class CddService {
             String encryptedRrn = aesUtil.encrypt(request.getResidentRegistrationNumber());
 
             // 2. 기존 CDD 이력 확인
-            Optional<CddEntity> existingCdd = cddRepository.findByUserIdAndRrn(
-                    request.getUserId(), encryptedRrn);
+            Optional<CddEntity> existingCdd = cddRepository.findTopByUserIdOrderByCreatedAtDesc(request.getUserId());
 
             // 3. 위험도 스코어링 수행 (임시 구현)
             RiskAssessmentResult riskResult = performRiskScoring(request);
@@ -52,6 +51,7 @@ public class CddService {
                 log.info("기존 CDD 이력 업데이트 - CDD ID: {}", existingCdd.get().getCddId());
 
                 CddEntity entity = existingCdd.get();
+                entity.setRrn(encryptedRrn);
                 entity.setAddress(request.getAddress());
                 entity.setNationality(request.getNationality());
                 entity.setOccupation(request.getOccupation());
@@ -59,8 +59,6 @@ public class CddService {
                 entity.setTransactionPurpose(request.getTransactionPurpose());
                 entity.setRiskLevel(riskResult.getRiskLevel());
                 entity.setRiskScore(riskResult.getRiskScore());
-                // created_at은 그대로 유지, updated_at은 자동 업데이트
-
                 savedEntity = cddRepository.save(entity);
 
             } else {
@@ -81,10 +79,6 @@ public class CddService {
 
                 savedEntity = cddRepository.save(entity);
             }
-
-            log.info("CDD 처리 완료 - CDD ID: {}, 위험등급: {}, 처리방식: {}",
-                    savedEntity.getCddId(), savedEntity.getRiskLevel(),
-                    existingCdd.isPresent() ? "업데이트" : "신규생성");
 
             // 5. 응답 DTO 생성
             return CddResponseDto.builder()
