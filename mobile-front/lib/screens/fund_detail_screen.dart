@@ -3,14 +3,25 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:mobile_front/screens/fund_join.dart';
 
 import 'package:mobile_front/core/services/fund_service.dart';
 import 'package:mobile_front/models/fund_detail_net.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile_front/core/constants/api.dart'; // ApiConfig.baseUrl 사용
+
+import 'package:mobile_front/utils/api_client.dart';
+import 'package:mobile_front/core/services/fund_join_service.dart';
+
+import '../core/routes/routes.dart';
+import '../core/services/user_service.dart';
+import 'create_account/opt_screen.dart';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// ───────────────── colors
 const tossBlue = Color(0xFF0064FF);
@@ -170,6 +181,7 @@ class FundDetail {
   });
 }
 
+
 /// FundDetailNet → FundDetail 변환(날짜 보정 포함)
 FundDetail toUiDetail(FundDetailNet d) {
   DateTime _parse(String? s) {
@@ -254,7 +266,11 @@ FundDetail toUiDetail(FundDetailNet d) {
 class FundDetailScreen extends StatefulWidget {
   final String fundId;
   final String? title;
-  const FundDetailScreen({super.key, required this.fundId, this.title});
+  final String? accessToken;
+  final UserService? userService;
+
+  const FundDetailScreen({super.key, required this.fundId, this.accessToken,
+    this.userService,this.title});
 
   @override
   State<FundDetailScreen> createState() => _FundDetailScreenState();
@@ -263,14 +279,78 @@ class FundDetailScreen extends StatefulWidget {
 class _FundDetailScreenState extends State<FundDetailScreen> {
   final _svc = FundService();
   final _scrollCtl = ScrollController();
+  late final ApiClient _api;
+
+  late final FundJoinService _joinSvc;
 
   FundDetail? data;
   int _years = 1;
   int _monthly = 500000; // 50만원
 
+  Future<void> _checkJoinAndNavigate(String fundId) async {
+    try {
+      final next = await _joinSvc.checkJoin(); // JoinNextAction
+      debugPrint('[JOIN CHECK] next=$next');
+
+      switch (next) {
+        case JoinNextAction.openDeposit:
+        // ✅ 이동 직전에 최신 토큰 확보 (extend 포함)
+          final token = await _api.ensureFreshAccessToken()
+              ?? widget.accessToken; // (혹시 몰라 fallback)
+          if (!mounted) return;
+          if (token == null || token.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('로그인이 필요합니다.')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OptScreen(
+                accessToken: token,               // ✅ 확보한 토큰 전달
+                userService: widget.userService,
+              ),
+            ),
+          );
+          break;
+
+        case JoinNextAction.doProfile:
+          if (!mounted) return;
+          Navigator.of(context).pushNamed(AppRoutes.investType);
+          break;
+
+        case JoinNextAction.ok:
+          if (!mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => FundJoinPage(fundId: fundId)),
+          );
+          break;
+      }
+    } catch (e, st) {
+      debugPrint('[JOIN CHECK][ERR] $e\n$st');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('가입 조건 확인 실패')),
+      );
+    }
+  }
+
+
+
   @override
   void initState() {
     super.initState();
+    _api = ApiClient(
+      baseUrl: ApiConfig.baseUrl,
+      storage: const FlutterSecureStorage(),
+      extendPath: ApiConfig.extend,
+    );
+    _joinSvc = FundJoinService(
+      _api,
+      staticToken: widget.accessToken, // 있으면 사용, 없어도 됨(인터셉터+storage가 처리)
+    );
     _load();
   }
 
@@ -324,7 +404,10 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
               minimumSize: const Size.fromHeight(52),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            onPressed: () {},
+
+            onPressed: () async {
+              await _checkJoinAndNavigate(data!.basic.fundId);
+            },
             child: const Text('가입하기', style: TextStyle(fontSize: 18)),
           ),
         ),

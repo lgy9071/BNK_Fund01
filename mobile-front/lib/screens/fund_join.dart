@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'fund_non_deposit.dart';
 
 class FundJoinPage extends StatefulWidget {
-  const FundJoinPage({super.key});
+  final String fundId;
+  const FundJoinPage({super.key, required this.fundId});
 
   @override
   State<FundJoinPage> createState() => _FundJoinPageState();
@@ -194,7 +195,7 @@ class _FundJoinPageState extends State<FundJoinPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const NonDepositGuidePage(),
+                    builder: (context) => NonDepositGuidePage(fundId: widget.fundId),
                   ),
                 );
               }
@@ -215,10 +216,4 @@ class _FundJoinPageState extends State<FundJoinPage> {
   }
 }
 
-void main() {
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: FundJoinPage(),
-  ));
-}
 

@@ -64,12 +64,6 @@ public class FundJoinService {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 	
 	
-	 // ---- 1) 가입 조건 조회 ----
-	public void checkJoin(User user) {
-		checkDepositAccount(user.getUserId()); // T/F
-		checkInvestProfile(user.getUserId());  // T/F
-	}
-	
 	// 입출금계좌 여부 확인
 		public boolean checkDepositAccount(Integer userId) {
 			return depositAccountRepo.existsByUser_UserId(userId);
@@ -300,10 +294,10 @@ public class FundJoinService {
 		// 좌수
 		BigDecimal units = investAmount.divide(navPrice, 0, RoundingMode.DOWN);  // 소수점 버림
 		
-		// now: ZonedDateTime, D: 주문일(LocalDate), cutoff: LocalTime
-		LocalDate base = now.toLocalTime().isBefore(cutoff)
-		        ? D.plusDays(1)   // 컷오프 이전 → T+1
-		        : D.plusDays(2);  // 컷오프 이후 → T+2
+		// 매수확정일(체결일)
+	    // 컷오프 이전 접수: T+1 영업일, 컷오프 이후 접수: T+2 영업일
+	    int execLag = now.toLocalTime().isBefore(cutoff) ? 1 : 2;
+	    LocalDate executionDate = holidayService.normalizeToBusinessDay(T.plusDays(execLag));
 		
 
 		// 정산일
@@ -318,8 +312,6 @@ public class FundJoinService {
 		    settlementDate = holidayService.nextBusinessDay(settlementDate); // 다음 영업일로 1칸
 		}
 
-		// 주말/공휴일 제외한 실제 매수확정일
-		LocalDate executionDate = holidayService.nextBusinessDay(base);
 		
 		FundTransaction fundTx = FundTransaction.builder()
 												.fund(fundProduct)
@@ -334,10 +326,10 @@ public class FundJoinService {
 												.investRule(ruleType)        // 투자 규칙 (Enum)
 									            .investRuleValue(ruleValue)  // 요일 or 일자 값
 												.requestedAt(now.toLocalDateTime()) // 접수시각
-												.tradeDate(D) // 거래일 (컷오프기준)
-												.navDate(T) // 기준가 적용일
+												.tradeDate(D) // 거래일
+												.navDate(navDate) // 기준가 적용일
 												.processedAt(executionDate) // 매수확정일(체결일)
-												.settlementDate(T)
+												.settlementDate(settlementDate)
 				        						.build();
 	fundTransactionRepo.save(fundTx);
 	}
