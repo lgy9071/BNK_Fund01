@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.example.fund.fund.entity_fund.FundProduct;
 import com.example.fund.user.entity.User;
 
 import jakarta.persistence.Column;
@@ -39,14 +40,15 @@ public class FundAccount {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "fund_product_id", nullable = false)
-//    private Fund fundProduct;
+    /** 개설된 펀드 상품 */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "product_id", nullable = false)
+    private FundProduct fundProduct;
 
     @Column(name = "fund_account_number", length = 32, unique = true, nullable = false)
     private String fundAccountNumber;
 
-    @Column(name = "fund_pin_hash", length = 60, nullable = false)
+    @Column(name = "fund_pin_hash", length = 255, nullable = false)
     private String fundPinHash; // BCrypt 해시
 
     @Column(name = "units", precision = 18, scale = 4, nullable = false)

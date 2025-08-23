@@ -1,58 +1,79 @@
 package com.example.fund.account.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.DecimalMin;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 @Entity
-@Table(name = "transit_transaction")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Table(
+    name = "transit_transaction",
+    indexes = {
+    	@Index(name = "ix_transit_account", columnList = "transit_account_id"),
+    	@Index(name = "ix_transit_counterparty", columnList = "counterparty"),
+        @Index(name = "ix_transit_created", columnList = "created_at")
+    }
+)
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor @Builder
 public class TransitTransaction {
 
+    /** 거래내역 ID (시퀀스 기반 Auto Increment) */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // 오라클이면 보통 SEQUENCE 전략 사용
-    @Column(name = "transit_id")
-    private Long transitId;   // 거래내역 ID
+    @SequenceGenerator(
+        name = "transit_tx_seq_generator",
+        sequenceName = "transit_tx_seq",   // DB에 직접 만들어둔 시퀀스명과 동일해야 함
+        allocationSize = 1
+    )
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "transit_tx_seq_generator")
+    @Column(name = "transit_id", nullable = false)
+    private Long transitId;
+    
+    @Column(name = "transit_account_id", nullable = false)
+    private Integer transitAccountId;
 
-    @Column(name = "from_account_id")
-    private Long fromAccountId;   // 출금 예정 계좌 ID
+    /** 거래 상대 계좌 ID (입출금/펀드 등) */
+    @Column(name = "counterparty", nullable = false)
+    private String counterparty;
 
-    @Column(name = "to_account_id")
-    private Long toAccountId;     // 입금 계좌 ID
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
-    private FundTransaction order;         // 관련 주문 (매수/환매 주문 FK)
-
-    @Column(name = "amount", precision = 18, scale = 0, nullable = false)
-    private BigDecimal amount;    // 거래 금액
-
+    /** 거래 유형: 대기계좌 기준 입금/출금 */
     @Enumerated(EnumType.STRING)
-    @Column(name = "trade_status", length = 20, nullable = false)
-    private TradeStatus tradeStatus = TradeStatus.PENDING;  // 거래 상태: 대기/완료/취소
+    @Column(name = "tx_type", length = 12, nullable = false)
+    private TxType txType; // 거래유형 (입금/출금)
 
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;  // 생성일시
+    /** 거래 금액 (0 초과) */
+    @DecimalMin(value = "0", inclusive = false, message = "amount는 0보다 커야 합니다.")
+    @Column(name = "amount", precision = 18, scale = 0, nullable = false)
+    private BigDecimal amount;
 
-    @Column(name = "transit_at")
-    private LocalDateTime transitAt;  // 거래상태 변화 일시
-
-    // === Enum 정의 ===
-    public enum TradeStatus {
-        PENDING,   // 대기
-        COMPLETED, // 완료
-        CANCELED   // 취소
-    }
-
-    // === 생성 시 자동 세팅 ===
-    @PrePersist
-    public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+    /** 생성일시 */
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false, nullable = false)
+    private LocalDateTime createdAt;
+    
+    /* 한 건의 Transfer를 묶어주는 ID */
+    @Column(name = "transfer_id", length = 36, nullable = false, unique = true)
+    private String transferId;
+    
+    public enum TxType {
+        DEPOSIT,   // 입금
+        WITHDRAW   // 출금
     }
 }

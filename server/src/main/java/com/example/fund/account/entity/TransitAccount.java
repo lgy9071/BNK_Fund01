@@ -14,7 +14,7 @@ public class TransitAccount {
     @Id
     @Column(name = "transit_account_id", nullable = false)
     private Integer transitAccountId; // 항상 1로 운용(싱글톤) 권장
-
+    
     @Column(name = "transit_account_number", length = 30, unique = true)
     private String transitAccountNumber; // UNIQUE
 

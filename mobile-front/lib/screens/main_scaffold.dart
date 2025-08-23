@@ -223,6 +223,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   Widget build(BuildContext context) {
     return ExitGuard(
       child: Scaffold(
+        //extendBody: true,
         body: IndexedStack(index: _index, children: _pages),
         backgroundColor: Colors.white,
         bottomNavigationBar: CustomNavBar(
