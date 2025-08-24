@@ -11,15 +11,13 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class FundClickLogService {
-
     private final FundClickLogRepository repo;
 
     @Transactional
     public void logClick(long fundId, long userId) {
-        FundClickLog log = FundClickLog.builder()
+        repo.save(FundClickLog.builder()
                 .fundId(fundId)
                 .userId(userId)
-                .build();
-        repo.save(log);
+                .build());
     }
 }

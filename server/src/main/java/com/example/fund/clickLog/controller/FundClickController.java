@@ -18,15 +18,11 @@ public class FundClickController {
 
     private final FundClickLogService clickService;
 
-    /** 펀드 상세/리스트에서 클릭 시 호출 */
     @PostMapping("/{fundId}/click")
     public ResponseEntity<Void> logClick(@PathVariable Long fundId,
                                          @CurrentUid Long uid) {
-        // 비로그인 허용 X 라고 했으니 uid 없으면 401
-        if (uid == null) {
-            return ResponseEntity.status(401).build();
-        }
+        if (uid == null) return ResponseEntity.status(401).build();
         clickService.logClick(fundId, uid);
-        return ResponseEntity.status(201).build(); // Created (바디 없음)
+        return ResponseEntity.status(201).build();
     }
 }
