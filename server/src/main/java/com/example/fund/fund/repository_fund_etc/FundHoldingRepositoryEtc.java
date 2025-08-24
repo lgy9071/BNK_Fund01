@@ -5,6 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface FundHoldingRepository extends JpaRepository<FundHolding, Long> {
+public interface FundHoldingRepositoryEtc extends JpaRepository<FundHolding, Long> {
     List<FundHolding> findByUser_UserIdOrderByJoinedAtDesc(int userId);
 }

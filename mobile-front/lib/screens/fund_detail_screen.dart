@@ -6,10 +6,12 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:mobile_front/core/services/review_api.dart';
 import 'package:mobile_front/screens/fund_join.dart';
 
 import 'package:mobile_front/core/services/fund_service.dart';
 import 'package:mobile_front/models/fund_detail_net.dart';
+import 'package:mobile_front/screens/fund_review/review_summary_modal.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile_front/core/constants/api.dart'; // ApiConfig.baseUrl 사용
@@ -22,6 +24,8 @@ import '../core/services/user_service.dart';
 import 'create_account/opt_screen.dart';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import 'package:mobile_front/core/constants/colors.dart';
 
 /// ───────────────── colors
 const tossBlue = Color(0xFF0064FF);
@@ -337,6 +341,34 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
     }
   }
 
+  Future<void> _openReviewModal() async {
+    // 최신 토큰 확보(있으면 extend)
+    final token = await _api.ensureFreshAccessToken() ?? widget.accessToken;
+    if (!mounted) return;
+
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('리뷰를 보려면 로그인이 필요합니다.')),
+      );
+      return;
+    }
+
+    final api = ReviewApi(baseUrl: ApiConfig.baseUrl, accessToken: token);
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => ReviewSummaryModal(
+        api: api,
+        fundId: data!.basic.fundId,
+      ),
+    );
+  }
+
+
 
 
   @override
@@ -429,10 +461,43 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    '${data!.basic.investmentRegion} · ${data!.basic.fundType}',
-                    style: const TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w600),
+                  Row(
+                    children: [
+                      Text(
+                        '${data!.basic.investmentRegion} · ${data!.basic.fundType}',
+                        style: const TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      const Spacer(),
+                      OutlinedButton.icon(
+                        onPressed: _openReviewModal,
+                        icon: const Icon(Icons.reviews_outlined, size: 18, color: Colors.white),
+                        label: const Text(
+                          '리뷰 보기',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                          backgroundColor: AppColors.primaryBlue,
+                          side: const BorderSide( // ⬅️ 테두리 색/두께 지정
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(40), // ⬅️ 모서리 둥글기(선택)
+                          ),
+                        ),
+                      )
+
+              ],
                   ),
+
+                  // const SizedBox(height: 12),
+                  // Row(
+                  //   children: [
+                  //
+                  //   ],
+                  // ),
                   const SizedBox(height: 12),
                   Card(
                     elevation: .8,
