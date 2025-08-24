@@ -18,7 +18,7 @@ import com.example.fund.fund.service.FundService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.example.fund.fund.dto.ApiResponse;
+import com.example.fund.common.dto.ApiResponse;
 
 @Slf4j
 @RestController

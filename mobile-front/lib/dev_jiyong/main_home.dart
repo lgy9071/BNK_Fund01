@@ -100,6 +100,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                 // 내 문의/문의하기도 전역 라우팅으로 통일
                 onAsk:   () => _go(AppRoutes.qnaCompose),
                 onMyQna: () => _go(AppRoutes.qnaList),
+                onFundStatus: () => _go(AppRoutes.fundStatus),
               ),
             ),
           ),

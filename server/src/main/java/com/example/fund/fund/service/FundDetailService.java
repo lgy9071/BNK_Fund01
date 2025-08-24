@@ -1,6 +1,6 @@
 package com.example.fund.fund.service;
 
-import com.example.fund.fund.dto.ApiResponse;
+import com.example.fund.common.dto.ApiResponse;
 import com.example.fund.fund.dto.FundDetailResponseDTO;
 import com.example.fund.fund.dto.FundProductDocDto;
 import com.example.fund.fund.dto.FundProductView;
@@ -18,9 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 

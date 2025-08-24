@@ -65,8 +65,13 @@ class _MainScaffoldState extends State<MainScaffold> {
           }
         },
       ),
-      const MyFinanceScreen(),
-      const FundListScreen(),
+      MyFinanceScreen(
+        accessToken: _accessToken,
+        userService: UserService(),
+      ),
+      FundListScreen(
+        accessToken: _accessToken,     // ✅ 여기서 내려주기!
+        userService: UserService(),),
       const SizedBox.shrink(),
     ];
   }
@@ -163,6 +168,9 @@ class _MainScaffoldState extends State<MainScaffold> {
                         }
                       }
                       return;
+                    }else{
+                      Navigator.of(context, rootNavigator: true).pop();
+                      setState(() => _index = 2);
                     }
                   },
                   onGoInvestAnalysis: () async {
@@ -200,6 +208,10 @@ class _MainScaffoldState extends State<MainScaffold> {
                     Navigator.of(context, rootNavigator: true).pop();
                     Navigator.of(context).pushNamed('/qna/list');
                   },
+                  onFundStatus: (){
+                    Navigator.of(context, rootNavigator: true).pop();
+                    Navigator.of(context).pushNamed(AppRoutes.fundStatus);
+                  },
                 ),
               ),
             ),
@@ -213,6 +225,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   Widget build(BuildContext context) {
     return ExitGuard(
       child: Scaffold(
+        //extendBody: true,
         body: IndexedStack(index: _index, children: _pages),
         backgroundColor: Colors.white,
         bottomNavigationBar: CustomNavBar(

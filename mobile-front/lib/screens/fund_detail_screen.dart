@@ -3,14 +3,29 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:mobile_front/core/services/review_api.dart';
+import 'package:mobile_front/screens/fund_join.dart';
 
 import 'package:mobile_front/core/services/fund_service.dart';
 import 'package:mobile_front/models/fund_detail_net.dart';
+import 'package:mobile_front/screens/fund_review/review_summary_modal.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile_front/core/constants/api.dart'; // ApiConfig.baseUrl 사용
+
+import 'package:mobile_front/utils/api_client.dart';
+import 'package:mobile_front/core/services/fund_join_service.dart';
+
+import '../core/routes/routes.dart';
+import '../core/services/user_service.dart';
+import 'create_account/opt_screen.dart';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import 'package:mobile_front/core/constants/colors.dart';
 
 /// ───────────────── colors
 const tossBlue = Color(0xFF0064FF);
@@ -170,6 +185,7 @@ class FundDetail {
   });
 }
 
+
 /// FundDetailNet → FundDetail 변환(날짜 보정 포함)
 FundDetail toUiDetail(FundDetailNet d) {
   DateTime _parse(String? s) {
@@ -254,7 +270,11 @@ FundDetail toUiDetail(FundDetailNet d) {
 class FundDetailScreen extends StatefulWidget {
   final String fundId;
   final String? title;
-  const FundDetailScreen({super.key, required this.fundId, this.title});
+  final String? accessToken;
+  final UserService? userService;
+
+  const FundDetailScreen({super.key, required this.fundId, this.accessToken,
+    this.userService,this.title});
 
   @override
   State<FundDetailScreen> createState() => _FundDetailScreenState();
@@ -263,14 +283,106 @@ class FundDetailScreen extends StatefulWidget {
 class _FundDetailScreenState extends State<FundDetailScreen> {
   final _svc = FundService();
   final _scrollCtl = ScrollController();
+  late final ApiClient _api;
+
+  late final FundJoinService _joinSvc;
 
   FundDetail? data;
   int _years = 1;
   int _monthly = 500000; // 50만원
 
+  Future<void> _checkJoinAndNavigate(String fundId) async {
+    try {
+      final next = await _joinSvc.checkJoin(); // JoinNextAction
+      debugPrint('[JOIN CHECK] next=$next');
+
+      switch (next) {
+        case JoinNextAction.openDeposit:
+        // ✅ 이동 직전에 최신 토큰 확보 (extend 포함)
+          final token = await _api.ensureFreshAccessToken()
+              ?? widget.accessToken; // (혹시 몰라 fallback)
+          if (!mounted) return;
+          if (token == null || token.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('로그인이 필요합니다.')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OptScreen(
+                accessToken: token,               // ✅ 확보한 토큰 전달
+                userService: widget.userService,
+              ),
+            ),
+          );
+          break;
+
+        case JoinNextAction.doProfile:
+          if (!mounted) return;
+          Navigator.of(context).pushNamed(AppRoutes.investType);
+          break;
+
+        case JoinNextAction.ok:
+          if (!mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => FundJoinPage(fundId: fundId)),
+          );
+          break;
+      }
+    } catch (e, st) {
+      debugPrint('[JOIN CHECK][ERR] $e\n$st');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('가입 조건 확인 실패')),
+      );
+    }
+  }
+
+  Future<void> _openReviewModal() async {
+    // 최신 토큰 확보(있으면 extend)
+    final token = await _api.ensureFreshAccessToken() ?? widget.accessToken;
+    if (!mounted) return;
+
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('리뷰를 보려면 로그인이 필요합니다.')),
+      );
+      return;
+    }
+
+    final api = ReviewApi(baseUrl: ApiConfig.baseUrl, accessToken: token);
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => ReviewSummaryModal(
+        api: api,
+        fundId: data!.basic.fundId,
+      ),
+    );
+  }
+
+
+
+
   @override
   void initState() {
     super.initState();
+    _api = ApiClient(
+      baseUrl: ApiConfig.baseUrl,
+      storage: const FlutterSecureStorage(),
+      extendPath: ApiConfig.extend,
+    );
+    _joinSvc = FundJoinService(
+      _api,
+      staticToken: widget.accessToken, // 있으면 사용, 없어도 됨(인터셉터+storage가 처리)
+    );
     _load();
 
     // 첫 프레임 직후 fire-and-forget (UI 블로킹 X)
@@ -310,7 +422,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
     if (data == null) {
       return const Scaffold(
         backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: tossBlue,)),
       );
     }
     final isUp = data!.daily.navChangeRate1d >= 0;
@@ -335,7 +447,10 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
               minimumSize: const Size.fromHeight(52),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            onPressed: () {},
+
+            onPressed: () async {
+              await _checkJoinAndNavigate(data!.basic.fundId);
+            },
             child: const Text('가입하기', style: TextStyle(fontSize: 18)),
           ),
         ),
@@ -357,10 +472,43 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    '${data!.basic.investmentRegion} · ${data!.basic.fundType}',
-                    style: const TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w600),
+                  Row(
+                    children: [
+                      Text(
+                        '${data!.basic.investmentRegion} · ${data!.basic.fundType}',
+                        style: const TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      const Spacer(),
+                      OutlinedButton.icon(
+                        onPressed: _openReviewModal,
+                        icon: const Icon(Icons.reviews_outlined, size: 18, color: Colors.white),
+                        label: const Text(
+                          '리뷰 보기',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                          backgroundColor: AppColors.primaryBlue,
+                          side: const BorderSide( // ⬅️ 테두리 색/두께 지정
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(40), // ⬅️ 모서리 둥글기(선택)
+                          ),
+                        ),
+                      )
+
+              ],
                   ),
+
+                  // const SizedBox(height: 12),
+                  // Row(
+                  //   children: [
+                  //
+                  //   ],
+                  // ),
                   const SizedBox(height: 12),
                   Card(
                     elevation: .8,

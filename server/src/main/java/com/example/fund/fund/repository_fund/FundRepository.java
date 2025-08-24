@@ -1,13 +1,15 @@
 package com.example.fund.fund.repository_fund;
 
-import com.example.fund.fund.entity_fund.Fund;
+import java.math.BigDecimal;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.Optional;
+import com.example.fund.fund.entity_fund.Fund;
 
 public interface FundRepository extends JpaRepository<Fund, String> {
     Optional<Fund> findByFundId(String fundId);
@@ -36,6 +38,11 @@ public interface FundRepository extends JpaRepository<Fund, String> {
             @Param("status") String status,
             Pageable pageable
     );
+    
+    //최소 가입금액 조회
+    @Query("select f.minSubscriptionAmount from Fund f where f.fundId = :fundId")
+    Optional<BigDecimal> findMinSubscriptionAmountByFundId(@Param("fundId") String fundId);
+
 }
 
 /*

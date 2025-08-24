@@ -151,4 +151,31 @@ class ApiClient {
       return null;
     }
   }
+
+
+  /// 보안 저장소에서 현재 액세스 토큰만 꺼냄 (없으면 null)
+  Future<String?> get currentToken async {
+    final raw = await storage.read(key: 'accessToken');
+    final cleaned = _clean(raw);
+    return cleaned.isEmpty ? null : cleaned;
+  }
+
+  /// 만료 임박하면 extend까지 해준 뒤 최신 토큰 반환 (없으면 null)
+  Future<String?> ensureFreshAccessToken() async {
+    var access = _clean(await storage.read(key: 'accessToken'));
+    if (access.isEmpty) return null;
+
+    final exp = _jwtExp(access);
+    if (exp != null) {
+      final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final remain = Duration(seconds: exp - nowSec) - clockSkew;
+      if (remain <= expBuffer) {
+        final ok = await _extendOnce();
+        if (ok) {
+          access = _clean(await storage.read(key: 'accessToken'));
+        }
+      }
+    }
+    return access.isEmpty ? null : access;
+  }
 }
