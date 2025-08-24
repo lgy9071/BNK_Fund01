@@ -34,6 +34,9 @@ class ApiConfig {
   // 입출금 계좌 개설
   static const String createDepositAccount = '$baseUrl/api/deposit/create';
 
+  // 사용자의 가입 펀드 조회
+  static const String myFunds = '$baseUrl/api/funds/my';
+
   // 펀드 API
   static const String funds = '$baseUrl/api/funds';
   static String fundDetail(String fundId) => '$baseUrl/api/funds/$fundId';
@@ -43,5 +46,4 @@ class ApiConfig {
 
   // 기준가 조회
   static const String navPrice = '$baseUrl/api/funds/checkNavPrice';
-
 }

@@ -1,11 +1,15 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/models/api_response.dart';
-import 'package:mobile_front/models/fund_list_item.dart';
 import 'package:mobile_front/models/fund_detail_net.dart';
+import 'package:mobile_front/models/fund_list_item.dart';
+
+import '../../models/fund.dart';
 
 class FundService {
   final http.Client _client;
@@ -62,9 +66,9 @@ class FundService {
     String? keyword,
     int page = 0,
     int size = 10,
-    String? fundType,     // (선택) 유형별
-    int? riskLevel,       // (선택) 위험등급
-    String? company,      // (선택) 운용사
+    String? fundType, // (선택) 유형별
+    int? riskLevel, // (선택) 위험등급
+    String? company, // (선택) 운용사
   }) async {
     final at = await _secure.read(key: 'accessToken');
 
@@ -78,13 +82,17 @@ class FundService {
     };
 
     // ★ uri 반드시 선언
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/funds')
-        .replace(queryParameters: query);
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/funds',
+    ).replace(queryParameters: query);
 
-    final res = await http.get(uri, headers: {
-      'Content-Type': 'application/json',
-      if (at != null) 'Authorization': 'Bearer $at',
-    });
+    final res = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        if (at != null) 'Authorization': 'Bearer $at',
+      },
+    );
 
     if (res.statusCode != 200) {
       throw Exception('목록 조회 실패: ${res.statusCode} ${res.body}');
@@ -112,10 +120,13 @@ class FundService {
     // uri 반드시 선언
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/funds/$fundId');
 
-    final res = await http.get(uri, headers: {
-      'Content-Type': 'application/json',
-      if (at != null) 'Authorization': 'Bearer $at',
-    });
+    final res = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        if (at != null) 'Authorization': 'Bearer $at',
+      },
+    );
 
     if (res.statusCode != 200) {
       throw Exception('상세 조회 실패: ${res.statusCode} ${res.body}');
@@ -129,5 +140,46 @@ class FundService {
       message: map['message']?.toString(),
       data: FundDetailNet.fromJson(data),
     );
+  }
+
+
+  // ====================================
+
+  /// 사용자 가입 펀드 목록 조회
+  Future<List<Fund>> getMyFunds(String userId) async {
+    final uri = Uri.parse('${ApiConfig.myFunds}/$userId');  // URL에 userId 포함
+    debugPrint('[GET] $uri');
+
+    try {
+      final response = await _client.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('↳ status: ${response.statusCode}');
+      debugPrint('↳ body: ${response.body}');
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to load my funds: ${response.statusCode}');
+      }
+
+      final apiResponse = ApiResponse.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+            (data) => (data as List<dynamic>)
+            .map((item) => Fund.fromJson(item as Map<String, dynamic>))
+            .toList(),
+      );
+
+      if (!apiResponse.success) {
+        throw Exception(apiResponse.message ?? 'Failed to load funds');
+      }
+
+      return apiResponse.data ?? [];
+    } catch (e) {
+      debugPrint('getMyFunds error: $e');
+      rethrow;
+    }
   }
 }

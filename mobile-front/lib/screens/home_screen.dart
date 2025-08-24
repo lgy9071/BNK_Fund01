@@ -16,108 +16,25 @@ import 'package:mobile_front/models/user_profile.dart';
 /// pubspec.yaml 에 의존성 추가:
 /// flutter_secure_storage: ^9.2.2
 
-const tossBlue = Color(0xFF0064FF);
-Color pastel(Color c) => Color.lerp(Colors.white, c, 0.12)!;
-
-/* ===== 배경 선택 모델 ===== */
-class BgChoice {
-  final Color? c1, c2;
-  final File? image;
-  const BgChoice._({this.c1, this.c2, this.image});
-  factory BgChoice.solid(Color c) => BgChoice._(c1: c);
-  factory BgChoice.gradient(Color a, Color b) => BgChoice._(c1: a, c2: b);
-  factory BgChoice.image(File f) => BgChoice._(image: f);
-
-  bool get isImage => image != null;
-  bool get isGradient => c2 != null && image == null;
-
-  // ---- 직렬화/역직렬화 (secure storage용) ----
-  Map<String, dynamic> toJson() => {
-    'type': isImage
-        ? 'image'
-        : (isGradient ? 'gradient' : 'solid'),
-    'c1': c1?.value,
-    'c2': c2?.value,
-    'imagePath': image?.path,
-  };
-
-  static BgChoice fromJson(Map<String, dynamic> j) {
-    final type = (j['type'] as String?) ?? 'solid';
-    switch (type) {
-      case 'image':
-        final path = j['imagePath'] as String?;
-        if (path != null && File(path).existsSync()) {
-          return BgChoice.image(File(path));
-        }
-        // 이미지 파일이 사라졌으면 기본값으로 폴백
-        return BgChoice.solid(pastel(tossBlue));
-      case 'gradient':
-        return BgChoice.gradient(
-          Color((j['c1'] as num).toInt()),
-          Color((j['c2'] as num).toInt()),
-        );
-      default:
-        return BgChoice.solid(Color((j['c1'] as num).toInt()));
-    }
-  }
-}
-
-/* ===== Secure Storage 래퍼 ===== */
-class _DesignStorage {
-  static const _storage = FlutterSecureStorage();
-  static const _kBg = 'home_bg_choice_v1';
-  static const _kObscure = 'home_obscure_v1';
-
-  static Future<void> saveBg(BgChoice bg) async {
-    await _storage.write(key: _kBg, value: jsonEncode(bg.toJson()));
-  }
-
-  static Future<BgChoice?> loadBg() async {
-    final raw = await _storage.read(key: _kBg);
-    if (raw == null) return null;
-    try {
-      final map = jsonDecode(raw) as Map<String, dynamic>;
-      return BgChoice.fromJson(map);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static Future<void> saveObscure(bool v) =>
-      _storage.write(key: _kObscure, value: v ? '1' : '0');
-
-  static Future<bool?> loadObscure() async {
-    final raw = await _storage.read(key: _kObscure);
-    if (raw == null) return null;
-    return raw == '1';
-  }
-}
-
-/* 배경 대비용 글자색 계산 */
-Color _idealOn(BgChoice bg,
-    {Color light = AppColors.fontColor, Color dark = Colors.white}) {
-  if (bg.isImage) return dark;
-  if (bg.isGradient) {
-    final l1 = bg.c1!.computeLuminance();
-    final l2 = bg.c2!.computeLuminance();
-    return ((l1 + l2) / 2) < 0.55 ? dark : light;
-  }
-  final lum = (bg.c1 ?? Colors.white).computeLuminance();
-  return lum < 0.55 ? dark : light;
-}
 
 /* ===== 홈 ===== */
 class HomeScreen extends StatefulWidget {
   final List<Fund> myFunds;
+  final bool fundsLoading;          // 🆕 추가
+  final String? fundsError;         // 🆕 추가
+  final VoidCallback? onRefreshFunds; // 🆕 추가
   final String investType;
   final String userName;
   final String? accessToken;
   final UserService? userService;
-  final Future<void> Function()? onStartInvestFlow; // ✅ 추가: 투자성향분석 플로우 시작 콜백
+  final Future<void> Function()? onStartInvestFlow;
 
   const HomeScreen({
     super.key,
     required this.myFunds,
+    this.fundsLoading = false,      // 🆕 추가
+    this.fundsError,                // 🆕 추가
+    this.onRefreshFunds,            // 🆕 추가
     required this.investType,
     required this.userName,
     this.accessToken,
@@ -187,6 +104,424 @@ class _HomeScreenState extends State<HomeScreen> {
   String _won(int v) =>
       '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원';
 
+  // =================================================
+
+  // 🆕 빈 펀드 상태 UI 빌드 메서드
+  Widget _buildEmptyFundsSection() {
+    final investTypeName = _investTypeName ?? widget.investType;
+    final hasInvestType = investTypeName.isNotEmpty && investTypeName != '공격투자형'; // 기본값이 아닌 실제 성향
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4)
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          // 헤더
+          Row(
+            children: [
+              Text(
+                '가입한 펀드',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.fontColor
+                ),
+              ),
+              const Spacer(),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // 아이콘
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: tossBlue.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: Icon(
+              Icons.account_balance_outlined,
+              size: 32,
+              color: tossBlue,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // 메인 메시지
+          Text(
+            '첫 투자를 시작해보세요!',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.fontColor,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // 서브 메시지
+          Text(
+            hasInvestType
+                ? '투자성향에 맞는 펀드를 찾아\n안전하고 효율적인 투자를 시작해보세요'
+                : '투자성향 분석을 통해 나에게 맞는\n펀드를 찾아보세요',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.fontColor.withOpacity(0.7),
+              height: 1.4,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // 액션 버튼
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                if (hasInvestType) {
+                  // 투자성향이 있으면 펀드 목록으로
+                  // MainScaffold의 탭 전환을 통해 펀드 목록 화면으로 이동
+                  // 이 부분은 MainScaffold의 onTap 로직과 연동 필요
+                  Navigator.of(context).pushNamed('/fund-list');
+                } else {
+                  // 투자성향이 없으면 분석 플로우
+                  if (widget.onStartInvestFlow != null) {
+                    await widget.onStartInvestFlow!();
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                hasInvestType ? '펀드 둘러보기' : '투자성향 분석하기',
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🆕 로딩 상태 UI
+  Widget _buildLoadingFundsSection() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4)
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          // 헤더
+          Row(
+            children: [
+              Text(
+                '보유 펀드',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.fontColor
+                ),
+              ),
+              const Spacer(),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+
+          // 로딩 인디케이터
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(tossBlue),
+            strokeWidth: 3,
+          ),
+
+          const SizedBox(height: 16),
+
+          Text(
+            '펀드 정보를 불러오는 중...',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.fontColor.withOpacity(0.7),
+            ),
+          ),
+
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  // 🆕 에러 상태 UI
+  Widget _buildErrorFundsSection() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4)
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          // 헤더
+          Row(
+            children: [
+              Text(
+                '보유 펀드',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.fontColor
+                ),
+              ),
+              const Spacer(),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // 에러 아이콘
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: Icon(
+              Icons.error_outline,
+              size: 32,
+              color: Colors.red.shade400,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Text(
+            '펀드 정보를 불러올 수 없습니다',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.fontColor,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Text(
+            '네트워크 연결을 확인하고\n다시 시도해주세요',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.fontColor.withOpacity(0.7),
+              height: 1.4,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // 다시 시도 버튼
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: widget.onRefreshFunds,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                backgroundColor: Colors.grey.shade100,
+                foregroundColor: AppColors.fontColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                '다시 시도',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔄 수정된 총 평가금액 표시 로직
+  Widget _buildTotalBalanceContent() {
+    if (widget.myFunds.isEmpty && !widget.fundsLoading) {
+      // 빈 펀드 상태일 때 0원 + 안내 메시지
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: _obscure
+                ? Align(
+              key: const ValueKey('hidden'),
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () async {
+                  setState(() => _obscure = false);
+                  await _DesignStorage.saveObscure(false);
+                },
+                child: Text(
+                  '잔액보기',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: _idealOn(_bg),
+                    decoration: TextDecoration.underline,
+                    decorationColor: (_bg.isImage
+                        ? Colors.white70
+                        : _idealOn(_bg).withOpacity(.45)),
+                  ),
+                ),
+              ),
+            )
+                : Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              key: const ValueKey('shown-empty'),
+              children: [
+                Text(
+                  '0원',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: _idealOn(_bg),
+                    shadows: _bg.isImage
+                        ? [
+                      Shadow(
+                          color: Colors.black.withOpacity(.55),
+                          blurRadius: 8,
+                          offset: const Offset(0, 1.5)
+                      )
+                    ]
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '펀드 가입 후 확인 가능',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _idealOn(_bg).withOpacity(0.7),
+                    shadows: _bg.isImage
+                        ? [
+                      Shadow(
+                          color: Colors.black.withOpacity(.55),
+                          blurRadius: 8,
+                          offset: const Offset(0, 1.5)
+                      )
+                    ]
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      // 기존 로직 (펀드가 있을 때)
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: _obscure
+                ? Align(
+              key: const ValueKey('hidden'),
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () async {
+                  setState(() => _obscure = false);
+                  await _DesignStorage.saveObscure(false);
+                },
+                child: Text(
+                  '잔액보기',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: _idealOn(_bg),
+                    decoration: TextDecoration.underline,
+                    decorationColor: (_bg.isImage
+                        ? Colors.white70
+                        : _idealOn(_bg).withOpacity(.45)),
+                  ),
+                ),
+              ),
+            )
+                : Align(
+              key: const ValueKey('shown'),
+              alignment: Alignment.centerRight,
+              child: Text(
+                _won(_totalBal),
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: _idealOn(_bg),
+                  shadows: _bg.isImage
+                      ? [
+                    Shadow(
+                        color: Colors.black.withOpacity(.55),
+                        blurRadius: 8,
+                        offset: const Offset(0, 1.5)
+                    )
+                  ]
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  // ==================================================================
+
   List<Fund> _sortedFunds() {
     final list = [...widget.myFunds];
     switch (_sort) {
@@ -202,6 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int get _pnl => widget.myFunds
       .map((f) => (f.balance * (f.rate / 100.0)))
       .fold<int>(0, (s, v) => s + v.round());
+
   double get _returnPct {
     final base = _totalBal - _pnl;
     if (base <= 0) return 0;
@@ -278,6 +614,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<Fund> firstTwo = funds.take(baseCount).toList();
     final List<Fund> rest = _expandFunds ? funds.skip(baseCount).toList() : const [];
     print(investTypeName);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -497,7 +834,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   clipBehavior: Clip.antiAlias,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
-
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -556,63 +892,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 15),
-
-                                  AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 220),
-                                    child: _obscure
-                                        ? Align(
-                                      key: const ValueKey('hidden'),
-                                      alignment: Alignment.centerRight,
-                                      child: GestureDetector(
-                                        onTap: () async {
-                                          setState(() => _obscure = false);
-                                          await _DesignStorage.saveObscure(false); // ✅ 저장
-                                        },
-                                        child: Text(
-                                          '잔액보기',
-                                          style: TextStyle(
-                                            fontSize: 26,
-                                            fontWeight: FontWeight.bold,
-                                            color: _idealOn(_bg),
-                                            decoration: TextDecoration.underline,
-                                            decorationColor: (_bg.isImage
-                                                ? Colors.white70
-                                                : _idealOn(_bg).withOpacity(.45)),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                        : Align(
-                                      key: const ValueKey('shown'),
-                                      alignment: Alignment.centerRight,
-                                      child: Text(
-                                        _won(_totalBal),
-                                        style: TextStyle(
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.bold,
-                                          color: _idealOn(_bg),
-                                          shadows: _bg.isImage
-                                              ? [
-                                            Shadow(
-                                                color: Colors.black.withOpacity(.55),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 1.5))
-                                          ]
-                                              : null,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                  _buildTotalBalanceContent(), // 🆕 조건부 렌더링 메서드
                                 ],
                               ),
                             ],
                           ),
                         ),
 
+                        // 🔄 수정된 하단 손익 정보 (빈 펀드일 때 숨김)
                         AnimatedSize(
                           duration: const Duration(milliseconds: 220),
                           curve: Curves.easeInOut,
-                          child: _obscure
+                          child: (_obscure || widget.myFunds.isEmpty)
                               ? const SizedBox.shrink()
                               : Container(
                             color: Colors.white,
@@ -670,101 +961,110 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 12),
 
-                /* 보유 펀드 */
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withOpacity(.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4))
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(children: [
-                        InkWell(
-                          onTap: _toMyFinance,
-                          borderRadius: BorderRadius.circular(8),
-                          child: Text('보유 펀드',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.fontColor)),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: Icon(Icons.more_horiz, color: AppColors.fontColor.withOpacity(.54)),
-                          onPressed: _openFundsOptionsSheet,
-                        ),
-                      ]),
-                      const SizedBox(height: 10),
-
-                      for (int i = 0; i < firstTwo.length; i++) ...[
-                        _FundMiniTile(
-                          fund: firstTwo[i],
-                          obscure: _obscure,
-                          onTap: () => Navigator.of(context).pushNamed(
-                            '/fund/transactions',
-                            arguments: firstTwo[i].id,
-                          ),
-                        ),
-                        if (i != firstTwo.length - 1) const SizedBox(height: 10),
-                      ],
-
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeInOut,
-                        child: Column(
-                          children: [
-                            for (int i = 0; i < rest.length; i++) ...[
-                              const SizedBox(height: 10),
-                              _FundMiniTile(
-                                fund: rest[i],
-                                obscure: _obscure,
-                                onTap: () => Navigator.of(context).pushNamed(
-                                  '/fund/transactions',
-                                  arguments: rest[i].id,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                /* 🆕 조건부 펀드 섹션 렌더링 */
+                if (widget.fundsLoading)
+                  _buildLoadingFundsSection()
+                else if (widget.fundsError != null)
+                  _buildErrorFundsSection()
+                else if (widget.myFunds.isEmpty)
+                    _buildEmptyFundsSection()
+                  else
+                  /* 기존 보유 펀드 섹션 */
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withOpacity(.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4))
+                        ],
                       ),
-
-                      if (funds.length > 2) const SizedBox(height: 14),
-                      if (funds.length > 2)
-                        GestureDetector(
-                          onTap: () => setState(() => _expandFunds = !_expandFunds),
-                          child: Container(
-                            height: 44,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: tossBlue,
-                              borderRadius: BorderRadius.circular(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(children: [
+                            InkWell(
+                              onTap: _toMyFinance,
+                              borderRadius: BorderRadius.circular(8),
+                              child: Text('보유 펀드',
+                                  style: TextStyle(
+                                      fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.fontColor)),
                             ),
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 180),
-                              child: Text(
-                                _expandFunds ? '접기' : '더보기',
-                                key: ValueKey(_expandFunds),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                            const Spacer(),
+                            IconButton(
+                              icon: Icon(Icons.more_horiz, color: AppColors.fontColor.withOpacity(.54)),
+                              onPressed: _openFundsOptionsSheet,
+                            ),
+                          ]),
+                          const SizedBox(height: 10),
+
+                          for (int i = 0; i < firstTwo.length; i++) ...[
+                            _FundMiniTile(
+                              fund: firstTwo[i],
+                              obscure: _obscure,
+                              onTap: () => Navigator.of(context).pushNamed(
+                                '/fund/transactions',
+                                arguments: firstTwo[i].id,
+                              ),
+                            ),
+                            if (i != firstTwo.length - 1) const SizedBox(height: 10),
+                          ],
+
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeInOut,
+                            child: Column(
+                              children: [
+                                for (int i = 0; i < rest.length; i++) ...[
+                                  const SizedBox(height: 10),
+                                  _FundMiniTile(
+                                    fund: rest[i],
+                                    obscure: _obscure,
+                                    onTap: () => Navigator.of(context).pushNamed(
+                                      '/fund/transactions',
+                                      arguments: rest[i].id,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+
+                          if (funds.length > 2) const SizedBox(height: 14),
+                          if (funds.length > 2)
+                            GestureDetector(
+                              onTap: () => setState(() => _expandFunds = !_expandFunds),
+                              child: Container(
+                                height: 44,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: tossBlue,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 180),
+                                  child: Text(
+                                    _expandFunds ? '접기' : '더보기',
+                                    key: ValueKey(_expandFunds),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+                        ],
+                      ),
+                    ),
 
                 const SizedBox(height: 12),
 
@@ -1178,4 +1478,99 @@ class _MbtiPromoCard extends StatelessWidget {
       ),
     );
   }
+}
+
+
+
+// ========================================================
+
+const tossBlue = Color(0xFF0064FF);
+
+Color pastel(Color c) => Color.lerp(Colors.white, c, 0.12)!;
+
+/* ===== 배경 선택 모델 ===== */
+class BgChoice {
+  final Color? c1, c2;
+  final File? image;
+  const BgChoice._({this.c1, this.c2, this.image});
+  factory BgChoice.solid(Color c) => BgChoice._(c1: c);
+  factory BgChoice.gradient(Color a, Color b) => BgChoice._(c1: a, c2: b);
+  factory BgChoice.image(File f) => BgChoice._(image: f);
+
+  bool get isImage => image != null;
+  bool get isGradient => c2 != null && image == null;
+
+  // ---- 직렬화/역직렬화 (secure storage용) ----
+  Map<String, dynamic> toJson() => {
+    'type': isImage
+        ? 'image'
+        : (isGradient ? 'gradient' : 'solid'),
+    'c1': c1?.value,
+    'c2': c2?.value,
+    'imagePath': image?.path,
+  };
+
+  static BgChoice fromJson(Map<String, dynamic> j) {
+    final type = (j['type'] as String?) ?? 'solid';
+    switch (type) {
+      case 'image':
+        final path = j['imagePath'] as String?;
+        if (path != null && File(path).existsSync()) {
+          return BgChoice.image(File(path));
+        }
+        // 이미지 파일이 사라졌으면 기본값으로 폴백
+        return BgChoice.solid(pastel(tossBlue));
+      case 'gradient':
+        return BgChoice.gradient(
+          Color((j['c1'] as num).toInt()),
+          Color((j['c2'] as num).toInt()),
+        );
+      default:
+        return BgChoice.solid(Color((j['c1'] as num).toInt()));
+    }
+  }
+}
+
+/* ===== Secure Storage 래퍼 ===== */
+class _DesignStorage {
+  static const _storage = FlutterSecureStorage();
+  static const _kBg = 'home_bg_choice_v1';
+  static const _kObscure = 'home_obscure_v1';
+
+  static Future<void> saveBg(BgChoice bg) async {
+    await _storage.write(key: _kBg, value: jsonEncode(bg.toJson()));
+  }
+
+  static Future<BgChoice?> loadBg() async {
+    final raw = await _storage.read(key: _kBg);
+    if (raw == null) return null;
+    try {
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      return BgChoice.fromJson(map);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> saveObscure(bool v) =>
+      _storage.write(key: _kObscure, value: v ? '1' : '0');
+
+  static Future<bool?> loadObscure() async {
+    final raw = await _storage.read(key: _kObscure);
+    if (raw == null) return null;
+    return raw == '1';
+  }
+}
+
+/* 배경 대비용 글자색 계산 */
+Color _idealOn(BgChoice bg,
+    {Color light = AppColors.fontColor, Color dark = Colors.white}) {
+  if (bg.isImage) return dark;
+  if (bg.isGradient) {
+    final l1 = bg.c1!.computeLuminance();
+    final l2 = bg.c2!.computeLuminance();
+    return ((l1 + l2) / 2) < 0.55 ? dark : light;
+  }
+  final lum = (bg.c1 ?? Colors.white).computeLuminance();
+  return lum < 0.55 ? dark : light;
 }
