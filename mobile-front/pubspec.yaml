@@ -28,9 +28,9 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-
+  pdfx: ^2.6.0
+  http: ^1.2.0
   local_auth: ^2.3.0
-  http: ^0.13.6
   dio: ^5.4.2
   flutter_secure_storage: ^9.2.4
   shared_preferences: ^2.2.2

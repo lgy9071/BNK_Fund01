@@ -59,4 +59,8 @@ class ApiConfig {
   // 가입 성공 페이지
   static String joinSummaryByTxId(int txId) =>
       '$baseUrl/api/funds/join/summary/$txId';
+
+  // 약관 동의 pdf
+  static String fundDocuments(String fundId) =>
+      '$baseUrl/api/funds/$fundId/documents';
 }
