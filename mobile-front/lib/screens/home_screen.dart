@@ -13,6 +13,7 @@ import 'package:mobile_front/utils/exit_popup.dart';
 
 import '../core/routes/routes.dart';
 import '../models/fund.dart';
+import 'fund_list_screen.dart';
 
 /// pubspec.yaml 에 의존성 추가:
 /// flutter_secure_storage: ^9.2.2
@@ -28,6 +29,7 @@ class HomeScreen extends StatefulWidget {
   final String? accessToken;
   final UserService? userService;
   final Future<void> Function()? onStartInvestFlow;
+  final VoidCallback? onGoToFundTab;
 
   const HomeScreen({
     super.key,
@@ -40,6 +42,7 @@ class HomeScreen extends StatefulWidget {
     this.accessToken,
     this.userService,
     this.onStartInvestFlow,
+    this.onGoToFundTab,
   });
 
   @override
@@ -195,16 +198,9 @@ class _HomeScreenState extends State<HomeScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                if (hasInvestType) {
-                  // 투자성향이 있으면 펀드 목록으로
-                  // MainScaffold의 탭 전환을 통해 펀드 목록 화면으로 이동
-                  // 이 부분은 MainScaffold의 onTap 로직과 연동 필요
-                  Navigator.of(context).pushNamed('/fund-list');
-                } else {
-                  // 투자성향이 없으면 분석 플로우
-                  if (widget.onStartInvestFlow != null) {
-                    await widget.onStartInvestFlow!();
-                  }
+                // 펀드 목록으로 이동
+                if (widget.onGoToFundTab != null) {
+                  widget.onGoToFundTab!();
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -216,9 +212,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 elevation: 0,
               ),
-              child: Text(
-                hasInvestType ? '펀드 둘러보기' : '투자성향 분석하기',
-                style: const TextStyle(
+              child: const Text(
+                '펀드 둘러보기',
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),

@@ -69,6 +69,9 @@ class _MainScaffoldState extends State<MainScaffold> {
           }
         },
         onRefreshFunds: _loadMyFunds,         // 🆕 펀드 새로고침 콜백
+        onGoToFundTab: () {
+          setState(() => _index = 2); // 🆕 펀드 가입 탭으로 이동
+        },
       ),
       MyFinanceScreen(
         accessToken: _accessToken,
