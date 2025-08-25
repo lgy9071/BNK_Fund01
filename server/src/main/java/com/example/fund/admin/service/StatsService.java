@@ -8,6 +8,11 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.fund.admin.dto.PopularFundDto;
+import com.example.fund.admin.dto.SalesSeriesDto;
+import com.example.fund.admin.repository.StatsRepository;
+import com.example.fund.fund.repository_fund.FundProductRepository;
+import com.example.fund.fund.repository_fund.FundRepository;
 import com.example.fund.fund.repository_fund_etc.InvestProfileHistoryRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -49,5 +54,60 @@ public class StatsService {
     }
 
     public record ProfileDto(String label, long value) {}
+
+    public record FundCountsDto(List<String> labels, List<Long> values) {}
+    
+    private final StatsRepository repo2;
+
+    public List<PopularFundDto> popularTopN(int limit) {
+        int n = (limit <= 0 || limit > 50) ? 5 : limit; // 가드
+        return repo2.findPopularFunds(n).stream()
+        .map(r -> new PopularFundDto(
+            r.getFundId(), r.getFundName(), r.getManagementCompany(),
+            r.getClicks(), r.getUsers()))
+        .toList();
+    }
+
+    private final FundRepository fundRepo;                 // A안
+    private final FundProductRepository fundProductRepo;   // A안
+    // private final StatsRepository statsRepo;            // B안 사용 시
+
+    public FundCountsDto getFundCounts() {
+        // ----- A안: JPA 메서드로 -----
+        long total = fundRepo.count();
+        long published = fundProductRepo.countPublished();
+
+        // ----- B안: 네이티브 한 방 -----
+        // var row = statsRepo.fetchFundCounts();
+        // long total = Optional.ofNullable(row.getTotal()).orElse(0L);
+        // long published = Optional.ofNullable(row.getPublished()).orElse(0L);
+
+        return new FundCountsDto(
+            List.of("전체", "운용중"),
+            List.of(total, published)
+        );
+    }
+
+        private final StatsRepository repo3;
+
+        /** 일별: 최근 N일 */
+        public SalesSeriesDto getSalesDaily(int days) {
+            int d = Math.max(1, Math.min(days, 365)); // 가드
+            return SalesSeriesDto.from(repo3.salesDaily(d));
+        }
+
+        /** 월별: 최근 N개월 */
+        public SalesSeriesDto getSalesMonthly(int months) {
+            int m = Math.max(1, Math.min(months, 60)); // 가드
+            return SalesSeriesDto.from(repo3.salesMonthly(m));
+        }
+
+        /** 기존 API 호환 (period만 받는 버전) */
+        public SalesSeriesDto getSales(String period) {
+            if ("monthly".equalsIgnoreCase(period)) {
+                return getSalesMonthly(12);
+            }
+            return getSalesDaily(30);
+        }
 }
 
