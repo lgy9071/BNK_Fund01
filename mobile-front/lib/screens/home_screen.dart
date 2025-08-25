@@ -13,7 +13,6 @@ import 'package:mobile_front/utils/exit_popup.dart';
 
 import '../core/routes/routes.dart';
 import '../models/fund.dart';
-import 'fund_list_screen.dart';
 
 /// pubspec.yaml 에 의존성 추가:
 /// flutter_secure_storage: ^9.2.2
@@ -214,10 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: const Text(
                 '펀드 둘러보기',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -944,85 +940,145 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   const SizedBox(height: 15),
 
-                                  // 🔄 수정된 부분: 펀드 없을 때 우측 정렬, 있을 때는 기존 로직 유지
-                                  widget.myFunds.isEmpty
-                                      ? Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                const Spacer(),
-                                                Text(
-                                                  '0원',
-                                                  style: TextStyle(
-                                                    fontSize: 28,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: _idealOn(_bg),
-                                                    shadows: _bg.isImage
-                                                        ? [
-                                                            Shadow(
-                                                              color: Colors
-                                                                  .black
-                                                                  .withOpacity(
-                                                                    .55,
-                                                                  ),
-                                                              blurRadius: 8,
-                                                              offset:
-                                                                  const Offset(
-                                                                    0,
-                                                                    1.5,
-                                                                  ),
-                                                            ),
-                                                          ]
-                                                        : null,
-                                                  ),
+                                  // 🔥 수정된 부분: 0원일 때도 금액 숨기기 적용
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 220),
+                                    child: _obscure
+                                        ? Align(
+                                            key: const ValueKey('hidden'),
+                                            alignment: Alignment.centerRight,
+                                            child: GestureDetector(
+                                              onTap: () async {
+                                                setState(
+                                                  () => _obscure = false,
+                                                );
+                                                await _DesignStorage.saveObscure(
+                                                  false,
+                                                );
+                                              },
+                                              child: Text(
+                                                '잔액보기',
+                                                style: TextStyle(
+                                                  fontSize: 26,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: _idealOn(_bg),
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                  decorationColor: (_bg.isImage
+                                                      ? Colors.white70
+                                                      : _idealOn(
+                                                          _bg,
+                                                        ).withOpacity(.45)),
                                                 ),
-                                              ],
+                                              ),
                                             ),
-                                            const SizedBox(height: 8),
-                                            Row(
-                                              children: [
-                                                const Spacer(),
-                                                Text(
-                                                  '펀드 가입 후 확인 가능',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: _idealOn(
-                                                      _bg,
-                                                    ).withOpacity(.7),
-                                                    shadows: _bg.isImage
-                                                        ? [
-                                                            Shadow(
-                                                              color: Colors
-                                                                  .black
-                                                                  .withOpacity(
-                                                                    .35,
-                                                                  ),
-                                                              blurRadius: 4,
-                                                              offset:
-                                                                  const Offset(
-                                                                    0,
-                                                                    1,
-                                                                  ),
-                                                            ),
-                                                          ]
-                                                        : null,
+                                          )
+                                        : widget.myFunds.isEmpty
+                                        ? // 🔥 0원일 때의 표시 (숨기기 해제 상태)
+                                          Column(
+                                            key: const ValueKey('shown-empty'),
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  const Spacer(),
+                                                  Text(
+                                                    '0원',
+                                                    style: TextStyle(
+                                                      fontSize: 28,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: _idealOn(_bg),
+                                                      shadows: _bg.isImage
+                                                          ? [
+                                                              Shadow(
+                                                                color: Colors
+                                                                    .black
+                                                                    .withOpacity(
+                                                                      .55,
+                                                                    ),
+                                                                blurRadius: 8,
+                                                                offset:
+                                                                    const Offset(
+                                                                      0,
+                                                                      1.5,
+                                                                    ),
+                                                              ),
+                                                            ]
+                                                          : null,
+                                                    ),
                                                   ),
-                                                ),
-                                              ],
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  const Spacer(),
+                                                  Text(
+                                                    '펀드 가입 후 확인 가능',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: _idealOn(
+                                                        _bg,
+                                                      ).withOpacity(.7),
+                                                      shadows: _bg.isImage
+                                                          ? [
+                                                              Shadow(
+                                                                color: Colors
+                                                                    .black
+                                                                    .withOpacity(
+                                                                      .35,
+                                                                    ),
+                                                                blurRadius: 4,
+                                                                offset:
+                                                                    const Offset(
+                                                                      0,
+                                                                      1,
+                                                                    ),
+                                                              ),
+                                                            ]
+                                                          : null,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          )
+                                        : // 🔥 펀드가 있을 때의 기존 로직
+                                          Align(
+                                            key: const ValueKey('shown'),
+                                            alignment: Alignment.centerRight,
+                                            child: Text(
+                                              _won(_totalBal),
+                                              style: TextStyle(
+                                                fontSize: 26,
+                                                fontWeight: FontWeight.bold,
+                                                color: _idealOn(_bg),
+                                                shadows: _bg.isImage
+                                                    ? [
+                                                        Shadow(
+                                                          color: Colors.black
+                                                              .withOpacity(.55),
+                                                          blurRadius: 8,
+                                                          offset: const Offset(
+                                                            0,
+                                                            1.5,
+                                                          ),
+                                                        ),
+                                                      ]
+                                                    : null,
+                                              ),
                                             ),
-                                          ],
-                                        )
-                                      : _buildTotalBalanceContent(),
-                                  // 기존 메서드 호출 유지
+                                          ),
+                                  ),
                                 ],
                               ),
                             ],
                           ),
                         ),
 
-                        // 🔄 수정된 하단 손익 정보 (빈 펀드일 때 숨김)
+                        // 🔥 수익률 정보도 0원일 때는 숨김 (기존 로직과 동일)
                         AnimatedSize(
                           duration: const Duration(milliseconds: 220),
                           curve: Curves.easeInOut,
@@ -1309,6 +1365,7 @@ class _FundMiniTile extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // 🔥 레거시 스타일: 금액 숨기기 시 잔액만 숨김
                   if (!obscure)
                     Text(
                       '${fund.balance.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원',
@@ -1318,6 +1375,7 @@ class _FundMiniTile extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(height: 2),
+                  // 🔥 수익률 정보는 항상 표시
                   Text(
                     '$arrow ${_fmtWon(delta.abs())} (${fund.rate.toStringAsFixed(2)}%)',
                     style: TextStyle(
