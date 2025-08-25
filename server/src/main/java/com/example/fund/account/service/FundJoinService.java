@@ -8,11 +8,13 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.fund.account.entity.Branch;
 import com.example.fund.account.entity.DepositAccount;
@@ -22,6 +24,7 @@ import com.example.fund.account.entity.FundAccountTransaction;
 import com.example.fund.account.entity.FundTransaction;
 import com.example.fund.account.entity.TransitAccount;
 import com.example.fund.account.entity.TransitTransaction;
+import com.example.fund.account.repository.BranchRepository;
 import com.example.fund.account.repository.DepositAccountRepository;
 import com.example.fund.account.repository.DepositTransactionRepository;
 import com.example.fund.account.repository.FundAccountRepository;
@@ -32,12 +35,13 @@ import com.example.fund.account.repository.TransitTransactionRepository;
 import com.example.fund.fund.entity_fund.Fund;
 import com.example.fund.fund.entity_fund.FundProduct;
 import com.example.fund.fund.repository_fund.FundFeeInfoRepository;
+import com.example.fund.fund.repository_fund.FundProductRepository;
 import com.example.fund.fund.repository_fund.FundStatusDailyRepository;
 import com.example.fund.fund.repository_fund_etc.InvestProfileResultRepository;
 import com.example.fund.holiday.HolidayService;
 import com.example.fund.user.entity.User;
+import com.example.fund.user.repository.UserRepository;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 
@@ -55,6 +59,9 @@ public class FundJoinService {
 	private final FundStatusDailyRepository fundStatusDailyRepo;
 	private final FundFeeInfoRepository fundFeeInfoRepo;
 	private final FundAccountTransactionRepository fundAccountTransactionRepo;
+	private final UserRepository userRepository;
+	private final FundProductRepository fundProductRepository;
+	private final BranchRepository branchRepository;
 	
 	private final HolidayService holidayService;
 
@@ -77,9 +84,38 @@ public class FundJoinService {
 			LocalDateTime analysisDate = result.get();
 			return analysisDate.plusYears(1).isAfter(LocalDateTime.now());
 		}
-	
+		
+		
+		// FundJoinService.java (필드/임포트는 아래 2) 참고)
+		@Transactional(rollbackFor = Exception.class)
+		public void fundJoin(Integer uid, String fundId, Long amount, String rawPin,
+		                     String branchName, String ruleType, String ruleValue) {
+
+		  if (uid == null) throw new IllegalArgumentException("uid is required");
+		  if (fundId == null || fundId.isBlank()) throw new IllegalArgumentException("fundId is required");
+		  if (amount == null || amount <= 0) throw new IllegalArgumentException("amount must be > 0");
+		  if (rawPin == null || !rawPin.matches("\\d{4}")) throw new IllegalArgumentException("rawPin must be 4 digits");
+		  if (ruleType == null || ruleType.isBlank()) throw new IllegalArgumentException("ruleType is required");
+
+		  User user = userRepository.findById(uid)
+		      .orElseThrow(() -> new IllegalArgumentException("User not found"));
+		  FundProduct fund = fundProductRepository.findTopByFund_FundIdOrderByProductIdDesc(fundId)
+		      .orElseThrow(() -> new IllegalArgumentException("FundProduct not found"));
+
+		  Branch branch = null;
+		  if (branchName != null && !branchName.isBlank()) {
+		    branch = branchRepository.findByBranchName(branchName).orElse(null);
+		  }
+
+		  FundTransaction.InvestRuleType type = FundTransaction.InvestRuleType.valueOf(ruleType);
+
+		  BigDecimal orderAmount = BigDecimal.valueOf(amount).setScale(0, RoundingMode.UNNECESSARY);
+
+		  // ✅ 기존 메서드 재사용 (네가 올린 fundJoin(User, FundProduct, ...) 그대로 사용)
+		  fundJoin(user, fund, orderAmount, rawPin, branch, type, (ruleValue == null ? "" : ruleValue));
+		}
+
 	// ---- 2) 펀드가입 오케스트레이션(원자성 보장) ----
-	@Transactional(rollbackOn = Exception.class)
 	public void fundJoin(User user, FundProduct fund, BigDecimal orderAmount, String rawPin, Branch branch,
 						 FundTransaction.InvestRuleType ruleType, String ruleValue) {
 		if (user == null || user.getUserId() == null) {
@@ -100,7 +136,7 @@ public class FundJoinService {
 		
 		// 2-3) 펀드 거래 생성/저장
 		DepositAccount depositAccount = depositAccountRepo.findByUser_UserId(user.getUserId())
-				.orElseThrow(()-> new IllegalStateException("Deposit Account Not Fount"));
+				.orElseThrow(()-> new IllegalStateException("Deposit Account Not Found"));
 		createFundTransaction(user, depositAccount, fund, fundAccount, orderAmount, branch, ruleType, ruleValue);
 	}
 	
@@ -188,7 +224,7 @@ public class FundJoinService {
 	
 	// ---- 4) 입출금 -> 대기: 금액 홀딩 & 거래 내역 적재 ----
 	// 입출금 거래 내역 & 대기계좌내역 생성
-	@Transactional(rollbackOn = Exception.class)
+	@Transactional(rollbackFor = Exception.class)
 	public void accountTransaction(User user, BigDecimal orderAmount) {
 
 		 if(orderAmount == null || orderAmount.signum() <= 0) {
@@ -240,102 +276,101 @@ public class FundJoinService {
 	 }
 	
 	// 4) 펀드거래내역 생성
-	public void createFundTransaction(User user,
-									  DepositAccount depositAccount,
-									  FundProduct fundProduct,
-									  FundAccount fundAccount,
-									  BigDecimal orderAmount,
-									  Branch branch,
-									  FundTransaction.InvestRuleType ruleType,
-									  String ruleValue) {// 규칙값(요일/일자 등)
-		Fund fund = fundProduct.getFund();
-		String fundId = fund.getFundId();
-		
-		 ZonedDateTime now = ZonedDateTime.now(KST);
-	     LocalDate D = now.toLocalDate(); // 주문일
-		
-		// 컷오프 시간
-	    LocalTime cutoff = switch (fund.getFundType()) {
-         case "주식형" -> LocalTime.of(15, 30);
-         case "채권형" -> LocalTime.of(17, 0);
-         default       -> LocalTime.of(17, 0);
-    	};
-    	
-    	// 컷오프 기준 NAV 적용일(T): now < cutoff ? D : D+1
-        LocalDate T = now.toLocalTime().isBefore(cutoff) ? D : D.plusDays(1);
-        
-        // NAV 적용일(navDate) = T를 영업일로 보정
-        LocalDate navDate = holidayService.normalizeToBusinessDay(T);
+	// ───────────────── helper ─────────────────
+	private enum FundKind { EQUITY, BOND, OTHER }
 
-		// 기준가
-		BigDecimal navPrice = fundStatusDailyRepo
-					    .findNavPriceByFundIdAndBaseDate(fundId, navDate)
-					    .orElseThrow(() -> new IllegalStateException("NAV not found for fundId=" + fundId))
-					    .setScale(2, RoundingMode.HALF_UP);
-		if (navPrice.signum() <= 0) {
-	        throw new IllegalStateException("Invalid NAV price: " + navPrice);
-	    }
-		
-		// 선취수수료 (null → 0, 퍼센트표기 방어)
-        BigDecimal frontLoadFee = Optional.ofNullable(fundFeeInfoRepo.findFrontLoadFeeByFundId(fund.getFundId()))
-            .orElse(BigDecimal.ZERO);
-        if (frontLoadFee.compareTo(BigDecimal.ONE) > 0) {
-            // % 단위로 저장된 경우 환산
-            if (frontLoadFee.compareTo(new BigDecimal("100")) > 0) {
-                throw new IllegalStateException("Invalid frontLoadFee: " + frontLoadFee);
-            }
-            frontLoadFee = frontLoadFee.movePointLeft(2);
-        }
-        
-		// 실제 투자금액
-		BigDecimal investAmount = orderAmount
-								  .multiply(BigDecimal.ONE.subtract(frontLoadFee))
-								  .setScale(0, RoundingMode.DOWN); // 원 단위로 절사
-		// 좌수
-		BigDecimal units = investAmount.divide(navPrice, 0, RoundingMode.DOWN);  // 소수점 버림
-		
-		// 매수확정일(체결일)
-	    // 컷오프 이전 접수: T+1 영업일, 컷오프 이후 접수: T+2 영업일
-	    int execLag = now.toLocalTime().isBefore(cutoff) ? 1 : 2;
-	    LocalDate executionDate = holidayService.normalizeToBusinessDay(T.plusDays(execLag));
-		
-
-		// 정산일
-		int settleLag = switch (fund.getFundType()) {
-		    case "주식형" -> 3; // T+3 영업일
-		    case "채권형" -> 2; // T+2 영업일
-		    default -> 3;
-		};
-		
-		LocalDate settlementDate = T;
-		for (int i = 0; i < settleLag; i++) {
-		    settlementDate = holidayService.nextBusinessDay(settlementDate); // 다음 영업일로 1칸
-		}
-
-		
-		FundTransaction fundTx = FundTransaction.builder()
-												.fund(fundProduct)
-												.fundAccount(fundAccount)
-												.user(user)
-												.type(FundTransaction.TransactionType.PURCHASE)
-												.amount(investAmount)
-												.unitPrice(navPrice) // 기준가(거래일 기준) - FundStatusDaily : nav_price
-												.units(units) // 좌수 (거래금액 / 기준가)
-												.branch(branch) //사후관리지점
-												.depositAccount(depositAccount) // 입출금 계좌
-												.investRule(ruleType)        // 투자 규칙 (Enum)
-									            .investRuleValue(ruleValue)  // 요일 or 일자 값
-												.requestedAt(now.toLocalDateTime()) // 접수시각
-												.tradeDate(D) // 거래일
-												.navDate(navDate) // 기준가 적용일
-												.processedAt(executionDate) // 매수확정일(체결일)
-												.settlementDate(settlementDate)
-				        						.build();
-	fundTransactionRepo.save(fundTx);
+	private FundKind classifyFundKind(String t) {
+	    if (t == null) return FundKind.OTHER;
+	    t = t.trim();
+	    if (t.equals("주식형") || t.equals("주식혼합형")) return FundKind.EQUITY;
+	    if (t.equals("채권형") || t.equals("채권혼합형")) return FundKind.BOND;
+	    return FundKind.OTHER;
 	}
 
+	private LocalTime cutoffOf(FundKind kind) {
+	    return switch (kind) {
+	        case EQUITY -> LocalTime.of(15, 30);
+	        case BOND, OTHER -> LocalTime.of(17, 0);
+	    };
+	}
+
+	private int executionLagBD(FundKind kind) { // 체결 래그
+	    return switch (kind) {
+	        case EQUITY -> 1; // 주식/주식혼합: T+1BD
+	        case BOND   -> 2; // 채권/채권혼합: T+2BD
+	        default     -> 1;
+	    };
+	}
+
+	private int settlementLagBD(FundKind kind) { // 정산 래그
+	    return switch (kind) {
+	        case EQUITY -> 3; // 주식: T+3BD
+	        case BOND   -> 2; // 채권: T+2BD
+	        default     -> 3;
+	    };
+	}
+
+	// ───────────────── 여기부터 교체 ─────────────────
+	public FundTransaction createFundTransaction(User user,
+	                                  DepositAccount depositAccount,
+	                                  FundProduct fundProduct,
+	                                  FundAccount fundAccount,
+	                                  BigDecimal orderAmount,
+	                                  Branch branch,
+	                                  FundTransaction.InvestRuleType ruleType,
+	                                  String ruleValue) {
+
+	    Fund fund = fundProduct.getFund();
+
+	    // 현재시각 및 유형/컷오프
+	    ZonedDateTime now = ZonedDateTime.now(KST);           // 고객 실제 제출 타임스탬프
+	    FundKind kind = classifyFundKind(fund.getFundType());
+	    LocalTime cutoff = cutoffOf(kind);
+	    LocalTime businessOpen = LocalTime.of(9, 0);
+
+	    // 주문일(D) = 고객이 버튼 누른 달력상의 날짜 (보정 없음)
+	    LocalDate D = now.toLocalDate();
+
+	    // 신청일/기준가일(T) = 업무일/컷오프 보정된 접수시각의 '날짜'
+	    ZonedDateTime acceptedAt = normalizeToBusinessOpen(now, businessOpen, cutoff, holidayService);
+	    LocalDate T = acceptedAt.toLocalDate();
+	    LocalDate navDate = T;
+
+	    // 체결일(매수확정) = T + (유형별)영업일
+	    LocalDate processedAt = holidayService.addBusinessDays(T, executionLagBD(kind));
+
+	    // 정산일 = T + (유형별)영업일 (주식 T+3, 채권 T+2)
+	    LocalDate settlementDate = holidayService.addBusinessDays(T, settlementLagBD(kind));
+
+	    // 이 단계에선 NAV/좌수 확정하지 않음 (마감 후 배치에서 확정)
+	    FundTransaction fundTx = FundTransaction.builder()
+	        .fund(fundProduct)
+	        .fundAccount(fundAccount)
+	        .user(user)
+	        .type(FundTransaction.TransactionType.PURCHASE)
+	        .amount(orderAmount)                  // 주문 총액(수수료/실투자액은 배치에서 계산 권장)
+	        .unitPrice(null)                      // ← 배치에서 T일 NAV 확정 후 세팅
+	        .units(null)                          // ← 배치에서 확정
+	        .branch(branch)
+	        .depositAccount(depositAccount)
+	        .investRule(ruleType)
+	        .investRuleValue(ruleValue)
+	        .requestedAt(now.toLocalDateTime())   // 고객 제출 실제 시각(로그/감사용)
+	        .tradeDate(D)                         // 주문일(고객 관점)
+	        .navDate(navDate)                     // 기준가 적용일(= T)
+	        .processedAt(processedAt)             // 체결일(매수확정일)
+	        .settlementDate(settlementDate)       // 정산일
+	        .build();
+
+	    return fundTransactionRepo.save(fundTx);
+	}
+
+
+
+
+
 	// 5) 매수일에 대기 -> 펀드 로 잔액 이동
-	@Transactional(rollbackOn = Exception.class)
+	@Transactional(rollbackFor = Exception.class)
 	public void settleToFund(User user,
 	                         FundAccount fundAccount,
 	                         TransitAccount transitAccount,
@@ -384,12 +419,89 @@ public class FundJoinService {
 	    fundAccountTransactionRepo.save(fundAccTx);
 	}
 	
+	// 계좌 번호 조회
+	public String getAccountNumber(Integer userId) {
+        return depositAccountRepo.findAccountNumberByUserId(userId);
+    }
+	
+	// 영업시간 정규화: 제출 시각(now)을 "실제 접수 가능한 영업일 09:00"로 보정
+	private ZonedDateTime normalizeToBusinessOpen(ZonedDateTime nowKst,
+	                                              LocalTime businessOpen,     // 09:00
+	                                              LocalTime cutOff,           // 펀드별 컷오프
+	                                              HolidayService holidaySvc) {
+	    LocalDate d = nowKst.toLocalDate();
+	    // 1) 휴일이면 다음 영업일 09:00
+	    if (!holidaySvc.isBusinessDay(d)) {
+	        LocalDate nd = holidaySvc.nextBusinessDay(d);
+	        return ZonedDateTime.of(nd, businessOpen, nowKst.getZone());
+	    }
+
+	    LocalTime t = nowKst.toLocalTime();
+
+	    // 2) 영업개시 전(00:00~09:00) -> 당일 09:00
+	    if (t.isBefore(businessOpen)) {
+	        return ZonedDateTime.of(d, businessOpen, nowKst.getZone());
+	    }
+
+	    // 3) 영업시간(09:00~컷오프) -> 그대로 유지
+	    if (!t.isAfter(cutOff)) {
+	        return nowKst;
+	    }
+
+	    // 4) 컷오프 이후(컷오프~24:00) -> 다음 영업일 09:00
+	    LocalDate nd = holidaySvc.nextBusinessDay(d);
+	    return ZonedDateTime.of(nd, businessOpen, nowKst.getZone());
+	}
+	
+	@Transactional(rollbackFor = Exception.class)
+	public Long fundJoinAndReturnTxId(Integer uid, String fundId, Long amount, String rawPin,
+	                                  String branchName, String ruleType, String ruleValue) {
+	    // 기존 fundJoin(...) 전처리와 동일
+	    User user = userRepository.findById(uid)
+	        .orElseThrow(() -> new IllegalArgumentException("User not found"));
+	    FundProduct fund = fundProductRepository
+	        .findTopByFund_FundIdOrderByProductIdDesc(fundId)
+	        .orElseThrow(() -> new IllegalArgumentException("FundProduct not found"));
+	    Branch branch = (branchName == null || branchName.isBlank())
+	        ? null : branchRepository.findByBranchName(branchName).orElse(null);
+
+	    if (!checkDepositAccount(uid)) throw new IllegalStateException("입출금 계좌가 없습니다.");
+	    if (!checkInvestProfile(uid))  throw new IllegalStateException("투자성향분석이 없거나 1년이 경과했습니다.");
+
+	    FundAccount fundAccount = createFundAccount(user, fund, rawPin);
+	    BigDecimal orderAmount = BigDecimal.valueOf(amount).setScale(0, RoundingMode.UNNECESSARY);
+	    accountTransaction(user, orderAmount);
+
+	    DepositAccount depositAccount = depositAccountRepo.findByUser_UserId(user.getUserId())
+	        .orElseThrow(() -> new IllegalStateException("Deposit Account Not Found"));
+
+	    // 🔑 트랜잭션 생성 시 PK를 바로 반환하도록 createFundTransaction을 Long 리턴으로 바꾸거나,
+	    // 동일 로직의 반환 버전(createFundTransactionReturn) 추가
+	    Long txId = createFundTransaction(
+	        user, depositAccount, fund, fundAccount, orderAmount, branch,
+	        FundTransaction.InvestRuleType.valueOf(ruleType), (ruleValue == null ? "" : ruleValue)
+	    ).getOrderId();
+
+	    return txId;
+	}
+	
+
+@Transactional(readOnly = true)
+public Map<String, Object> getJoinDates(Integer userId, Long transactionId) {
+    FundTransaction tx = fundTransactionRepo
+        .findByOrderIdAndUser_UserId(transactionId, userId)
+        .orElseThrow(() -> new IllegalArgumentException("거래를 찾을 수 없습니다."));
+
+    return Map.of(
+        "transactionId",  tx.getOrderId(),
+        "tradeDate",      tx.getTradeDate(),     // 투자신청일 (D)
+        "navDate",        tx.getNavDate(),       // 금액확정일 (T)
+        "processedAt",    tx.getProcessedAt(),   // 체결일
+        "settlementDate", tx.getSettlementDate() // 정산일
+    );
+}
+
 	
 	// 임시저장
 	
-	// 사후 관리지점
-	public Branch managingBranch() {
-		Branch branch = null;
-		return branch;
-	}
 }

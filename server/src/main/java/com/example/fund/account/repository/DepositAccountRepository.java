@@ -17,6 +17,10 @@ public interface DepositAccountRepository extends JpaRepository<DepositAccount, 
 	// 존재 여부
 	boolean existsByUser_UserId(Integer userId);
 	
+	// 사용자 ID로 계좌번호 조회
+	@Query("select d.accountNumber from DepositAccount d where d.user.userId = :userId")
+    String findAccountNumberByUserId(Integer userId);
+	
 	// 사용자 ID로 엔티티 조회
 	Optional<DepositAccount> findByUser_UserId(Integer userId);
 	
