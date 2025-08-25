@@ -7,9 +7,6 @@ import lombok.*;
 @Table(name = "invest_profile_type")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@ToString
 public class InvestProfileType {
 
     @Id
@@ -17,13 +14,16 @@ public class InvestProfileType {
     private Long typeId;
 
     @Column(length = 20, nullable = false)
-    private String typeName; // 예: 안정형
+    private String typeName; // 안정형, 위험중립형, ...
 
     @Column(nullable = false)
     private Integer minScore;
 
     @Column(nullable = false)
     private Integer maxScore;
+
+    @Column(name = "risk_level", nullable = false)
+    private Integer riskLevel; // ★ 추가: 1~5
 
     @Lob
     private String description;

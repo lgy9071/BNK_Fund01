@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/core/services/user_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class CddScreen extends StatefulWidget {
   final String? accessToken; // 액세스 토큰
@@ -554,22 +555,22 @@ class _CddScreenState extends State<CddScreen> {
     }
 
     // 정상 화면
+    // 정상 화면
     return WillPopScope(
       onWillPop: _showExitConfirmDialog,
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: _buildAppBar(),
+        // 키보드 인셋은 우리가 직접 처리할 것이므로 false
+        resizeToAvoidBottomInset: false,
         body: SafeArea(
           child: GestureDetector(
-            // 다른 곳을 탭하면 포커스 해제
-            onTap: () {
-              FocusScope.of(context).unfocus();
-            },
+            onTap: () => FocusScope.of(context).unfocus(),
             child: Column(
               children: [
-                // 진행률 표시바
+                // 진행률 표시바 (원본 유지, padding만 반응형)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                   child: Column(
                     children: [
                       Row(
@@ -579,7 +580,7 @@ class _CddScreenState extends State<CddScreen> {
                           Text(_getStepTitle()),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10.h),
                       LinearProgressIndicator(
                         value: (currentStep + 1) / totalSteps,
                         backgroundColor: Colors.grey[300],
@@ -589,20 +590,43 @@ class _CddScreenState extends State<CddScreen> {
                   ),
                 ),
 
-                // 메인 컨텐츠
+                // 메인 컨텐츠: 스크롤 가능 + 최소 높이 보장
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: _buildCurrentStepContent(),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(),
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: EdgeInsets.all(20.w).copyWith(
+                          // 키보드가 올라오면 본문도 약간의 여유를 줘서 커서가 가려지지 않게
+                          bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 16.h : 20.h,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
+                          ),
+                          child: _buildCurrentStepContent(),
+                        ),
+                      );
+                    },
                   ),
                 ),
-
-                // 하단 버튼
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: _buildBottomButtons(),
-                ),
               ],
+            ),
+          ),
+        ),
+
+        // ⬇️ 하단 버튼은 여기로 이동하여 키보드 위로 부드럽게 올라오도록
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: AnimatedPadding(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            // 키보드 높이만큼 들어올림
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+              child: _buildBottomButtons(),
             ),
           ),
         ),
