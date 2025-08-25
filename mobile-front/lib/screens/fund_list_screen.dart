@@ -42,7 +42,7 @@ class JoinFund {
   });
 }
 
-// 타입 표준화: 원본 표기를 칩 텍스트(전체/주식형/채권형/혼합형)에 맞춤
+// 타입 표준화
 String _canonByText(String? s) {
   final t = (s ?? '').replaceAll(RegExp(r'\s'), '').toLowerCase();
   if (t.isEmpty) return '기타';
@@ -53,7 +53,7 @@ String _canonByText(String? s) {
   return '기타';
 }
 
-// ② FundListItem 전체를 보고 최종 타입 결정
+// FundListItem → 최종 타입
 String _canonTypeFromAny(FundListItem f) {
   final a = _canonByText(f.fundType);
   if (a != '기타') return a;
@@ -123,11 +123,11 @@ class __SlideFade extends StatelessWidget {
 }
 
 class FundListScreen extends StatefulWidget {
-  const FundListScreen({super.key, this.accessToken,          // ✅ 토큰 주입
-    this.userService, });
+  const FundListScreen({super.key, this.accessToken, this.userService});
 
   final String? accessToken;
   final UserService? userService;
+
   @override
   State<FundListScreen> createState() => _FundListScreenState();
 }
@@ -140,14 +140,20 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
 
   bool _fabOpen = false; // ✅ FAB 메뉴 열림 상태
 
-  // 새로고침 더 가볍게 트리거
+  // 새로고침
   final _refreshKey = GlobalKey<RefreshIndicatorState>();
   bool _autoRefreshing = false;
-  double _pullAccum = 0.0; // 살짝 당긴 거리 누적
+  double _pullAccum = 0.0;     // 당긴 누적 거리
+  bool _pulledEnough = false;  // 임계 넘었는지
+  DateTime? _lastRefreshAt;    // 쿨다운 기준 시각
 
-  // 컨트롤러는 내부 ListView에 연결 (NestedScrollView엔 연결하지 않음)
+  // 감도/쿨다운 설정 (값을 키우면 덜 민감해짐)
+  static const double kPullToRefreshThreshold = 48.0; // px
+  static const Duration kRefreshCooldown = Duration(milliseconds: 800);
+
+  // 컨트롤러는 내부 ListView에 연결
   final _scroll = ScrollController();
-  bool _showHeader = true; // 헤더 노출 제어용 플래그
+  bool _showHeader = true;
 
   List<JoinFund> _items = [];
   PaginationInfo? _page;
@@ -168,7 +174,7 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
   late final AnimationController _hdrCtl;
   late final Animation<double> _tTitle, _tSearch, _tChips;
 
-  // 리스트 스태거 애니메이션(첫 페이지 진입 시 카드가 차례대로)
+  // 리스트 스태거 애니메이션
   late final AnimationController _listCtl;
   int _firstPageCount = 0;
   bool _animateFirstPage = true;
@@ -179,27 +185,22 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
   //토글
   void _togglePick(String fundId) {
     final already = _picked.contains(fundId);
-
-    // 3개째 추가를 막고 안내
     if (!already && _picked.length >= 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('최대 2개까지만 담을 수 있어요.')),
       );
       return;
     }
-
     setState(() {
       if (already) {
-        _picked.remove(fundId);   // 선택 해제는 항상 허용
+        _picked.remove(fundId);
       } else {
-        _picked.add(fundId);      // 2개 이하일 때만 추가
+        _picked.add(fundId);
       }
     });
   }
 
-  //선택됨 여부
   bool _isPicked(String fundId) => _picked.contains(fundId);
-
 
   @override
   void initState() {
@@ -225,7 +226,7 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
         if (!_loading && (_page?.hasNext ?? false)) _load(page: (_page!.page + 1));
       }
 
-      // 헤더 보임/숨김 토글 (offset이 거의 0일 때만 보이도록)
+      // 헤더 보임/숨김
       final shouldShow = _scroll.hasClients ? _scroll.offset < 24.0 : true;
       if (shouldShow != _showHeader && mounted) {
         setState(() => _showHeader = shouldShow);
@@ -267,7 +268,7 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
         WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _listCtl.forward(); });
       } else {
         _items.addAll(list);
-        _animateFirstPage = false; // 페이지 추가분은 애니메이션 없이
+        _animateFirstPage = false;
       }
       _page = res.pagination;
     } catch (e) {
@@ -325,13 +326,13 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
                         __SlideFade(
                           t: _tTitle,
                           child: const Text(
-                            '펀드 찾기',
+                            '펀드 가입',
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.4),
                           ),
                         ),
                         const SizedBox(height: 16),
-                        // 2) 검색바 (폭 축소 & 높이 얇게)
+                        // 2) 검색바
                         __SlideFade(
                           t: _tSearch,
                           child: Align(
@@ -365,7 +366,7 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
                           ),
                         ),
                         const SizedBox(height: 18),
-                        // 3) 유형 칩 (라벨 없이 칩만)
+                        // 3) 유형 칩
                         __SlideFade(
                           t: _tChips,
                           child: SizedBox(
@@ -381,8 +382,6 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
                                 }
                                 return Image.asset(
                                   path, width: 16, height: 16, filterQuality: FilterQuality.medium,
-                                  // color: sel ? tossBlue : Colors.black87,
-                                  // colorBlendMode: BlendMode.srcIn,
                                 );
                               },
                             ),
@@ -402,7 +401,6 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    // 상단 1/3, 목록 2/3 비율
     final screenH = MediaQuery.of(context).size.height;
     final headerH = (screenH * 0.33).clamp(220.0, 380.0);
 
@@ -416,8 +414,6 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
         selectedCount: _picked.length,
         onCompare: () {
           final selected = _items.where((f) => _picked.contains(f.fundId)).toList();
-
-          // JoinFund -> CompareFundView 매핑
           final views = selected.map((f) {
             final risk = f.badges.firstWhere(
                   (x) => x.startsWith('위험'),
@@ -434,30 +430,21 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
               return12m: f.return12m,
             );
           }).toList();
-
           showCompareModal(context, views);
         },
-
         onAiCompare: () async {
-          // 선택된 펀드 2개 이상인지 체크
           if (_picked.length < 2) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('최소 2개 이상 담아야 AI 비교가 가능해요.')),
             );
             return;
           }
-
-          // 담은 순서대로 정렬 (사용자 선택 순서 유지)
-          final pickedOrder = _picked.toList(); // Set이라면 담는 순서가 다를 수 있으니 목록으로
+          final pickedOrder = _picked.toList();
           final selected = _items
               .where((f) => _picked.contains(f.fundId))
               .toList()
             ..sort((x, y) => pickedOrder.indexOf(x.fundId).compareTo(pickedOrder.indexOf(y.fundId)));
-
-          // 앞의 2개만 사용 (A, B)
           final top2 = selected.take(2).toList();
-
-          // CompareFundView로 변환 (네가 이미 쓰는 필드에 맞춰서)
           final views = top2.map((f) => CompareFundView(
             fundId: f.fundId,
             name: f.name,
@@ -469,15 +456,12 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
             return12m: f.return12m,
           )).toList();
 
-          // 토큰/베이스URL은 네가 쓰는 방식대로 주입
-          // - 만약 FundListScreen에 widget.accessToken / ApiConfig.baseUrl 접근 가능하면 그걸 사용
-          // - 아니면 생성자에서 받아서 보관해둔 값을 사용
           try {
             await showAiCompareSheetFromViews(
               context,
               views: views,
               accessToken: widget.accessToken!,
-              baseUrl: ApiConfig.baseUrl,      // <- 너의 소스에서 실제 baseUrl로 바꿔
+              baseUrl: ApiConfig.baseUrl,
             );
           } catch (e) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -490,9 +474,7 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
             const SnackBar(content: Text('최소 2개 이상 담아야 비교할 수 있어요.')),
           );
         },
-        onMenuOpenChanged: (open) {            // ✅ FAB에서 요청 받음
-          if (mounted) setState(() => _fabOpen = open);
-        },
+        onMenuOpenChanged: (open) { if (mounted) setState(() => _fabOpen = open); },
       ),
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -501,274 +483,264 @@ class _FundListScreenState extends State<FundListScreen> with TickerProviderStat
           children: [
             LayoutBuilder(
               builder: (context, _) {
-                final screenH = MediaQuery.of(context).size.height;
-                final headerH = (screenH * 0.33).clamp(220.0, 380.0);
-        
-                return AnimatedBuilder(
-                  animation: _scroll,
-                  builder: (context, __) {
-                    final offset = _scroll.hasClients ? _scroll.offset : 0.0;
-                    // 헤더가 위로 이동하는 거리(0 ~ headerH)
-                    final y = offset.clamp(0.0, headerH);
-        
-                    // 헤더 노출 비율 t: 1(완전 노출) ~ 0(완전 숨김)
-                    final t = (1.0 - (y / headerH)).clamp(0.0, 1.0);
-        
-                    // 첫 카드 위 파스텔 배경 노출 여백(최대 20 → 0)
-                    const double kRevealGapMax = 15.0;
-                    final revealGap = kRevealGapMax * t;
-        
-                    // 헤더가 올라간 만큼 + 추가 여백 + 기본여백(8)
-                    const double kHeaderBottomPad = 8.0;   // 필요하면 0~12 안에서 조절
-                    final topPad = kHeaderBottomPad + (headerH - y) + revealGap;
-        
-                    // 1) 스피너 위치 계산 (0 ~ topPad 범위로 안전하게)
-                    final double spinnerY = (topPad - 12).clamp(0.0, topPad).toDouble();
-        
-                    // 2) RefreshIndicator에서 사용
-                    edgeOffset: topPad;
-                    displacement: spinnerY;
-        
-                    return (!_initialized && _loading)
-                        ? const Center(child: CircularProgressIndicator(color: tossBlue,))
-                        : RefreshIndicator(
-                      key: _refreshKey,
-                      onRefresh: () => _load(page: 0),
-                      // 스피너를 헤더 바로 아래에서 보이게
-                      edgeOffset: headerH,
-                      displacement: headerH + 12,
-                      color: tossBlue,
-                      backgroundColor: Colors.white,
-                      strokeWidth: 2.6,
-                      notificationPredicate: (n) => n.depth == 0,
-                      child: Container(
-                        color: pastel(tossBlue), // 리스트 배경
-                        child: NotificationListener<ScrollNotification>(
-                          // "살짝만" 당겨도 새로고침
-                          onNotification: (n) {
-                            final atTop = n.metrics.extentBefore == 0;
-        
-                            if (atTop) {
-                              if (n is OverscrollNotification && n.overscroll < 0) {
-                                _pullAccum += -n.overscroll;
-                              } else if (n is ScrollUpdateNotification) {
-                                final d = n.scrollDelta ?? 0;
-                                if (d < 0) _pullAccum += -d;
-                              }
-                              if (!_autoRefreshing && !_loading && _pullAccum > 8) {
-                                _autoRefreshing = true;
-                                _refreshKey.currentState?.show();
-                              }
+                return (!_initialized && _loading)
+                    ? const Center(child: CircularProgressIndicator(color: tossBlue,))
+                    : RefreshIndicator(
+                  key: _refreshKey,
+                  onRefresh: () async {
+                    try {
+                      await _load(page: 0);
+                    } finally {
+                      _autoRefreshing = false; // ✅ 끝나면 해제
+                    }
+                  },
+                  // 스피너를 더 아래에서 보이게 → 체감상 덜 민감
+                  edgeOffset: headerH + 8,
+                  displacement: headerH + 36,
+                  color: tossBlue,
+                  backgroundColor: Colors.white,
+                  strokeWidth: 2.6,
+                  notificationPredicate: (n) => n.depth == 0,
+                  child: Container(
+                    color: pastel(tossBlue),
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (n) {
+                        final atTop = n.metrics.extentBefore == 0;
+
+                        if (atTop) {
+                          if (n is OverscrollNotification && n.overscroll < 0) {
+                            _pullAccum += -n.overscroll;
+                          } else if (n is ScrollUpdateNotification) {
+                            final d = n.scrollDelta ?? 0;
+                            if (d < 0) _pullAccum += -d;
+                          }
+
+                          // 임계 넘으면 플래그만 세팅 (즉시 새로고침 금지)
+                          if (_pullAccum >= kPullToRefreshThreshold) {
+                            _pulledEnough = true;
+                          }
+
+                          // 손을 뗐을 때만 실제 트리거
+                          if (n is ScrollEndNotification) {
+                            final now = DateTime.now();
+                            final cooledDown = _lastRefreshAt == null ||
+                                now.difference(_lastRefreshAt!) >= kRefreshCooldown;
+
+                            if (!_loading && !_autoRefreshing && _pulledEnough && cooledDown) {
+                              _autoRefreshing = true;
+                              _lastRefreshAt = now;
+                              _refreshKey.currentState?.show();
                             }
-                            if (n is ScrollEndNotification) {
-                              _pullAccum = 0.0;
-                              _autoRefreshing = false;
-                            }
-                            return false;
-                          },
-                          child: CustomScrollView(
-                            controller: _scroll,
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                            slivers: [
-                              // ① 헤더를 스크롤 콘텐츠 안으로 포함
-                              SliverToBoxAdapter(
-                                child: Container(
-                                  color: Colors.white,
-                                  child: _buildHeader(headerH),
-                                ),
-                              ),
-                              // ② 목록 (separator는 각 아이템 하단 padding으로 대체)
-                              SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                                sliver: SliverList(
-                                  delegate: SliverChildBuilderDelegate(
-                                        (ctx, i) {
-                                      if (i == _items.length) {
-                                        if (_loading) {
-                                          return const Padding(
-                                            padding: EdgeInsets.all(16),
-                                            child: Center(child: CircularProgressIndicator(color: tossBlue,)),
-                                          );
-                                        }
-                                        if (!(_page?.hasNext ?? false)) {
-                                          return const SizedBox(height: 24);
-                                        }
-                                        return const SizedBox.shrink();
-                                      }
-        
-                                      final f = _items[i];
-        
-                                      Animation<double> it;
-                                      if (_animateFirstPage && i < _firstPageCount) {
-                                        final start = (i * 0.06).clamp(0.0, 0.9);
-                                        final end = (start + 0.4).clamp(0.0, 1.0);
-                                        it = CurvedAnimation(
-                                          parent: _listCtl,
-                                          curve: Interval(start, end, curve: Curves.easeOut),
-                                        );
-                                      } else {
-                                        it = const AlwaysStoppedAnimation(1.0);
-                                      }
-        
-                                      final selected = _isPicked(f.fundId);
-        
-                                      final card = _Pressable(
-                                        child: Material(
-                                          color: Colors.white,
-                                          // ✅ 모서리 라운드 + 테두리를 Material shape로 처리 (잘림 방지)
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(14),
-                                            side: selected
-                                                ? const BorderSide(color: tossBlue, width: 1.6)
-                                                : BorderSide.none,
-                                          ),
-                                          clipBehavior: Clip.antiAlias, // inkwell 클립 일치
-                                          child: InkWell(
-                                            onTap: () {
-                                              HapticFeedback.lightImpact();
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => FundDetailScreen(
-                                                    fundId: f.fundId,
-                                                    title: f.name,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(12),
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  // 위 라벨/설정일 행 (그대로)
-                                                  Row(
-                                                    children: [
-                                                      Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                        decoration: BoxDecoration(
-                                                          color: tossBlue.withOpacity(0.12),
-                                                          borderRadius: BorderRadius.circular(8),
-                                                        ),
-                                                        child: Text(
-                                                          _divisionOf(f),
-                                                          style: const TextStyle(
-                                                            fontSize: 10,
-                                                            color: tossBlue,
-                                                            fontWeight: FontWeight.w700,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      const Spacer(),
-                                                      if (f.launchedAt != null)
-                                                        Text('설정일 ${_fmtDate(f.launchedAt!)}',
-                                                            style: const TextStyle(fontSize: 12)),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 6),
-        
-                                                  // 제목/서브 (그대로)
-                                                  Text(
-                                                    f.name,
-                                                    maxLines: 2,
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    f.subName,
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: TextStyle(
-                                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-        
-                                                  const SizedBox(height: 10),
-        
-                                                  // ✅ 위험/유형 칩 + 담기 버튼을 같은 라인으로 (행 높이 고정)
-                                                  Row(
-                                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                                    children: [
-                                                      // 칩들
-                                                      Flexible(
-                                                        child: Wrap(
-                                                          spacing: 6,
-                                                          runSpacing: 6,
-                                                          alignment: WrapAlignment.start,
-                                                          crossAxisAlignment: WrapCrossAlignment.center,
-                                                          children: [
-                                                            if (f.badges.any((b) => b.startsWith('위험')))
-                                                              _badgeChip(f.badges.firstWhere((b) => b.startsWith('위험'))),
-                                                            _badgeChip(f.type),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 8),
-        
-                                                    ],
-                                                  ),
-        
-                                                  const SizedBox(height: 15),
-        
-                                                  // 수익률 행 (그대로)
-                                                  Row(
-                                                    children: [
-                                                      // ✅ 칩 스타일 "담기+" 버튼 (선택 시 체크만)
-                                                      _PickChipButton(
-                                                        selected: selected,
-                                                        enabled: selected || _picked.length < 2,  // 2개 꽉 찼으면 새 추가만 비활성
-                                                        onTap: () {
-                                                          HapticFeedback.selectionClick();
-                                                          _togglePick(f.fundId);
-                                                        },
-                                                      ),
-                                                      const Spacer(),
-                                                      const Text('1개월 수익률',
-                                                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                                                      const SizedBox(width: 8),
-                                                      Text('${f.return1m.toStringAsFixed(2)}%', style: _ret(f.return1m)),
-                                                    ],
-                                                  ),
-                                                ],
+
+                            // 초기화
+                            _pullAccum = 0.0;
+                            _pulledEnough = false;
+                          }
+                        } else {
+                          // 맨 위가 아니면 누적/플래그 초기화
+                          if (n is ScrollUpdateNotification) {
+                            _pullAccum = 0.0;
+                            _pulledEnough = false;
+                          }
+                        }
+                        return false;
+                      },
+                      child: CustomScrollView(
+                        controller: _scroll,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                        slivers: [
+                          // ① 헤더
+                          SliverToBoxAdapter(
+                            child: Container(
+                              color: Colors.white,
+                              child: _buildHeader(headerH),
+                            ),
+                          ),
+                          // ② 목록
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                    (ctx, i) {
+                                  if (i == _items.length) {
+                                    if (_loading) {
+                                      return const Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Center(child: CircularProgressIndicator(color: tossBlue,)),
+                                      );
+                                    }
+                                    if (!(_page?.hasNext ?? false)) {
+                                      return const SizedBox(height: 24);
+                                    }
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  final f = _items[i];
+
+                                  Animation<double> it;
+                                  if (_animateFirstPage && i < _firstPageCount) {
+                                    final start = (i * 0.06).clamp(0.0, 0.9);
+                                    final end = (start + 0.4).clamp(0.0, 1.0);
+                                    it = CurvedAnimation(
+                                      parent: _listCtl,
+                                      curve: Interval(start, end, curve: Curves.easeOut),
+                                    );
+                                  } else {
+                                    it = const AlwaysStoppedAnimation(1.0);
+                                  }
+
+                                  final selected = _isPicked(f.fundId);
+
+                                  final card = _Pressable(
+                                    child: Material(
+                                      color: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                        side: selected
+                                            ? const BorderSide(color: tossBlue, width: 1.6)
+                                            : BorderSide.none,
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: InkWell(
+                                        onTap: () {
+                                          HapticFeedback.lightImpact();
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => FundDetailScreen(
+                                                fundId: f.fundId,
+                                                title: f.name,
                                               ),
                                             ),
+                                          );
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              // 위 라벨/설정일 행
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: tossBlue.withOpacity(0.12),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Text(
+                                                      _divisionOf(f),
+                                                      style: const TextStyle(
+                                                        fontSize: 10,
+                                                        color: tossBlue,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const Spacer(),
+                                                  if (f.launchedAt != null)
+                                                    Text('설정일 ${_fmtDate(f.launchedAt!)}',
+                                                        style: const TextStyle(fontSize: 12)),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 6),
+
+                                              // 제목/서브
+                                              Text(
+                                                f.name,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                f.subName,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+
+                                              const SizedBox(height: 10),
+
+                                              // 위험/유형 칩
+                                              Row(
+                                                crossAxisAlignment: CrossAxisAlignment.center,
+                                                children: [
+                                                  Flexible(
+                                                    child: Wrap(
+                                                      spacing: 6,
+                                                      runSpacing: 6,
+                                                      alignment: WrapAlignment.start,
+                                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                                      children: [
+                                                        if (f.badges.any((b) => b.startsWith('위험')))
+                                                          _badgeChip(f.badges.firstWhere((b) => b.startsWith('위험'))),
+                                                        _badgeChip(f.type),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                ],
+                                              ),
+
+                                              const SizedBox(height: 15),
+
+                                              // 수익률 + 담기 버튼
+                                              Row(
+                                                children: [
+                                                  _PickChipButton(
+                                                    selected: selected,
+                                                    enabled: selected || _picked.length < 2,
+                                                    onTap: () {
+                                                      HapticFeedback.selectionClick();
+                                                      _togglePick(f.fundId);
+                                                    },
+                                                  ),
+                                                  const Spacer(),
+                                                  const Text('1개월 수익률',
+                                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                                  const SizedBox(width: 8),
+                                                  Text('${f.return1m.toStringAsFixed(2)}%', style: _ret(f.return1m)),
+                                                ],
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      );
-        
-                                      // separator 대체: 아이템 하단 여백
-                                      return __SlideFade(
-                                        t: it,
-                                        dy: .06,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(bottom: 12),
-                                          child: card,
-                                        ),
-                                      );
-                                    },
-                                    childCount: _items.length + 1,
-                                  ),
-                                ),
+                                      ),
+                                    ),
+                                  );
+
+                                  return __SlideFade(
+                                    t: it,
+                                    dy: .06,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: card,
+                                    ),
+                                  );
+                                },
+                                childCount: _items.length + 1,
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 );
-        
               },
             ),
-            // ✅ 투명 배리어 (열렸을 때만 깔려서 뒤 터치 차단 + 탭하면 닫힘)
+
+            // FAB 열렸을 때 터치 배리어
             if (_fabOpen)
               Positioned.fill(
                 child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,  // ← 투명 영역도 터치 흡수
-                  onTap: () => setState(() => _fabOpen = false), // 배리어 탭 시 닫기
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _fabOpen = false),
                   child: const SizedBox.shrink(),
                 ),
               ),
@@ -803,8 +775,8 @@ class _PressableState extends State<_Pressable> {
           duration: const Duration(milliseconds: 110),
           decoration: BoxDecoration(
             boxShadow: _down
-                ? [BoxShadow(color: Colors.black.withOpacity(.03), blurRadius: 4, offset: Offset(0, 2))]
-                : [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 10, offset: Offset(0, 6))],
+                ? [BoxShadow(color: Colors.black.withOpacity(.03), blurRadius: 4, offset: const Offset(0, 2))]
+                : [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 10, offset: const Offset(0, 6))],
           ),
           child: widget.child,
         ),
@@ -819,10 +791,7 @@ class _ChipsRow extends StatelessWidget {
   final String selected;
   final void Function(String) onSelected;
 
-  // 항목별 왼쪽 아이콘(위젯) 커스텀 빌더
   final Widget Function(String item, bool selected)? leadingBuilder;
-
-  // (옵션) 기본 아이콘 - leadingBuilder가 없을 때만 사용
   final IconData? icon;
 
   const _ChipsRow({
@@ -846,22 +815,25 @@ class _ChipsRow extends StatelessWidget {
             ? leadingBuilder!(t, sel)
             : Icon(icon ?? Icons.category, size: 16, color: sel ? tossBlue : Colors.black87);
 
-        return ChoiceChip(
-          label: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              leading,
-              const SizedBox(width: 6),
-              Text(t),
-            ],
+        return ChipTheme(
+          data: ChipTheme.of(context).copyWith(showCheckmark: false), // ✅ 체크마크 비활성화
+          child: ChoiceChip(
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                leading,
+                const SizedBox(width: 6),
+                Text(t),
+              ],
+            ),
+            selected: sel,
+            onSelected: (_) => onSelected(t),
+            selectedColor: tossBlue.withOpacity(.1),
+            backgroundColor: Colors.white,
+            side: BorderSide(color: sel ? tossBlue : Colors.black26),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          selected: sel,
-          onSelected: (_) => onSelected(t),
-          selectedColor: tossBlue.withOpacity(.12),
-          backgroundColor: Colors.white,
-          side: BorderSide(color: sel ? tossBlue : Colors.black26),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         );
       },
       separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -902,14 +874,12 @@ class _CompareFabState extends State<_CompareFab> with SingleTickerProviderState
     super.initState();
     _ctl = AnimationController(vsync: this, duration: const Duration(milliseconds: 220));
     _t = CurvedAnimation(parent: _ctl, curve: Curves.easeOutCubic);
-    // 시작 상태 동기화
     if (widget.open) _ctl.value = 1.0;
   }
 
   @override
   void didUpdateWidget(covariant _CompareFab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // ✅ 외부 open 값이 바뀌면 애니메이션만 맞춤
     if (oldWidget.open != widget.open) {
       if (widget.open) {
         _ctl.forward();
@@ -926,12 +896,11 @@ class _CompareFabState extends State<_CompareFab> with SingleTickerProviderState
   }
 
   void _requestToggle() {
-    FocusScope.of(context).unfocus(); // 키보드 먼저 내리기
+    FocusScope.of(context).unfocus();
     if (!widget.canOpen) {
       widget.onBlocked();
       return;
     }
-    // ✅ 내부에서 상태를 직접 바꾸지 말고 "요청"만 부모에 알림
     widget.onMenuOpenChanged?.call(!widget.open);
   }
 
@@ -941,7 +910,7 @@ class _CompareFabState extends State<_CompareFab> with SingleTickerProviderState
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          widget.onMenuOpenChanged?.call(false); // ✅ 먼저 닫기 요청
+          widget.onMenuOpenChanged?.call(false);
           onTap();
         },
         child: Container(
@@ -1003,7 +972,7 @@ class _CompareFabState extends State<_CompareFab> with SingleTickerProviderState
 
           // FAB 본체
           FloatingActionButton(
-            onPressed: _requestToggle,                   // ✅ 토글 “요청”
+            onPressed: _requestToggle,
             backgroundColor: tossBlue,
             foregroundColor: Colors.white,
             shape: const CircleBorder(),
@@ -1022,7 +991,7 @@ class _CompareFabState extends State<_CompareFab> with SingleTickerProviderState
 
 class _PickChipButton extends StatelessWidget {
   final bool selected;
-  final bool enabled;      // ← 추가
+  final bool enabled;
   final VoidCallback onTap;
   const _PickChipButton({required this.selected, required this.onTap, this.enabled = true});
 
@@ -1045,7 +1014,7 @@ class _PickChipButton extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: enabled || selected ? onTap : null, // 이미 2개면 새 추가만 비활성 (해제는 가능)
+          onTap: enabled || selected ? onTap : null,
           child: SizedBox(
             width: kChipW, height: kChipH,
             child: Center(
@@ -1068,5 +1037,3 @@ class _PickChipButton extends StatelessWidget {
     );
   }
 }
-
-
