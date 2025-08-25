@@ -11,4 +11,6 @@ import java.util.Optional;
 public interface CddRepository extends JpaRepository<CddEntity, Long> {
     List<CddEntity> findByUserIdOrderByCreatedAtDesc(Long userId);
     Optional<CddEntity> findByUserIdAndRrn(Long userId, String encryptedRrn);
+    // userId만으로 최근 1건 조회
+    Optional<CddEntity> findTopByUserIdOrderByCreatedAtDesc(Long userId);
 }

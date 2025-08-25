@@ -2,7 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/core/services/review_api.dart';
+import 'package:mobile_front/screens/fund_review/review_fund_list_screen.dart';
+import 'package:mobile_front/widgets/show_custom_confirm_dialog.dart';
 import '../core/actions/auth_actions.dart';
 import '../screens/fund_mbti_flow.dart';
 
@@ -132,6 +136,24 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
     // no-op: SessionManager 싱글톤이 없으므로 아무 것도 하지 않음
   }
 
+  Future<void> goToReviewWriteFlow(BuildContext context, ReviewApi api) async {
+    final holdings = await api.getMyHoldingFunds();
+    if (holdings.isEmpty) {
+      await showAppConfirmDialog(
+        context: context,
+        title: '안내',
+        message: '구매한 펀드가 없습니다.\n펀드 구매 후 이용해주세요.',
+        confirmText: '확인',
+        showCancel: false,
+      );
+      return;
+    }
+
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ReviewFundListScreen(api: api, funds: holdings),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -199,6 +221,17 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                         title: '투자성향분석',
                         onTap: widget.onGoInvestAnalysis,
                         assetPath: 'assets/icons/ic_analytics.png',
+                      ),
+                      _MenuItemData(
+                        title: '리뷰 작성',
+                        onTap: () {
+                          final api = ReviewApi(
+                            baseUrl: ApiConfig.baseUrl,
+                            accessToken: widget.accessToken ?? '', // secureStorage에서 읽어온 토큰
+                          );
+                          goToReviewWriteFlow(context, api);
+                        },
+                        assetPath: 'assets/icons/ic_review.png',
                       ),
                     ]),
                     const SizedBox(height: 20),

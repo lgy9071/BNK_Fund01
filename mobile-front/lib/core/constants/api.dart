@@ -29,11 +29,15 @@ class ApiConfig {
   static const String otpRequest = '$baseUrl/otp/request';
   static const String otpVerify = '$baseUrl/otp/verify';
 
-  // cdd 요청
+  // cdd 요청, 이력 조회
   static const String cddProcess = '$baseUrl/api/cdd/process';
+  static const String cddHistory = '$baseUrl/api/cdd/history';
 
   // 입출금 계좌 개설
   static const String createDepositAccount = '$baseUrl/api/deposit/create';
+
+  // 사용자의 가입 펀드 조회
+  static const String myFunds = '$baseUrl/api/funds/my';
 
   // 펀드 API
   static const String funds = '$baseUrl/api/funds';

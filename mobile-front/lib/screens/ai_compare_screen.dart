@@ -7,7 +7,6 @@ import 'package:mobile_front/models/compare_fund_view.dart';
 const tossBlue = Color(0xFF0064FF);
 const deepPurple = Color(0xFF6D28D9);
 
-
 Future<void> showAiCompareSheetFromViews(
     BuildContext context, {
       required List<CompareFundView> views, // 최소 2개
@@ -48,12 +47,16 @@ Future<void> showAiCompareSheet(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
-            child: _RoundedSheet(
-              child: AiCompareScreen(
-                fundIds: fundIds,
-                accessToken: accessToken,
-                baseUrl: baseUrl,
-                fundLabels: fundLabels,
+            // 폭 100% 맞춤
+            child: SizedBox(
+              width: double.infinity,
+              child: _RoundedSheet(
+                child: AiCompareScreen(
+                  fundIds: fundIds,
+                  accessToken: accessToken,
+                  baseUrl: baseUrl,
+                  fundLabels: fundLabels,
+                ),
               ),
             ),
           ),
@@ -63,7 +66,6 @@ Future<void> showAiCompareSheet(
   );
 }
 
-
 class _RoundedSheet extends StatelessWidget {
   final Widget child;
   const _RoundedSheet({required this.child});
@@ -72,6 +74,7 @@ class _RoundedSheet extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      width: double.infinity, // 폭 100%
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -84,12 +87,12 @@ class _RoundedSheet extends StatelessWidget {
 
 /// ───────── 새 스키마 모델 ─────────
 class AiCompareNew {
-  final String profileSummary;
+  final String profileSummary; // 서버에 오더라도 화면에 안 씀(요약 섹션 제거)
   final List<String> prosA;
   final List<String> consA;
   final List<String> prosB;
   final List<String> consB;
-  final String pick;   // "A" | "B" | "tie"
+  final String pick;   // "A" | "B" | "TIE"
   final String reason;
   final String riskNote;
 
@@ -110,22 +113,28 @@ class AiCompareNew {
     final A = (pc['A'] as Map?) ?? const {};
     final B = (pc['B'] as Map?) ?? const {};
     final finalPick = (json['finalPick'] as Map?) ?? const {};
+
+    // finalPick.pick 정규화
+    final pickRaw = (finalPick['pick'] ?? 'tie').toString().trim();
+    final normalizedPick = pickRaw.toUpperCase(); // 'a'|'b'|'tie' -> 'A'|'B'|'TIE'
+
     return AiCompareNew(
       profileSummary: (json['profileSummary'] ?? '') as String,
       prosA: _arr(A['pros']),
       consA: _arr(A['cons']),
       prosB: _arr(B['pros']),
       consB: _arr(B['cons']),
-      pick: (finalPick['pick'] ?? 'tie') as String,
+      pick: normalizedPick,
       reason: (finalPick['reason'] ?? '-') as String,
       riskNote: (json['riskNote'] ?? '') as String,
     );
   }
 
-  bool get isValid => profileSummary.isNotEmpty || prosA.isNotEmpty || prosB.isNotEmpty || reason.isNotEmpty;
+  bool get isValid =>
+      prosA.isNotEmpty || consA.isNotEmpty || prosB.isNotEmpty || consB.isNotEmpty || reason.isNotEmpty || pick.isNotEmpty;
 }
 
-/// ───────── 구 스키마 폴백용 (summary/rows/recommendation) ─────────
+/// ───────── 구 스키마 폴백용 ─────────
 class LegacyRow {
   final String item, a, b, winner, comment;
   LegacyRow(this.item, this.a, this.b, this.winner, this.comment);
@@ -137,6 +146,7 @@ class LegacyRow {
     (m['comment'] ?? '-').toString(),
   );
 }
+
 class LegacyResp {
   final String summary, riskNote;
   final List<LegacyRow> rows;
@@ -212,7 +222,6 @@ class _AiCompareScreenState extends State<AiCompareScreen> {
       future: _future,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          // 로딩도 시트 느낌의 최소 높이로
           return ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 260),
             child: Column(
@@ -223,7 +232,7 @@ class _AiCompareScreenState extends State<AiCompareScreen> {
                 Center(
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
-                    child: CircularProgressIndicator(color: tossBlue,),
+                    child: CircularProgressIndicator(color: tossBlue),
                   ),
                 ),
               ],
@@ -297,7 +306,7 @@ class _AiCompareScreenState extends State<AiCompareScreen> {
                       Expanded(
                         child: _ProsConsColumn(
                           tag: 'A',
-                          color: tossBlue,            // ← A 컬러
+                          color: tossBlue,
                           pros: newer.prosA,
                           cons: newer.consA,
                         ),
@@ -306,7 +315,7 @@ class _AiCompareScreenState extends State<AiCompareScreen> {
                       Expanded(
                         child: _ProsConsColumn(
                           tag: 'B',
-                          color: deepPurple,          // ← B 컬러
+                          color: deepPurple,
                           pros: newer.prosB,
                           cons: newer.consB,
                         ),
@@ -314,6 +323,15 @@ class _AiCompareScreenState extends State<AiCompareScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
+
+                // ✅ 최종 추천만
+                const _SectionTitle('최종 추천'),
+                _CardBlock(child: _FinalPickChip(pick: newer.pick, reason: newer.reason)),
+                if (newer.riskNote.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _RiskNote(text: newer.riskNote), // 고정 문구 버전 유지
+                ],
               ] else ...[
                 const _SectionTitle('비교표'),
                 _LegacyRowsTable(
@@ -324,7 +342,7 @@ class _AiCompareScreenState extends State<AiCompareScreen> {
                 const SizedBox(height: 12),
 
                 const _SectionTitle('최종 추천'),
-                _CardBlock(child: _FinalPickChip(pick: legacy.recPick, reason: legacy.recReason)),
+                _CardBlock(child: _FinalPickChip(pick: legacy.recPick.toUpperCase(), reason: legacy.recReason)),
                 if (legacy.riskNote.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   _RiskNote(text: legacy.riskNote),
@@ -377,7 +395,8 @@ class _Grabber extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-        width: 44, height: 4,
+        width: 44,
+        height: 4,
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(999)),
       ),
@@ -399,6 +418,7 @@ class _CardBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity, // 폭 100%
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFF),
@@ -411,8 +431,8 @@ class _CardBlock extends StatelessWidget {
 }
 
 class _ProsConsColumn extends StatelessWidget {
-  final String tag;           // 'A' | 'B'
-  final Color color;          // A/B 컬러
+  final String tag; // 'A' | 'B'
+  final Color color; // A/B 컬러
   final List<String> pros;
   final List<String> cons;
 
@@ -431,10 +451,8 @@ class _ProsConsColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── 제목: 동그란 A/B 뱃지 ───────────────────────
         _ABadge(tag: tag, color: color),
         const SizedBox(height: 10),
-
         if (hasPros) ...[
           const Text('장점', style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
@@ -446,8 +464,7 @@ class _ProsConsColumn extends StatelessWidget {
           const SizedBox(height: 4),
           ...cons.map(_bullet).toList(),
         ],
-        if (!hasPros && !hasCons)
-          const Text('-', style: TextStyle(color: Colors.black54)),
+        if (!hasPros && !hasCons) const Text('-', style: TextStyle(color: Colors.black54)),
       ],
     );
   }
@@ -465,15 +482,24 @@ class _ProsConsColumn extends StatelessWidget {
 }
 
 class _FinalPickChip extends StatelessWidget {
-  final String pick; // "A" | "B" | "tie"
+  final String pick; // "A" | "B" | "TIE"
   final String reason;
   const _FinalPickChip({required this.pick, required this.reason});
   @override
   Widget build(BuildContext context) {
-    String title; Color color;
-    if (pick == 'A') { title = 'A 추천'; color = tossBlue; }
-    else if (pick == 'B') { title = 'B 추천'; color = deepPurple; }
-    else { title = '동률/상황별'; color = Colors.grey; }
+    String title;
+    Color color;
+    final up = pick.toUpperCase();
+    if (up == 'A') {
+      title = 'A 추천';
+      color = tossBlue;
+    } else if (up == 'B') {
+      title = 'B 추천';
+      color = deepPurple;
+    } else {
+      title = '동률/상황별';
+      color = Colors.grey;
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -489,15 +515,16 @@ class _FinalPickChip extends StatelessWidget {
   }
 }
 
+// 고정 문구 유지
 class _RiskNote extends StatelessWidget {
   final String text;
   const _RiskNote({required this.text});
   @override
   Widget build(BuildContext context) => Row(
-    children: [
-      const Icon(Icons.info_outline, size: 20, color: Colors.grey),
-      const SizedBox(width: 6),
-      const Expanded(
+    children: const [
+      Icon(Icons.info_outline, size: 20, color: Colors.grey),
+      SizedBox(width: 6),
+      Expanded(
         child: Text(
           '본 분석 결과는 AI가 생성한 참고용 정보이므로,\n투자 결정 시 참고용으로만 활용해주세요.',
           style: TextStyle(color: Colors.black54, fontSize: 12),
@@ -512,7 +539,8 @@ Widget _legendRow(String tag, String name, Color color) {
   return Row(
     children: [
       Container(
-        width: 18, height: 18,
+        width: 18,
+        height: 18,
         alignment: Alignment.center,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         child: Text(tag, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
@@ -530,7 +558,7 @@ Widget _legendRow(String tag, String name, Color color) {
   );
 }
 
-/// 폴백: 구 스키마 테이블 (컬러 헤더/지브라/라운드/세로줄)
+/// 폴백: 구 스키마 테이블
 class _LegacyRowsTable extends StatelessWidget {
   final List<LegacyRow> rows;
   final String aHeader;
@@ -545,7 +573,8 @@ class _LegacyRowsTable extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [tossBlue.withOpacity(.95), tossBlue.withOpacity(.80)],
-          begin: Alignment.centerLeft, end: Alignment.centerRight,
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
         ),
       ),
       children: const [
@@ -558,7 +587,6 @@ class _LegacyRowsTable extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 상단 A/B 이름 상자 (표 위에도 한 번 더 명시)
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
@@ -578,58 +606,62 @@ class _LegacyRowsTable extends StatelessWidget {
         ),
         const SizedBox(height: 8),
 
-        DecoratedBox(
-          decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.black12.withOpacity(.22)),
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Table(
-              border: TableBorder(
-                verticalInside: BorderSide(color: Colors.black12.withOpacity(.25), width: .7),
-                horizontalInside: BorderSide(color: Colors.black12.withOpacity(.12), width: .7),
-                top: BorderSide(color: Colors.black12.withOpacity(.35), width: 1),
-                bottom: BorderSide(color: Colors.black12.withOpacity(.35), width: 1),
-                left: BorderSide(color: Colors.black12.withOpacity(.35), width: 1),
-                right: BorderSide(color: Colors.black12.withOpacity(.35), width: 1),
+        // ✅ 테이블 폭 100% 보장
+        SizedBox(
+          width: double.infinity,
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.black12.withOpacity(.22)),
               ),
-              columnWidths: const {
-                0: FixedColumnWidth(96),
-                1: FlexColumnWidth(),
-                2: FlexColumnWidth(),
-              },
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              children: [
-                header,
-                ...List<TableRow>.generate(rows.length, (i) {
-                  final r = rows[i];
-                  final bg = i.isEven ? const Color(0xFFF9FBFF) : const Color(0xFFF1F5FF);
-                  return TableRow(
-                    decoration: BoxDecoration(color: bg),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-                        child: Text(
-                          r.item,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Table(
+                border: TableBorder(
+                  verticalInside: BorderSide(color: Colors.black12.withOpacity(.25), width: .7),
+                  horizontalInside: BorderSide(color: Colors.black12.withOpacity(.12), width: .7),
+                  top: BorderSide(color: Colors.black12.withOpacity(.35), width: 1),
+                  bottom: BorderSide(color: Colors.black12.withOpacity(.35), width: 1),
+                  left: BorderSide(color: Colors.black12.withOpacity(.35), width: 1),
+                  right: BorderSide(color: Colors.black12.withOpacity(.35), width: 1),
+                ),
+                columnWidths: const {
+                  0: FixedColumnWidth(96),
+                  1: FlexColumnWidth(),
+                  2: FlexColumnWidth(),
+                },
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                children: [
+                  header,
+                  ...List<TableRow>.generate(rows.length, (i) {
+                    final r = rows[i];
+                    final bg = i.isEven ? const Color(0xFFF9FBFF) : const Color(0xFFF1F5FF);
+                    return TableRow(
+                      decoration: BoxDecoration(color: bg),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                          child: Text(
+                            r.item,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-                        child: Text(r.a),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-                        child: Text(r.b),
-                      ),
-                    ],
-                  );
-                }),
-              ],
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                          child: Text(r.a),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                          child: Text(r.b),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
             ),
           ),
         ),
@@ -691,7 +723,7 @@ class _TCell extends StatelessWidget {
   final bool bold;
   final bool center;
 
-  const _TCell(this.text, {this.bold = false, this.center = false}); // ← const 추가
+  const _TCell(this.text, {this.bold = false, this.center = false});
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -705,7 +737,7 @@ class _TCell extends StatelessWidget {
 }
 
 class _ABadge extends StatelessWidget {
-  final String tag;   // 'A' | 'B'
+  final String tag; // 'A' | 'B'
   final Color color;
   const _ABadge({required this.tag, required this.color});
 

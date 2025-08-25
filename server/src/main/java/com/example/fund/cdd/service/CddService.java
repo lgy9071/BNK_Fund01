@@ -1,16 +1,17 @@
 package com.example.fund.cdd.service;
 
+import com.example.fund.cdd.dto.CddHistoryResponseDto;
 import com.example.fund.cdd.dto.CddRequestDto;
 import com.example.fund.cdd.dto.CddResponseDto;
 import com.example.fund.cdd.entity.CddEntity;
 import com.example.fund.cdd.repository.CddRepository;
 import com.example.fund.cdd.util.AESUtil;
-import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,35 +38,47 @@ public class CddService {
             // 1. 주민등록번호 암호화
             String encryptedRrn = aesUtil.encrypt(request.getResidentRegistrationNumber());
 
-            // 2. 중복 CDD 확인
-            Optional<CddEntity> existingCdd = cddRepository.findByUserIdAndRrn(
-                    request.getUserId(), encryptedRrn);
-
-            if (existingCdd.isPresent()) {
-                log.warn("이미 CDD가 완료된 사용자입니다 - 사용자 ID: {}", request.getUserId());
-                throw new IllegalStateException("이미 고객확인의무가 완료된 사용자입니다.");
-            }
+            // 2. 기존 CDD 이력 확인
+            Optional<CddEntity> existingCdd = cddRepository.findTopByUserIdOrderByCreatedAtDesc(request.getUserId());
 
             // 3. 위험도 스코어링 수행 (임시 구현)
             RiskAssessmentResult riskResult = performRiskScoring(request);
 
-            // 4. CDD 엔티티 생성 및 저장
-            CddEntity cddEntity = CddEntity.builder()
-                    .userId(request.getUserId())
-                    .rrn(encryptedRrn)
-                    .address(request.getAddress())
-                    .nationality(request.getNationality())
-                    .occupation(request.getOccupation())
-                    .incomeSource(request.getIncomeSource())
-                    .transactionPurpose(request.getTransactionPurpose())
-                    .riskLevel(riskResult.getRiskLevel())
-                    .riskScore(riskResult.getRiskScore())
-                    .build();
+            CddEntity savedEntity;
 
-            CddEntity savedEntity = cddRepository.save(cddEntity);
+            if (existingCdd.isPresent()) {
+                // 4-1. 기존 이력 업데이트
+                log.info("기존 CDD 이력 업데이트 - CDD ID: {}", existingCdd.get().getCddId());
 
-            log.info("CDD 처리 완료 - CDD ID: {}, 위험등급: {}",
-                    savedEntity.getCddId(), savedEntity.getRiskLevel());
+                CddEntity entity = existingCdd.get();
+                entity.setRrn(encryptedRrn);
+                entity.setAddress(request.getAddress());
+                entity.setNationality(request.getNationality());
+                entity.setOccupation(request.getOccupation());
+                entity.setIncomeSource(request.getIncomeSource());
+                entity.setTransactionPurpose(request.getTransactionPurpose());
+                entity.setRiskLevel(riskResult.getRiskLevel());
+                entity.setRiskScore(riskResult.getRiskScore());
+                savedEntity = cddRepository.save(entity);
+
+            } else {
+                // 4-2. 새로운 CDD 이력 생성
+                log.info("새로운 CDD 이력 생성 - 사용자 ID: {}", request.getUserId());
+
+                CddEntity entity = CddEntity.builder()
+                        .userId(request.getUserId())
+                        .rrn(encryptedRrn)
+                        .address(request.getAddress())
+                        .nationality(request.getNationality())
+                        .occupation(request.getOccupation())
+                        .incomeSource(request.getIncomeSource())
+                        .transactionPurpose(request.getTransactionPurpose())
+                        .riskLevel(riskResult.getRiskLevel())
+                        .riskScore(riskResult.getRiskScore())
+                        .build();
+
+                savedEntity = cddRepository.save(entity);
+            }
 
             // 5. 응답 DTO 생성
             return CddResponseDto.builder()
@@ -74,8 +87,6 @@ public class CddService {
                     .processedAt(savedEntity.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                     .build();
 
-        } catch (IllegalStateException e) {
-            throw e; // 중복 CDD 예외는 그대로 전파
         } catch (Exception e) {
             log.error("CDD 처리 중 오류 발생", e);
             throw new RuntimeException("CDD 처리 중 시스템 오류가 발생했습니다.", e);
@@ -84,7 +95,6 @@ public class CddService {
 
     /**
      * 위험도 스코어링 로직 (임시 구현)
-     * TODO: 실제 스코어링 로직 구현 필요
      */
     private RiskAssessmentResult performRiskScoring(CddRequestDto request) {
         log.info("위험도 스코어링 수행 중...");
@@ -106,7 +116,35 @@ public class CddService {
         return new RiskAssessmentResult(riskScore, riskLevel);
     }
 
-    // 기존 getCddHistory 메서드 제거 (불필요)
+    /**
+     * 사용자별 CDD 이력 조회
+     */
+    @Transactional(readOnly = true)
+    public List<CddHistoryResponseDto> getCddHistory(Long userId) {
+        log.info("CDD 이력 조회 - 사용자 ID: {}", userId);
+
+        List<CddEntity> cddList = cddRepository.findByUserIdOrderByCreatedAtDesc(userId);
+
+        return cddList.stream()
+                .map(entity -> {
+                    // 주민등록번호 복호화 후 마스킹
+                    String decryptedRrn = aesUtil.decrypt(entity.getRrn());
+                    String maskedRrn = aesUtil.maskRrn(decryptedRrn);
+
+                    return CddHistoryResponseDto.builder()
+                            .cddId(entity.getCddId().toString())
+                            .maskedRrn(maskedRrn)
+                            .nationality(entity.getNationality())
+                            .occupation(entity.getOccupation())
+                            .incomeSource(entity.getIncomeSource())
+                            .transactionPurpose(entity.getTransactionPurpose())
+                            .riskLevel(entity.getRiskLevel())
+                            .riskScore(entity.getRiskScore())
+                            .processedAt(entity.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
 
     // 위험도 평가 결과 내부 클래스
     @Data

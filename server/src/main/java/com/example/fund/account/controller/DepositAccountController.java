@@ -101,4 +101,5 @@ public class DepositAccountController {
                     .body(ApiResponse.failure("계좌 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR"));
         }
     }
+
 }
