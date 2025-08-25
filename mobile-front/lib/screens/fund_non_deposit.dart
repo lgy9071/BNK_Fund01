@@ -2,10 +2,18 @@ import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:local_auth/error_codes.dart' as la_codes;
+import 'package:local_auth/local_auth.dart';
 
 import '../core/constants/api.dart';
 import 'branch_map.dart';
+
+import 'dart:math' as math;
+import 'package:flutter/services.dart';
+
+import 'fund_join_success.dart'; // HapticFeedback 등
 
 /// 색상 팔레트 (파란 계열 통일)
 class AppColors {
@@ -32,6 +40,8 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   static const double kGap = 8; // 이미지와 텍스트 사이의 간격
   static const double kGutter = kAvatar + kGap; // 48 -> 이미지 없는 줄의 좌측 들여쓰기
 
+
+  // 최소 가입금액
   Future<void> _fetchMinAmount() async {
     try {
       final uri = Uri.parse("${ApiConfig.navPrice}?fundId=${Uri.encodeComponent(widget.fundId)}");
@@ -57,7 +67,6 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
           min = (data["minAmount"] as num).toInt();
         }
       }
-
       setState(() {
         _minAmount = (min == null || min <= 0) ? 10000 : min;
       });
@@ -68,6 +77,56 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     }
   }
 
+  // 계좌번호 받아오기
+  Future<void> _fetchAccountNumber() async {
+    try {
+      final storage = const FlutterSecureStorage();
+      final token = await storage.read(key: 'accessToken');
+      if (token == null) return;
+
+      final uri = Uri.parse("${ApiConfig.accountNumber}?userId=$_userId");
+      final res = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (res.statusCode != 200) {
+        debugPrint("계좌번호 조회 실패: status=${res.statusCode}");
+        setState(() {
+          _selectedAccount = "계좌 없음";
+          _updateLastDebitConfirmAccount(_selectedAccount);
+        });
+        return;
+      }
+
+      String accountNumber;
+      try {
+        final j = jsonDecode(res.body);
+        if (j is Map && j['accountNumber'] is String) {
+          accountNumber = j['accountNumber'];
+        } else {
+          accountNumber = res.body.trim(); // text/plain 대응
+        }
+      } catch (_) {
+        accountNumber = res.body.trim();
+      }
+
+      setState(() {
+        _selectedAccount = accountNumber.isEmpty ? "계좌 없음" : accountNumber;
+        _updateLastDebitConfirmAccount(_selectedAccount);
+      });
+    } catch (e) {
+      debugPrint("계좌번호 조회 에러: $e");
+      setState(() {
+        _selectedAccount = "계좌 없음";
+        _updateLastDebitConfirmAccount(_selectedAccount);
+      });
+    }
+  }
+
+
+  // 사용자
+  int? _userId;
   // 금액 입력
 
   int? _minAmount; // 추후 기준가로 변동 예정
@@ -81,7 +140,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   bool _investChoiceLocked = false; // 금액 제출 후 두 버튼 비활성화
   bool _amountSubmitted = false;    // 금액 카드에서 입력창/버튼 숨김
   String? _selectedInvestPlan;      // 예: "매주 • 금요일", "한 번만 투자하기"
-  String _selectedAccount = "성윤지의 통장1"; // 출금계좌
+  String _selectedAccount = "불러오는 중...";// 출금계좌
 
   // 신규: 사후관리지점
   String? _selectedBranch;          // 예: "부산중앙지점" / "없음"
@@ -90,6 +149,34 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   // “버블 1개” 유지용 인덱스
   int? _planUserMsgIndex;   // 사용자 버블(투자 규칙) 위치
   int? _amountMsgIndex;     // 금액 입력 버블 위치
+
+  // [ADD] 서버 전송/로딩 상태
+  int? _lastAmountValue;    // [ADD] 실제 서버 전송용 정수 금액
+  bool _isJoining = false;  // [ADD] 가입 중 로딩/중복 방지
+
+  // [ADD] 투자 규칙 요약 문자열 → 서버 enum/값으로 변환
+  ({String type, String value}) _parsePlanToServer(String? summary) {
+    if (summary == null || summary.isEmpty || summary == "선택 안 함" || summary == "한 번만 투자하기") {
+      return (type: "ONE_TIME", value: "");
+    }
+    if (summary.startsWith("매일")) {
+      return (type: "DAILY", value: "EVERYDAY");
+    }
+    if (summary.startsWith("매주")) {
+      final dayKo = summary.split("•").last.trim();
+      const map = {
+        "월요일":"MON","화요일":"TUE","수요일":"WED",
+        "목요일":"THU","금요일":"FRI","토요일":"SAT","일요일":"SUN",
+      };
+      return (type: "WEEKLY", value: map[dayKo] ?? "MON");
+    }
+    if (summary.startsWith("매월")) {
+      final last = summary.split("•").last.trim(); // "15일"
+      final dayNum = int.tryParse(last.replaceAll("일","").trim()) ?? 1;
+      return (type: "MONTHLY", value: "DAY_$dayNum");
+    }
+    return (type: "ONE_TIME", value: "");
+  }
 
   int currentStep = 0;
   final Map<int, String> answers = {};
@@ -123,6 +210,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     super.initState();
     debugPrint("👉 전달받은 fundId: ${widget.fundId}");
     _fetchMinAmount();
+    _fetchAccountNumber();
 
     messages.add({
       "type": "notice",
@@ -393,8 +481,9 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
 
     setState(() {
       _investChoiceLocked = true; // 버튼 잠금
-      _amountSubmitted = true;    // 입력창/확인 버튼 숨김
+      _amountSubmitted = true;    // 입력창/버튼 숨김
       _lastAmountText = "$formatted 원";
+      _lastAmountValue = _amountValue; // [ADD] 서버 전송용 숫자 금액 보관
 
       messages.add({"type": "user", "text": _lastAmountText}); // 사용자 버블
 
@@ -527,6 +616,179 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
       },
     );
   }
+
+  // 보안 키패드
+  Future<String?> _openSecurePinPad() async {
+    return await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => const _SecurePinSheet(),
+    );
+  }
+
+  // [ADD] 서버에 펀드 가입 요청
+  Future<int?> _joinFund(String pin) async {
+    if (_isJoining) return null;
+    if (_lastAmountValue == null || _lastAmountValue! <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('투자 금액을 먼저 입력해 주세요.')),
+      );
+      return null;
+    }
+
+    final plan = _parsePlanToServer(_selectedInvestPlan);
+    final branchName = (_selectedBranch == null || _selectedBranch == "없음") ? null : _selectedBranch;
+
+    final body = {
+      "fundId": widget.fundId,
+      "amount": _lastAmountValue,
+      "rawPin": pin,
+      "branchName": branchName,
+      "ruleType": plan.type,
+      "ruleValue": plan.value,
+    };
+
+    int? _extractIdFromJson(dynamic j) {
+      // 1) 흔한 키들 우선
+      final keys = [
+        'transactionId','txId','orderId','id',
+        'fundTransactionId','fund_account_transaction_id','order_id'
+      ];
+      if (j is Map) {
+        for (final k in keys) {
+          if (j.containsKey(k) && j[k] != null) {
+            final v = j[k];
+            if (v is int) return v;
+            final p = int.tryParse(v.toString());
+            if (p != null) return p;
+          }
+        }
+        // 2) data/result 같은 래핑
+        for (final wrap in ['data','result','payload','response']) {
+          if (j[wrap] != null) {
+            final p = _extractIdFromJson(j[wrap]);
+            if (p != null) return p;
+          }
+        }
+        // 3) 맵 전체 DFS (order, transaction 등 우선)
+        final preferred = ['order','transaction','fund','record'];
+        for (final k in preferred) {
+          if (j[k] != null) {
+            final p = _extractIdFromJson(j[k]);
+            if (p != null) return p;
+          }
+        }
+        for (final v in j.values) {
+          final p = _extractIdFromJson(v);
+          if (p != null) return p;
+        }
+      } else if (j is List) {
+        for (final e in j) {
+          final p = _extractIdFromJson(e);
+          if (p != null) return p;
+        }
+      } else {
+        // 숫자/문자에서 숫자 추출
+        final m = RegExp(r'\d{2,}').firstMatch(j.toString());
+        if (m != null) return int.tryParse(m.group(0)!);
+      }
+      return null;
+    }
+
+    int? _extractIdFromHeaders(Map<String,String> headers) {
+      // 헤더 이름은 대소문자 섞여 올 수 있음 → 전부 소문자화
+      final h = { for (final e in headers.entries) e.key.toLowerCase() : e.value };
+      // 1) 표준/커스텀 헤더 후보
+      for (final name in [
+        'x-transaction-id','x-tx-id','x-order-id','x-id','location'
+      ]) {
+        final v = h[name];
+        if (v == null || v.isEmpty) continue;
+        // Location: /api/fund/transactions/123 같은 형태 처리
+        final m = RegExp(r'(\d{2,})').allMatches(v).toList();
+        if (m.isNotEmpty) {
+          // 마지막 숫자가 보통 id
+          return int.tryParse(m.last.group(0)!);
+        }
+      }
+      return null;
+    }
+
+    try {
+      setState(() => _isJoining = true);
+
+      final storage = const FlutterSecureStorage();
+      final token = await storage.read(key: 'accessToken');
+
+      final res = await http.post(
+        Uri.parse(ApiConfig.fundJoin),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      debugPrint('[_joinFund] status=${res.statusCode}');
+      debugPrint('[_joinFund] headers=${res.headers}');
+      debugPrint('[_joinFund] body=${res.body}');
+
+      // ✅ 2xx 모두 허용
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        // 1) 헤더에서 먼저 시도 (201 + Location 패턴 대응)
+        final fromHeader = _extractIdFromHeaders(res.headers);
+        if (fromHeader != null) return fromHeader;
+
+        // 2) 본문 비었는데 204 같은 경우 → 실패 안내
+        final raw = res.body.trim();
+        if (raw.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('거래 ID를 찾지 못했습니다. (빈 응답/헤더 없음)')),
+          );
+          return null;
+        }
+
+        // 3) 숫자만 혹은 문자열 숫자
+        final onlyNum = int.tryParse(raw);
+        if (onlyNum != null) return onlyNum;
+
+        // 4) JSON 파싱 + 전수 스캔
+        try {
+          final j = jsonDecode(raw);
+          final id = _extractIdFromJson(j);
+          if (id != null) return id;
+        } catch (e) {
+          // JSON 아니면 패스
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('응답에 거래 ID가 없습니다. (헤더/본문 전체 확인 실패)')),
+        );
+        return null;
+      } else {
+        String msg = '가입 실패 (HTTP ${res.statusCode})';
+        try {
+          final j = jsonDecode(res.body);
+          if (j is Map && j['message'] is String) msg = j['message'];
+        } catch (_) {}
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        return null;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('네트워크 오류: $e')),
+      );
+      return null;
+    } finally {
+      if (mounted) setState(() => _isJoining = false);
+    }
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -1083,10 +1345,26 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () {
-                      // TODO: 실제 가입 처리
+                    onPressed: () async {
+                      final pin = await _openSecurePinPad();
+                      if (pin == null) return;
+
+                      final txId = await _joinFund(pin);
+                      if (!mounted || txId == null) return;
+
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => FundJoinSuccess(transactionId: txId), // ✅ 서버값 전달
+                        ),
+                      );
                     },
-                    child: const Text("펀드 가입하기", style: TextStyle(fontWeight: FontWeight.w700)),
+                    child: _isJoining
+                        ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                        : const Text("펀드 가입하기", style: TextStyle(fontWeight: FontWeight.w700)),
                   ),
                 ),
               ],
@@ -1117,6 +1395,292 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
         ),
         onPressed: disabled ? null : onTap,
         child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+}
+
+// 보안 키패드 (무작위 숫자배열, 4자리 2회 입력 + 2차 1회 추가기회)
+class _SecurePinSheet extends StatefulWidget {
+  const _SecurePinSheet({super.key});
+
+  @override
+  State<_SecurePinSheet> createState() => _SecurePinSheetState();
+}
+
+class _SecurePinSheetState extends State<_SecurePinSheet> {
+  final math.Random _rand = math.Random.secure();
+  late List<int> _digits;       // 0~9 무작위 배열
+  final List<int> _first = [];  // 1차 입력
+  final List<int> _second = []; // 2차 입력
+  bool _confirmPhase = false;   // false: 1차, true: 2차(확인)
+  int _confirmTries = 0;        // 2차 시도 횟수 (0: 첫 시도, 1: 추가기회 사용)
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _reshuffle();
+  }
+
+  void _reshuffle() {
+    _digits = List<int>.generate(10, (i) => i)..shuffle(_rand);
+    setState(() {});
+  }
+
+  void _clear() {
+    setState(() {
+      if (_confirmPhase) {
+        _second.clear();
+      } else {
+        _first.clear();
+      }
+      _error = null;
+    });
+  }
+
+  void _backspace() {
+    setState(() {
+      final list = _confirmPhase ? _second : _first;
+      if (list.isNotEmpty) list.removeLast();
+      _error = null;
+    });
+  }
+
+  Future<void> _onDigitTap(int d) async {
+    HapticFeedback.selectionClick();
+    setState(() {
+      final list = _confirmPhase ? _second : _first;
+      if (list.length < 4) list.add(d);
+    });
+
+    final current = _confirmPhase ? _second : _first;
+    if (current.length == 4) {
+      await Future.delayed(const Duration(milliseconds: 60));
+
+      if (!_confirmPhase) {
+        // 1차 완료 → 2차로 전환
+        setState(() {
+          _confirmPhase = true;
+          _confirmTries = 0; // 확인 단계 진입 시 시도횟수 초기화
+          _error = null;
+        });
+        _reshuffle();
+      } else {
+        // 2차 완료 → 일치 검사
+        final ok = _first.join() == _second.join();
+        if (ok) {
+          if (mounted) Navigator.pop(context, _first.join());
+        } else {
+          HapticFeedback.vibrate();
+          // 오답
+          if (_confirmTries == 0) {
+            // ✅ 추가 기회 1회 제공: 2차만 다시 입력
+            setState(() {
+              _confirmTries = 1;
+              _error = "비밀번호가 일치하지 않습니다";
+              _second.clear();
+            });
+            _reshuffle();
+          } else {
+            // ✅ 추가 기회까지 실패: 1차부터 다시
+            setState(() {
+              _error = "비밀번호가 일치하지 않습니다. 처음부터 다시 입력해 주세요.";
+              _first.clear();
+              _second.clear();
+              _confirmPhase = false;
+              _confirmTries = 0;
+            });
+            _reshuffle();
+          }
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final len = (_confirmPhase ? _second : _first).length;
+
+    return SafeArea(
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        child: Container(
+          color: AppColors.primary, // 토스 블루 배경
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16, right: 16, top: 12,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // drag handle
+                Container(
+                  width: 36, height: 4, margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                // ✅ 가운데 정렬 제목 (우측에 닫기 버튼은 유지)
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      height: 40,
+                      child: Center(
+                        child: Text(
+                          _confirmPhase
+                              ? "비밀번호 다시 입력 (2/2)"
+                              : "펀드 계좌 비밀번호 (4자리)",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(context, null),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // ✅ PIN 점 표시 (크게)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(4, (i) {
+                    final filled = i < len;
+                    return Container(
+                      width: 16, height: 16, // 10 → 16 으로 확대
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: filled ? Colors.white : Colors.white.withOpacity(0.35),
+                      ),
+                    );
+                  }),
+                ),
+
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ],
+
+                const SizedBox(height: 16),
+
+                // 숫자 키패드 (3 x 4)
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 18,   // 22 → 18 (가로 간격 약간 축소)
+                    mainAxisSpacing: 12,    // ✅ 22 → 12 (세로 간격 축소)
+                    childAspectRatio: 1.02, // 살짝 납작하게 해서 세로 공간 절약
+                  ),
+                  itemCount: 12,
+                  itemBuilder: (context, i) {
+                    // 0~8: 숫자
+                    if (i <= 8) {
+                      final d = _digits[i];
+                      return _KeyButton(label: "$d", onTap: () => _onDigitTap(d));
+                    }
+                    // 9: 전체삭제 (좌하단)
+                    if (i == 9) {
+                      return _KeyButton(
+                        label: "전체삭제",
+                        onTap: _clear,
+                        alignment: Alignment.centerLeft,
+                        fontSize: 14,
+                        dimmed: true,
+                      );
+                    }
+                    // 10: 마지막 숫자
+                    if (i == 10) {
+                      final d = _digits[9];
+                      return _KeyButton(label: "$d", onTap: () => _onDigitTap(d));
+                    }
+                    // 11: 백스페이스 (우하단)
+                    return _KeyButton(
+                      icon: Icons.backspace_outlined,
+                      onTap: () { HapticFeedback.selectionClick(); _backspace(); },
+                    );
+                  },
+                ),
+                const SizedBox(height: 6),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _KeyButton extends StatelessWidget {
+  final String? label;
+  final IconData? icon;
+  final VoidCallback onTap;
+  final Alignment alignment;   // 기본: 가운데
+  final double? fontSize;      // 기본: 24
+  final bool dimmed;           // 텍스트 연하게(전체삭제용)
+
+  const _KeyButton({
+    super.key,
+    this.label,
+    this.icon,
+    required this.onTap,
+    this.alignment = Alignment.center,
+    this.fontSize,
+    this.dimmed = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor = dimmed ? Colors.white.withOpacity(0.85) : Colors.white;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        splashColor: Colors.white.withOpacity(0.10),
+        highlightColor: Colors.white.withOpacity(0.06),
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
+          child: Align(
+            alignment: alignment,
+            child: Padding(
+              padding: EdgeInsets.only(left: alignment == Alignment.centerLeft ? 8 : 0),
+              child: icon != null
+                  ? Icon(icon, size: 22, color: baseColor)
+                  : Text(
+                label!,
+                style: TextStyle(
+                  fontSize: fontSize ?? 24,
+                  fontWeight: FontWeight.w700,
+                  color: baseColor,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

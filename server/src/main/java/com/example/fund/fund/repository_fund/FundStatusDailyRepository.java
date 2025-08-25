@@ -28,9 +28,12 @@ public interface FundStatusDailyRepository extends JpaRepository<FundStatusDaily
             @Param("baseDate") LocalDate baseDate
     );
 
-    Optional<FundStatusDaily> findTopByFund_FundIdOrderByBaseDateDesc(
-            String fundId
-    );
+    
+        Optional<FundStatusDaily> findTopByFund_FundIdOrderByBaseDateDesc(String fundId);
+
+        Optional<FundStatusDaily>
+        findTopByFund_FundIdAndBaseDateLessThanEqualOrderByBaseDateDesc(String fundId, LocalDate baseDate);
+
 
     // 특정 펀드의 최신 기준가 조회
     @Query("""
