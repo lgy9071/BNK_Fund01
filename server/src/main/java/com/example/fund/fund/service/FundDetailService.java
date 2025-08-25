@@ -41,33 +41,30 @@ public class FundDetailService {
         Fund f = fundRepository.findByFundId(fundId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "펀드를 찾을 수 없습니다. fundId=" + fundId));
 
-        // 1) 제품 로드 전용 로그
+        // ── product 1회 조회
         var pOpt = fundProductRepository.findTopByFund_FundIdOrderByProductIdDesc(fundId);
-        if (pOpt.isEmpty()) {
-            log.warn("NO PRODUCT row for fundId={}", fundId);
-        } else {
-            var p = pOpt.get();
+        pOpt.ifPresentOrElse(p -> {
             log.info("productId={}, status={}, summaryDocId={}, prospectusDocId={}, termsDocId={}",
                     p.getProductId(), p.getStatus(), p.getSummaryDocId(), p.getProspectusDocId(), p.getTermsDocId());
-        }
+        }, () -> log.warn("NO PRODUCT row for fundId={}", fundId));
+
+        // productId 추출
+        Long productId = pOpt.map(p -> p.getProductId()).orElse(null);
+
+        // productView 생성 (동일 Optional 재사용)
+        FundProductView productView = pOpt.map(p -> {
+            List<FundProductDocDto> docs = new ArrayList<>();
+            addDoc(docs, p.getSummaryDocId(),    "SUMMARY");
+            addDoc(docs, p.getProspectusDocId(), "PROSPECTUS");
+            addDoc(docs, p.getTermsDocId(),      "TERMS");
+            log.info("built docs size={}", docs.size());
+            return new FundProductView(p.getProductId(), p.getStatus(), docs);
+        }).orElse(null);
 
         var latestStatus = fundStatusDailyRepository.findTopByFund_FundIdOrderByBaseDateDesc(fundId).orElse(null);
         var latestReturn = fundReturnRepository.findTopByFund_FundIdOrderByBaseDateDesc(fundId).orElse(null);
         var latestAsset  = fundAssetSummaryRepository.findTopByFund_FundIdOrderByBaseDateDesc(fundId).orElse(null);
         var fee          = fundFeeInfoRepository.findTopByFund_FundId(fundId).orElse(null);
-
-        // ── 상품/문서 조회 (있으면 productView에 담고 DTO에 포함)
-        FundProductView productView = fundProductRepository
-                .findTopByFund_FundIdOrderByProductIdDesc(fundId)
-                .map(p -> {
-                    List<FundProductDocDto> docs = new ArrayList<>();
-                    addDoc(docs, p.getSummaryDocId(),    "SUMMARY");
-                    addDoc(docs, p.getProspectusDocId(), "PROSPECTUS");
-                    addDoc(docs, p.getTermsDocId(),      "TERMS");
-                    log.info("built docs size={}", docs.size());   // 2) 최종 docs 개수 로그
-                    return new FundProductView(p.getProductId(), p.getStatus(), docs);
-                })
-                .orElse(null);
 
         FundDetailResponseDTO dto = FundDetailResponseDTO.builder()
                 .fundId(f.getFundId())
@@ -78,11 +75,8 @@ public class FundDetailService {
                 .managementCompany(f.getManagementCompany())
                 .totalExpenseRatio(fee == null ? null : fee.getTer())
                 .nav(latestStatus == null ? null : latestStatus.getNavPrice())
-                .aum(
-                        latestStatus == null || latestStatus.getNavTotal() == null
-                                ? null
-                                : latestStatus.getNavTotal().intValue()   // DTO가 Integer라서 intValue()
-                )
+                .aum(latestStatus == null || latestStatus.getNavTotal() == null
+                        ? null : latestStatus.getNavTotal().intValue())
                 .return1m(latestReturn == null ? null : latestReturn.getReturn1m())
                 .return3m(latestReturn == null ? null : latestReturn.getReturn3m())
                 .return6m(latestReturn == null ? null : latestReturn.getReturn6m())
@@ -90,7 +84,8 @@ public class FundDetailService {
                 .domesticStock(latestAsset == null ? null : latestAsset.getStockRatio())
                 .domesticBond(latestAsset == null ? null : latestAsset.getBondRatio())
                 .liquidity(latestAsset == null ? null : latestAsset.getCashRatio())
-                .product(productView) // 여기로 product + docs 내려감
+                .product(productView)     // product + docs
+                .productId(productId)
                 .build();
 
         return ApiResponse.success(dto);

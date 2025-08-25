@@ -52,4 +52,5 @@ public class FundDetailResponseDTO {
 
     // 상품/공시 묶음 (nullable)
     private FundProductView product;
+    private Long productId;
 }

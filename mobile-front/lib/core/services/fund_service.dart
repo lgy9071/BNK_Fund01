@@ -1,3 +1,4 @@
+// lib/core/services/fund_service.dart
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -17,7 +18,7 @@ class FundService {
 
   FundService({http.Client? client}) : _client = client ?? http.Client();
 
-  // ───────── ① 공통 헤더 (Authorization 포함)
+  // ① 공통 헤더 (Authorization 포함)
   Future<Map<String, String>> _authHeaders({bool json = false}) async {
     final at = await _secure.read(key: 'accessToken');
     return {
@@ -26,13 +27,13 @@ class FundService {
     };
   }
 
-  // ───────── ② 401 나오면 refresh 후 1회 재시도 (선택, 있으면 편함)
+  // ② 401 나오면 refresh 후 1회 재시도
   Future<bool> _refreshTokens() async {
     final rt = await _secure.read(key: 'refreshToken');
     if (rt == null || rt.isEmpty) return false;
 
     final res = await _client.post(
-      Uri.parse(ApiConfig.refresh), // 이미 프로젝트에 있음
+      Uri.parse(ApiConfig.refresh),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'refreshToken': rt}),
     );
@@ -51,27 +52,35 @@ class FundService {
     return true;
   }
 
-  // 공통 GET 래퍼 (401 시 refresh→재시도)
+  // 공통 GET (401 시 refresh → 재시도)
   Future<http.Response> _get(Uri uri) async {
     var res = await _client.get(uri, headers: await _authHeaders());
     if (res.statusCode != 401) return res;
 
     final ok = await _refreshTokens();
-    if (!ok) return res; // 호출부에서 401 처리(로그인 유도)하도록 전달
+    if (!ok) return res;
     return await _client.get(uri, headers: await _authHeaders());
   }
 
-  // ───────── ③ 실제 API들
+  // 공통 POST (401 시 refresh → 재시도)
+  Future<http.Response> _post(Uri uri, {Object? body, bool json = false}) async {
+    var res = await _client.post(uri, headers: await _authHeaders(json: json), body: body);
+    if (res.statusCode != 401) return res;
+
+    final ok = await _refreshTokens();
+    if (!ok) return res;
+    return await _client.post(uri, headers: await _authHeaders(json: json), body: body);
+  }
+
+  // ③ 실제 API들
   Future<ApiResponse<List<FundListItem>>> getFunds({
     String? keyword,
     int page = 0,
     int size = 10,
-    String? fundType, // (선택) 유형별
-    int? riskLevel, // (선택) 위험등급
-    String? company, // (선택) 운용사
+    String? fundType,
+    int? riskLevel,
+    String? company,
   }) async {
-    final at = await _secure.read(key: 'accessToken');
-
     final query = <String, String>{
       'page': '$page',
       'size': '$size',
@@ -81,19 +90,10 @@ class FundService {
       if (company?.isNotEmpty == true) 'company': company!,
     };
 
-    // ★ uri 반드시 선언
-    final uri = Uri.parse(
-      '${ApiConfig.baseUrl}/api/funds',
-    ).replace(queryParameters: query);
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/funds')
+        .replace(queryParameters: query);
 
-    final res = await http.get(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        if (at != null) 'Authorization': 'Bearer $at',
-      },
-    );
-
+    final res = await _get(uri);
     if (res.statusCode != 200) {
       throw Exception('목록 조회 실패: ${res.statusCode} ${res.body}');
     }
@@ -115,19 +115,9 @@ class FundService {
 
   // 상세
   Future<ApiResponse<FundDetailNet>> getFundDetail(String fundId) async {
-    final at = await _secure.read(key: 'accessToken');
-
-    // uri 반드시 선언
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/funds/$fundId');
 
-    final res = await http.get(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        if (at != null) 'Authorization': 'Bearer $at',
-      },
-    );
-
+    final res = await _get(uri);
     if (res.statusCode != 200) {
       throw Exception('상세 조회 실패: ${res.statusCode} ${res.body}');
     }
@@ -142,6 +132,18 @@ class FundService {
     );
   }
 
+  // 관리자 조회수 로그 저장 (서버가 토큰으로 사용자 식별/쿨다운 처리)
+  Future<bool> logFundClick({required String fundId}) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/fund-click-log');
+    final body = jsonEncode({'fund_id': int.tryParse(fundId) ?? fundId});
+
+    try {
+      final res = await _post(uri, body: body, json: true);
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
 
   // ====================================
 
