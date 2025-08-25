@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -26,9 +27,10 @@ import '../core/routes/routes.dart';
 import '../core/services/user_service.dart';
 import 'create_account/opt_screen.dart';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:mobile_front/core/constants/colors.dart';
+
+import 'fund_join/fund_non_deposit.dart' hide AppColors;
 
 /// ───────────────── colors
 const tossBlue = Color(0xFF0064FF);
@@ -82,10 +84,12 @@ class FundBasic {
       salesRegionType, groupCode, shortCode, fundClass, publicType,
       addUnitType, fundStatus, riskGrade, performanceDisclosure,
       managementCompany;
+  final int? productId;
   final DateTime issueDate;
   final double initialNavPrice;
   final int trustTerm, accountingPeriod;
   FundBasic({
+    required this.productId,
     required this.fundId,
     required this.fundName,
     required this.fundType,
@@ -203,6 +207,7 @@ FundDetail toUiDetail(FundDetailNet d) {
 
   return FundDetail(
     basic: FundBasic(
+      productId: d.productId,
       fundId: d.fundId,
       fundName: d.fundName,
       fundType: d.fundType ?? '-',
@@ -294,16 +299,18 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
   int _years = 1;
   int _monthly = 500000; // 50만원
 
-  Future<void> _checkJoinAndNavigate(String fundId) async {
+  Future<void> _checkJoinAndNavigateWithProduct({
+    required int productId,
+    required String fundId,
+  }) async {
     try {
       final next = await _joinSvc.checkJoin(); // JoinNextAction
       debugPrint('[JOIN CHECK] next=$next');
 
       switch (next) {
         case JoinNextAction.openDeposit:
-        // ✅ 이동 직전에 최신 토큰 확보 (extend 포함)
-          final token = await _api.ensureFreshAccessToken()
-              ?? widget.accessToken; // (혹시 몰라 fallback)
+        // 1) 입출금계좌 개설 화면으로만 이동
+          final token = await _api.ensureFreshAccessToken() ?? widget.accessToken;
           if (!mounted) return;
           if (token == null || token.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -315,7 +322,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => OptScreen(
-                accessToken: token,               // ✅ 확보한 토큰 전달
+                accessToken: token,
                 userService: widget.userService,
               ),
             ),
@@ -328,11 +335,34 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
           break;
 
         case JoinNextAction.ok:
+        // 2) 사전 확인으로 약관 스킵 여부 결정
           if (!mounted) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => FundJoinPage(fundId: fundId)),
-          );
+          final confirmed = await _hasTodayConfirm(productId); // GET /confirm?productId=...
+          if (!mounted) return;
+
+          if (confirmed) {
+            // 오늘자 유효 동의 있음 → 약관 페이지 생략하고 바로 무계좌
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => NonDepositGuidePage(
+                  fundId: fundId,
+                  productId: productId,
+                ),
+              ),
+            );
+          } else {
+            // 동의 없음 → 약관 동의 페이지로
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FundJoinPage(
+                  productId: productId,
+                  fundId: fundId,
+                ),
+              ),
+            );
+          }
           break;
       }
     } catch (e, st) {
@@ -343,6 +373,41 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
       );
     }
   }
+
+
+  Future<bool> _hasTodayConfirm(int productId) async {
+    try {
+      final token = await _api.ensureFreshAccessToken() ?? widget.accessToken;
+
+      // ApiConfig.fundJoinConfirm 이 '/funds/confirm' 같은 상대경로이든
+      // 'https://api.../funds/confirm' 같은 절대경로이든 모두 처리
+      final String raw = ApiConfig.fundJoinConfirm;
+      final Uri uri = raw.startsWith('http')
+          ? Uri.parse(raw).replace(queryParameters: {'productId': '$productId'})
+          : Uri.parse(ApiConfig.baseUrl).replace(
+        path: [
+          ...Uri.parse(ApiConfig.baseUrl).pathSegments.where((s) => s.isNotEmpty),
+          ...raw.replaceFirst(RegExp(r'^/'), '').split('/').where((s) => s.isNotEmpty),
+        ].join('/'),
+        queryParameters: {'productId': '$productId'},
+      );
+
+      final res = await http.get(
+        uri,
+        headers: {
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      // 서버가 "오늘 유효한 동의 있음"이면 200이라고 가정
+      return res.statusCode == 200;
+    } catch (e, st) {
+      debugPrint('[confirm][err] $e\n$st');
+      return false; // 에러면 스킵하지 말고 약관 화면으로
+    }
+  }
+
+
 
   Future<void> _openReviewModal() async {
     // 최신 토큰 확보(있으면 extend)
@@ -452,8 +517,19 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
             ),
 
             onPressed: () async {
-              await _checkJoinAndNavigate(data!.basic.fundId);
+              final pid = data!.basic.productId;
+              if (pid == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('상품 식별자(productId)를 찾을 수 없습니다.')),
+                );
+                return;
+              }
+              await _checkJoinAndNavigateWithProduct(
+                productId: pid,
+                fundId: data!.basic.fundId,
+              );
             },
+
             child: const Text('가입하기', style: TextStyle(fontSize: 18)),
           ),
         ),

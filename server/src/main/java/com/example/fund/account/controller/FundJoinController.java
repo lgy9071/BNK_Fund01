@@ -115,6 +115,13 @@ public class FundJoinController {
 
 		        return ResponseEntity.ok(saved);
 		    }
+		 @GetMapping("/confirm")
+		 public ResponseEntity<?> hasTodayAgreement(@CurrentUid Integer uid,
+		                                            @RequestParam Long productId) {
+		     boolean exists = fundJoinService.hasActiveAgreementToday(uid, productId);
+		     if (exists) return ResponseEntity.ok().build();
+		     return ResponseEntity.noContent().build(); // 204
+		 }
 
 	
 	// 지점 관리

@@ -533,6 +533,18 @@ public class FundJoinService {
 	            .build()
 	    );
 	}
+	
+	 public boolean hasActiveAgreementToday(Integer uid, Long productId) {
+	        ZoneId KST = ZoneId.of("Asia/Seoul");
+	        LocalDate today = LocalDate.now(KST);
+	        LocalDateTime start = today.atStartOfDay();               // 오늘 00:00
+	        LocalDateTime end = today.plusDays(1).atStartOfDay();     // 내일 00:00
+
+	        return termsAgreementRepo
+	                .existsByUserIdAndProductIdAndIsActiveTrueAndAgreedAtGreaterThanEqualAndAgreedAtLessThan(
+	                        uid, productId, start, end
+	                );
 
 	
+	 }
 }

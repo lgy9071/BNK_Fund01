@@ -22,5 +22,11 @@ public interface TermsAgreementRepository extends JpaRepository<TermsAgreement, 
 	
 	Optional<TermsAgreement> findTopByUserIdAndProductIdAndIsActiveIsTrueAndExpiredAtAfterOrderByAgreedAtDesc(
 		    Integer userId, Long productId, LocalDateTime now);
+	boolean existsByUserIdAndProductIdAndIsActiveTrueAndAgreedAtGreaterThanEqualAndAgreedAtLessThan(
+            Integer userId,
+            Long productId,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    );
 
 }

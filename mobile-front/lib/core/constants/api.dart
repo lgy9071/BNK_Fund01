@@ -67,5 +67,5 @@ class ApiConfig {
       '$baseUrl/api/funds/$fundId/documents';
 
   // 임시저장
-  static const String confirmTerms = '$baseUrl/api/funds/confirm';
+  static const String fundJoinConfirm = '$baseUrl/api/funds/confirm';
 }

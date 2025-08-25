@@ -15,6 +15,7 @@ import org.hibernate.annotations.CreationTimestamp;
         @Index(name = "ix_terms_fund", columnList = "product_id")
     }
 )
+
 @Getter
 @Setter
 @Builder
