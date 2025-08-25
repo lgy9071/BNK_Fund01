@@ -42,4 +42,12 @@ public class Branch {
     /** 전화번호 (VARCHAR2(20), NOT NULL) */
     @Column(name = "tel", nullable = false, length = 20)
     private String tel;
+    
+    // 위도
+    @Column(name = "lat")
+    private Double lat;
+    
+    // 경도
+    @Column(name = "lng")
+    private Double lng;
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:mobile_front/core/constants/colors.dart';
@@ -14,8 +15,13 @@ final sessionManager = SessionManager(
   navigatorKey: navigatorKey,
 );
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await FlutterNaverMap().init(
+    clientId: 'e3twx8ckch',
+    onAuthFailed: (ex) => debugPrint('NAVER AUTH FAIL: $ex'),
+  );
   runApp(const MyApp()); // ✅ 여기서는 MyApp만
 }
 

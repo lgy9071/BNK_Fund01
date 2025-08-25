@@ -34,6 +34,9 @@ class ApiConfig {
   // 입출금 계좌 개설
   static const String createDepositAccount = '$baseUrl/api/deposit/create';
 
+  // 사용자의 가입 펀드 조회
+  static const String myFunds = '$baseUrl/api/funds/my';
+
   // 펀드 API
   static const String funds = '$baseUrl/api/funds';
   static String fundDetail(String fundId) => '$baseUrl/api/funds/$fundId';
@@ -44,4 +47,16 @@ class ApiConfig {
   // 기준가 조회
   static const String navPrice = '$baseUrl/api/funds/checkNavPrice';
 
+  // 지점 조회
+  static const String branch = '$baseUrl/api/branches/nearby';
+
+  // 계좌 별칭 조회
+  static const String accountNumber = '$baseUrl/api/funds/depositAccountNum';
+
+  // 펀드 상픔 가입
+  static const String fundJoin = '$baseUrl/api/funds/join';
+
+  // 가입 성공 페이지
+  static String joinSummaryByTxId(int txId) =>
+      '$baseUrl/api/funds/join/summary/$txId';
 }

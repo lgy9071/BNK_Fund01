@@ -7,6 +7,7 @@ import 'package:mobile_front/utils/exit_guard.dart';
 import 'package:mobile_front/widgets/show_custom_confirm_dialog.dart';
 
 import '../core/constants/colors.dart';
+import '../core/services/fund_service.dart';
 import '../models/fund.dart';
 import '../screens/home_screen.dart';
 import '../screens/my_finance_screen.dart';
@@ -15,6 +16,8 @@ import '../widgets/full_menu_overlay.dart';
 import '../widgets/circle_nav_bar.dart';
 import '../main.dart' show navigatorKey;
 import 'package:mobile_front/core/services/user_service.dart';
+
+
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -25,25 +28,24 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _index = 0;
-  String? _accessToken; // 항상 SecureStorage에서 로드
+  String? _accessToken;
+  String? _investTypeName;
+  String? _userId;              // 🆕 userId 추가
   late List<Widget> _pages;
-  String? _investTypeName; // 투자성향 이름 저장
 
-  /// 홈 강제 새로고침 트리거 (값이 바뀌면 HomeScreen Key가 바뀌어 재생성됨)
+  /// 홈 강제 새로고침 트리거
   int _homeRefreshTick = 0;
 
-  final _myFunds = <Fund>[
-    Fund(id: 1, name: '한국성장주식 A', rate: 3.2, balance: 5_500_000),
-    Fund(id: 2, name: '글로벌채권 인덱스', rate: -1.1, balance: 4_000_000),
-    Fund(id: 3, name: '미국기술주 펀드', rate: 6.5, balance: 6_200_000),
-    Fund(id: 4, name: '친환경 인프라 펀드', rate: 1.7, balance: 2_800_000),
-  ];
+  // 🔄 하드코딩된 데이터를 동적 데이터로 변경
+  List<Fund> _myFunds = [];
+  bool _fundsLoading = true;
+  String? _fundsError;
 
   @override
   void initState() {
     super.initState();
-    _buildPages();      // 초기 페이지 구성 (토큰 null일 수 있음)
-    _loadUserInfo();    // SecureStorage에서 토큰 읽고 /me 호출
+    _buildPages();
+    _loadUserInfo();
   }
 
   void _buildPages() {
@@ -51,29 +53,94 @@ class _MainScaffoldState extends State<MainScaffold> {
       HomeScreen(
         key: ValueKey('home-$_homeRefreshTick'),
         myFunds: _myFunds,
-        investType: _investTypeName ?? '공격 투자형',
+        fundsLoading: _fundsLoading,          // 🆕 로딩 상태 전달
+        fundsError: _fundsError,              // 🆕 에러 상태 전달
+        investType: _investTypeName ?? '공격투자형',
         userName: '@@',
-        accessToken: _accessToken,      // 항상 storage에서 읽은 토큰 사용
+        accessToken: _accessToken,
         userService: UserService(),
         onStartInvestFlow: () async {
           final bool? result = await Navigator.pushNamed<bool?>(context, AppRoutes.investType);
           if (result == true) {
             if (!mounted) return;
-            setState(() => _index = 0);   // 홈 탭으로 이동
-            _bumpHomeRefresh();           // 홈 강제 리로드 (Key 변경)
-            await _loadUserInfo();        // 서버 최신 데이터 재조회
+            setState(() => _index = 0);
+            _bumpHomeRefresh();
+            await _loadUserInfo();
           }
+        },
+        onRefreshFunds: _loadMyFunds,         // 🆕 펀드 새로고침 콜백
+        onGoToFundTab: () {
+          setState(() => _index = 2); // 🆕 펀드 가입 탭으로 이동
         },
       ),
       MyFinanceScreen(
         accessToken: _accessToken,
         userService: UserService(),
+        // myFunds: _myFunds,                    // 🆕 펀드 데이터 공유
+        // fundsLoading: _fundsLoading,
       ),
       FundListScreen(
-        accessToken: _accessToken,     // ✅ 여기서 내려주기!
-        userService: UserService(),),
+        accessToken: _accessToken,
+        userService: UserService(),
+      ),
       const SizedBox.shrink(),
     ];
+  }
+
+  /// 🆕 사용자 가입 펀드 목록 로드
+  Future<void> _loadMyFunds() async {
+    // 프레임 완료 후 상태 변경하도록 수정 (Build scheduled during frame 에러 방지)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _fundsLoading = true;
+          _fundsError = null;
+        });
+      }
+    });
+
+    try {
+      // userId가 없으면 빈 리스트로 처리
+      if (_userId == null || _userId!.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _myFunds = [];
+              _fundsLoading = false;
+            });
+            _buildPages();
+          }
+        });
+        return;
+      }
+
+      final fundService = FundService();
+      final funds = await fundService.getMyFunds(_userId!);
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _myFunds = funds;
+            _fundsLoading = false;
+            _fundsError = null;
+          });
+          _buildPages();
+        }
+      });
+
+    } catch (e) {
+      debugPrint('Failed to load my funds: $e');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _myFunds = [];
+            _fundsLoading = false;
+            _fundsError = e.toString();
+          });
+          _buildPages();
+        }
+      });
+    }
   }
 
   Future<void> _loadUserInfo() async {
@@ -82,9 +149,17 @@ class _MainScaffoldState extends State<MainScaffold> {
 
     if (token == null || token.isEmpty) {
       debugPrint("MainScaffold: no accessToken in storage");
-      setState(() {
-        _accessToken = null;
-        _buildPages();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _accessToken = null;
+            _userId = null;          // 🔄 userId도 초기화
+            _investTypeName = null;
+            _myFunds = [];
+            _fundsLoading = false;
+          });
+          _buildPages();
+        }
       });
       return;
     }
@@ -92,11 +167,22 @@ class _MainScaffoldState extends State<MainScaffold> {
     try {
       final svc = UserService();
       final me = await svc.getMe(token);
-      setState(() {
-        _accessToken = token; // 🔥 토큰 상태 저장
-        _investTypeName = me.typename.isNotEmpty ? me.typename : null;
-        _bumpHomeRefresh();   // 🔥 토큰 로드 이후 홈을 재생성해서 HomeScreen이 새 토큰으로 초기화되도록
+
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (mounted) {
+          setState(() {
+            _accessToken = token;
+            _userId = me.userId.toString(); // 🆕 userId 설정
+            _investTypeName = me.typename.isNotEmpty ? me.typename : null;
+          });
+
+          _bumpHomeRefresh();
+
+          // 🔄 userId 설정 후 펀드 데이터 로드
+          await _loadMyFunds();
+        }
       });
+
     } catch (e) {
       debugPrint("MainScaffold.getMe failed: $e");
     }
@@ -104,7 +190,7 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   void _bumpHomeRefresh() {
     _homeRefreshTick++;
-    _buildPages(); // Key 반영을 위해 페이지 재구성
+    _buildPages();
   }
 
   Future<void> _openFullMenu() async {
@@ -141,9 +227,9 @@ class _MainScaffoldState extends State<MainScaffold> {
               color: AppColors.bg,
               child: SafeArea(
                 child: FullMenuOverlay(
-                  userName: '이유저',
+                  userName: '이윤저',
                   userId: '@user01',
-                  accessToken: accessToken,   // 메뉴 오버레이 기능에 토큰 전달
+                  accessToken: accessToken,
                   userService: UserService(),
                   onGoFundMain: () {
                     Navigator.of(context, rootNavigator: true).pop();
@@ -168,7 +254,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                         }
                       }
                       return;
-                    }else{
+                    } else {
                       Navigator.of(context, rootNavigator: true).pop();
                       setState(() => _index = 2);
                     }
@@ -208,7 +294,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                     Navigator.of(context, rootNavigator: true).pop();
                     Navigator.of(context).pushNamed('/qna/list');
                   },
-                  onFundStatus: (){
+                  onFundStatus: () {
                     Navigator.of(context, rootNavigator: true).pop();
                     Navigator.of(context).pushNamed(AppRoutes.fundStatus);
                   },
@@ -225,7 +311,6 @@ class _MainScaffoldState extends State<MainScaffold> {
   Widget build(BuildContext context) {
     return ExitGuard(
       child: Scaffold(
-        //extendBody: true,
         body: IndexedStack(index: _index, children: _pages),
         backgroundColor: Colors.white,
         bottomNavigationBar: CustomNavBar(
