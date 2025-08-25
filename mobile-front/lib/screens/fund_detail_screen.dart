@@ -6,7 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:mobile_front/screens/fund_join.dart';
+import 'package:mobile_front/screens/fund_join/fund_join.dart';
 
 import 'package:mobile_front/core/services/fund_service.dart';
 import 'package:mobile_front/models/fund_detail_net.dart';

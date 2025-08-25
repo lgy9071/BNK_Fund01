@@ -81,10 +81,7 @@ dependencies {
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
 
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-	
-	
-	implementation "androidx.appcompat:appcompat:1.6.1"
-    implementation "com.google.android.material:material:1.11.0"
+
 }
 
 dependencyManagement {
