@@ -17,6 +17,7 @@ class FundDocNet {
 
 /// 상세(네트워크 모델) — 백엔드 DTO와 1:1
 class FundDetailNet {
+  final int? productId;
   final String fundId;
   final String fundName;
   final String? fundType, fundDivision, investmentRegion, salesRegionType,
@@ -40,6 +41,7 @@ class FundDetailNet {
   FundDetailNet({
     required this.fundId,
     required this.fundName,
+    this.productId,
     this.fundType,
     this.fundDivision,
     this.investmentRegion,
@@ -106,7 +108,11 @@ class FundDetailNet {
     final product = j['product'];
     final docs = (product is Map) ? _parseDocs(product['docs']) : const <FundDocNet>[];
 
+    // ✅ productId는 응답 최상위 or product 블록 어느 쪽이든 받도록 방어적으로 처리
+    final pid = _i(j['productId']) ?? (product is Map ? _i(product['productId']) : null);
+
     return FundDetailNet(
+      productId: pid,
       fundId: j['fundId']?.toString() ?? '',
       fundName: j['fundName']?.toString() ?? '',
       fundType: j['fundType']?.toString(),
