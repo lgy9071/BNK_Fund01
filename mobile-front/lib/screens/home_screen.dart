@@ -1,27 +1,27 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:convert';
+
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_front/core/constants/colors.dart';
+import 'package:mobile_front/core/services/user_service.dart';
 import 'package:mobile_front/utils/exit_popup.dart';
+
 import '../core/routes/routes.dart';
 import '../models/fund.dart';
-import 'package:mobile_front/core/services/user_service.dart';
-import 'package:mobile_front/models/user_profile.dart';
 
 /// pubspec.yaml 에 의존성 추가:
 /// flutter_secure_storage: ^9.2.2
 
-
 /* ===== 홈 ===== */
 class HomeScreen extends StatefulWidget {
   final List<Fund> myFunds;
-  final bool fundsLoading;          // 🆕 추가
-  final String? fundsError;         // 🆕 추가
+  final bool fundsLoading; // 🆕 추가
+  final String? fundsError; // 🆕 추가
   final VoidCallback? onRefreshFunds; // 🆕 추가
   final String investType;
   final String userName;
@@ -32,9 +32,9 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.myFunds,
-    this.fundsLoading = false,      // 🆕 추가
-    this.fundsError,                // 🆕 추가
-    this.onRefreshFunds,            // 🆕 추가
+    this.fundsLoading = false, // 🆕 추가
+    this.fundsError, // 🆕 추가
+    this.onRefreshFunds, // 🆕 추가
     required this.investType,
     required this.userName,
     this.accessToken,
@@ -49,8 +49,8 @@ class HomeScreen extends StatefulWidget {
 enum FundSort { amountDesc, newest, nameAsc, rateDesc }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool _obscure = false;          // 금액 숨김
-  bool _expandFunds = false;      // 더보기
+  bool _obscure = false; // 금액 숨김
+  bool _expandFunds = false; // 더보기
   FundSort _sort = FundSort.amountDesc;
   String? _displayName; // 서버에서 받은 이름 저장
   String? _investTypeName; // 서버에서 받은 투자성향결과 띄우기
@@ -64,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _restoreDesign(); // ⬅︎ secure storage에서 배경/숨김 복원
-    _loadMe();        // ⬅︎ 서버 프로필 로드
+    _loadMe(); // ⬅︎ 서버 프로필 로드
   }
 
   Future<void> _restoreDesign() async {
@@ -99,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // 실패 시 조용히 무시 (props 유지)
     }
   }
+
   //데이터 전달 받기 위한 클래스2
 
   String _won(int v) =>
@@ -109,7 +110,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // 🆕 빈 펀드 상태 UI 빌드 메서드
   Widget _buildEmptyFundsSection() {
     final investTypeName = _investTypeName ?? widget.investType;
-    final hasInvestType = investTypeName.isNotEmpty && investTypeName != '공격투자형'; // 기본값이 아닌 실제 성향
+    final hasInvestType =
+        investTypeName.isNotEmpty && investTypeName != '공격투자형'; // 기본값이 아닌 실제 성향
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
@@ -119,10 +121,10 @@ class _HomeScreenState extends State<HomeScreen> {
         border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4)
-          )
+            color: Colors.black.withOpacity(.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -133,9 +135,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 '가입한 펀드',
                 style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.fontColor
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.fontColor,
                 ),
               ),
               const Spacer(),
@@ -217,8 +219,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text(
                 hasInvestType ? '펀드 둘러보기' : '투자성향 분석하기',
                 style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -238,10 +240,10 @@ class _HomeScreenState extends State<HomeScreen> {
         border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4)
-          )
+            color: Colors.black.withOpacity(.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -252,9 +254,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 '보유 펀드',
                 style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.fontColor
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.fontColor,
                 ),
               ),
               const Spacer(),
@@ -295,10 +297,10 @@ class _HomeScreenState extends State<HomeScreen> {
         border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4)
-          )
+            color: Colors.black.withOpacity(.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -309,9 +311,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 '보유 펀드',
                 style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.fontColor
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.fontColor,
                 ),
               ),
               const Spacer(),
@@ -376,10 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: const Text(
                 '다시 시도',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -399,67 +398,67 @@ class _HomeScreenState extends State<HomeScreen> {
             duration: const Duration(milliseconds: 220),
             child: _obscure
                 ? Align(
-              key: const ValueKey('hidden'),
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () async {
-                  setState(() => _obscure = false);
-                  await _DesignStorage.saveObscure(false);
-                },
-                child: Text(
-                  '잔액보기',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: _idealOn(_bg),
-                    decoration: TextDecoration.underline,
-                    decorationColor: (_bg.isImage
-                        ? Colors.white70
-                        : _idealOn(_bg).withOpacity(.45)),
-                  ),
-                ),
-              ),
-            )
+                    key: const ValueKey('hidden'),
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () async {
+                        setState(() => _obscure = false);
+                        await _DesignStorage.saveObscure(false);
+                      },
+                      child: Text(
+                        '잔액보기',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: _idealOn(_bg),
+                          decoration: TextDecoration.underline,
+                          decorationColor: (_bg.isImage
+                              ? Colors.white70
+                              : _idealOn(_bg).withOpacity(.45)),
+                        ),
+                      ),
+                    ),
+                  )
                 : Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              key: const ValueKey('shown-empty'),
-              children: [
-                Text(
-                  '0원',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: _idealOn(_bg),
-                    shadows: _bg.isImage
-                        ? [
-                      Shadow(
-                          color: Colors.black.withOpacity(.55),
-                          blurRadius: 8,
-                          offset: const Offset(0, 1.5)
-                      )
-                    ]
-                        : null,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    key: const ValueKey('shown-empty'),
+                    children: [
+                      Text(
+                        '0원',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: _idealOn(_bg),
+                          shadows: _bg.isImage
+                              ? [
+                                  Shadow(
+                                    color: Colors.black.withOpacity(.55),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 1.5),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '펀드 가입 후 확인 가능',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _idealOn(_bg).withOpacity(0.7),
+                          shadows: _bg.isImage
+                              ? [
+                                  Shadow(
+                                    color: Colors.black.withOpacity(.55),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 1.5),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '펀드 가입 후 확인 가능',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _idealOn(_bg).withOpacity(0.7),
-                    shadows: _bg.isImage
-                        ? [
-                      Shadow(
-                          color: Colors.black.withOpacity(.55),
-                          blurRadius: 8,
-                          offset: const Offset(0, 1.5)
-                      )
-                    ]
-                        : null,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       );
@@ -472,48 +471,48 @@ class _HomeScreenState extends State<HomeScreen> {
             duration: const Duration(milliseconds: 220),
             child: _obscure
                 ? Align(
-              key: const ValueKey('hidden'),
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () async {
-                  setState(() => _obscure = false);
-                  await _DesignStorage.saveObscure(false);
-                },
-                child: Text(
-                  '잔액보기',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: _idealOn(_bg),
-                    decoration: TextDecoration.underline,
-                    decorationColor: (_bg.isImage
-                        ? Colors.white70
-                        : _idealOn(_bg).withOpacity(.45)),
-                  ),
-                ),
-              ),
-            )
+                    key: const ValueKey('hidden'),
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () async {
+                        setState(() => _obscure = false);
+                        await _DesignStorage.saveObscure(false);
+                      },
+                      child: Text(
+                        '잔액보기',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: _idealOn(_bg),
+                          decoration: TextDecoration.underline,
+                          decorationColor: (_bg.isImage
+                              ? Colors.white70
+                              : _idealOn(_bg).withOpacity(.45)),
+                        ),
+                      ),
+                    ),
+                  )
                 : Align(
-              key: const ValueKey('shown'),
-              alignment: Alignment.centerRight,
-              child: Text(
-                _won(_totalBal),
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: _idealOn(_bg),
-                  shadows: _bg.isImage
-                      ? [
-                    Shadow(
-                        color: Colors.black.withOpacity(.55),
-                        blurRadius: 8,
-                        offset: const Offset(0, 1.5)
-                    )
-                  ]
-                      : null,
-                ),
-              ),
-            ),
+                    key: const ValueKey('shown'),
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      _won(_totalBal),
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: _idealOn(_bg),
+                        shadows: _bg.isImage
+                            ? [
+                                Shadow(
+                                  color: Colors.black.withOpacity(.55),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 1.5),
+                                ),
+                              ]
+                            : null,
+                      ),
+                    ),
+                  ),
           ),
         ],
       );
@@ -525,15 +524,24 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Fund> _sortedFunds() {
     final list = [...widget.myFunds];
     switch (_sort) {
-      case FundSort.amountDesc: list.sort((a, b) => b.balance.compareTo(a.balance)); break;
-      case FundSort.newest:     list.sort((a, b) => b.id.compareTo(a.id)); break;
-      case FundSort.nameAsc:    list.sort((a, b) => a.name.compareTo(b.name)); break;
-      case FundSort.rateDesc:   list.sort((a, b) => b.rate.compareTo(a.rate)); break;
+      case FundSort.amountDesc:
+        list.sort((a, b) => b.balance.compareTo(a.balance));
+        break;
+      case FundSort.newest:
+        list.sort((a, b) => b.id.compareTo(a.id));
+        break;
+      case FundSort.nameAsc:
+        list.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case FundSort.rateDesc:
+        list.sort((a, b) => b.rate.compareTo(a.rate));
+        break;
     }
     return list;
   }
 
   int get _totalBal => widget.myFunds.fold(0, (s, f) => s + f.balance);
+
   int get _pnl => widget.myFunds
       .map((f) => (f.balance * (f.rate / 100.0)))
       .fold<int>(0, (s, v) => s + v.round());
@@ -565,7 +573,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _bg = choice;
             _bgImageFile = choice.image;
           });
-          await _DesignStorage.saveBg(choice);    // ✅ 저장
+          await _DesignStorage.saveBg(choice); // ✅ 저장
           if (context.mounted) Navigator.pop(context);
         },
         onPickImage: () async {
@@ -576,7 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _bg = choice;
             _bgImageFile = File(x.path);
           });
-          await _DesignStorage.saveBg(choice);    // ✅ 저장
+          await _DesignStorage.saveBg(choice); // ✅ 저장
           if (context.mounted) Navigator.pop(context);
         },
       ),
@@ -612,7 +620,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // 더보기: 처음 2개 고정 + 나머지는 아래로 추가
     final int baseCount = math.min(2, funds.length);
     final List<Fund> firstTwo = funds.take(baseCount).toList();
-    final List<Fund> rest = _expandFunds ? funds.skip(baseCount).toList() : const [];
+    final List<Fund> rest = _expandFunds
+        ? funds.skip(baseCount).toList()
+        : const [];
     print(investTypeName);
 
     return PopScope(
@@ -625,22 +635,24 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.transparent, // 항상 투명
         appBar: AppBar(
           backgroundColor: Colors.white,
-          elevation: 0, // 그림자 제거
-          automaticallyImplyLeading: false, // 기본 back 버튼 제거
-          titleSpacing: 0, // 로고를 왼쪽 끝까지 붙이고 싶을 때
+          elevation: 0,
+          // 그림자 제거
+          automaticallyImplyLeading: false,
+          // 기본 back 버튼 제거
+          titleSpacing: 0,
+          // 로고를 왼쪽 끝까지 붙이고 싶을 때
           title: Row(
             children: [
-              const SizedBox(width: 8,),
+              const SizedBox(width: 8),
               InkWell(
-                onTap: () =>
-                    Navigator.of(context).popUntil((r) => r.isFirst),
+                onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
                 borderRadius: BorderRadius.circular(8),
                 child: Image.asset(
                   'assets/images/splash_logo.png',
                   height: 33,
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.account_balance, color: Colors.black),
+                      const Icon(Icons.account_balance, color: Colors.black),
                 ),
               ),
               const Spacer(),
@@ -670,16 +682,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                   borderRadius: BorderRadius.circular(14.r),
                   child: Container(
-                    height: (investTypeName != null && investTypeName.isNotEmpty) ? 72.h : 180.h,
+                    height:
+                        (investTypeName != null && investTypeName.isNotEmpty)
+                        ? 72.h
+                        : 180.h,
                     padding: EdgeInsets.symmetric(horizontal: 14.w),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14.r),
-                      border: Border.all(color: tossBlue.withOpacity(0.16), width: 1.w),
+                      border: Border.all(
+                        color: tossBlue.withOpacity(0.16),
+                        width: 1.w,
+                      ),
                     ),
                     child: Row(
                       children: [
-                        if (investTypeName != null && investTypeName.isNotEmpty) ...[
+                        if (investTypeName != null &&
+                            investTypeName.isNotEmpty) ...[
                           // ✅ 좌측 라벨: 한 줄 + 말줄임
                           Expanded(
                             child: AutoSizeText(
@@ -688,7 +707,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               minFontSize: 10,
                               stepGranularity: 0.5,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 15.sp, color: baseText),
+                              style: TextStyle(
+                                fontSize: 15.sp,
+                                color: baseText,
+                              ),
                             ),
                           ),
                           SizedBox(width: 8.w),
@@ -698,7 +720,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             borderRadius: BorderRadius.circular(8.r),
                             onTap: () async {
                               if (widget.onStartInvestFlow != null) {
-                                await widget.onStartInvestFlow!(); // ✅ 결과 화면/재검사 진입 포함
+                                await widget
+                                    .onStartInvestFlow!(); // ✅ 결과 화면/재검사 진입 포함
                               }
                             },
                             child: Row(
@@ -721,7 +744,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 SizedBox(width: 8.w),
-                                Icon(Icons.chevron_right, color: baseDim, size: 20.sp),
+                                Icon(
+                                  Icons.chevron_right,
+                                  color: baseDim,
+                                  size: 20.sp,
+                                ),
                               ],
                             ),
                           ),
@@ -792,15 +819,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: ElevatedButton(
                                     onPressed: () async {
                                       if (widget.onStartInvestFlow != null) {
-                                        await widget.onStartInvestFlow!(); // ✅ 부모가 끝까지 처리
+                                        await widget
+                                            .onStartInvestFlow!(); // ✅ 부모가 끝까지 처리
                                       }
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 10.h,
+                                      ),
                                       backgroundColor: AppColors.primaryBlue,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10.r),
+                                        borderRadius: BorderRadius.circular(
+                                          10.r,
+                                        ),
                                       ),
                                     ),
                                     child: FittedBox(
@@ -810,7 +842,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                         maxLines: 1,
                                         softWrap: false,
                                         overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
+                                        style: TextStyle(
+                                          fontSize: 16.sp,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -829,7 +864,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
+                    border: Border.all(
+                      color: tossBlue.withOpacity(0.12),
+                      width: 1,
+                    ),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: ClipRRect(
@@ -842,21 +880,29 @@ class _HomeScreenState extends State<HomeScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                           decoration: BoxDecoration(
                             image: _bg.isImage && _bgImageFile != null
-                                ? DecorationImage(image: FileImage(_bgImageFile!), fit: BoxFit.cover)
+                                ? DecorationImage(
+                                    image: FileImage(_bgImageFile!),
+                                    fit: BoxFit.cover,
+                                  )
                                 : null,
-                            color: (!_bg.isImage && !_bg.isGradient) ? _bg.c1 : null,
+                            color: (!_bg.isImage && !_bg.isGradient)
+                                ? _bg.c1
+                                : null,
                             gradient: _bg.isGradient
                                 ? LinearGradient(
-                                colors: [_bg.c1!, _bg.c2!],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight)
+                                    colors: [_bg.c1!, _bg.c2!],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
                                 : null,
                           ),
                           child: Stack(
                             children: [
                               if (_bg.isImage)
                                 Positioned.fill(
-                                  child: Container(color: Colors.black.withOpacity(.28)),
+                                  child: Container(
+                                    color: Colors.black.withOpacity(.28),
+                                  ),
                                 ),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -874,25 +920,106 @@ class _HomeScreenState extends State<HomeScreen> {
                                             color: _idealOn(_bg),
                                             shadows: _bg.isImage
                                                 ? [
-                                              Shadow(
-                                                  color: Colors.black.withOpacity(.55),
-                                                  blurRadius: 8,
-                                                  offset: const Offset(0, 1.5))
-                                            ]
+                                                    Shadow(
+                                                      color: Colors.black
+                                                          .withOpacity(.55),
+                                                      blurRadius: 8,
+                                                      offset: const Offset(
+                                                        0,
+                                                        1.5,
+                                                      ),
+                                                    ),
+                                                  ]
                                                 : null,
                                           ),
                                         ),
                                       ),
                                       const Spacer(),
                                       IconButton(
-                                        icon: Icon(Icons.more_horiz,
-                                            color: _bg.isImage ? Colors.white : _idealOn(_bg).withOpacity(.6)),
+                                        icon: Icon(
+                                          Icons.more_horiz,
+                                          color: _bg.isImage
+                                              ? Colors.white
+                                              : _idealOn(_bg).withOpacity(.6),
+                                        ),
                                         onPressed: _openSettingsSheet,
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 15),
-                                  _buildTotalBalanceContent(), // 🆕 조건부 렌더링 메서드
+
+                                  // 🔄 수정된 부분: 펀드 없을 때 우측 정렬, 있을 때는 기존 로직 유지
+                                  widget.myFunds.isEmpty
+                                      ? Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                const Spacer(),
+                                                Text(
+                                                  '0원',
+                                                  style: TextStyle(
+                                                    fontSize: 28,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: _idealOn(_bg),
+                                                    shadows: _bg.isImage
+                                                        ? [
+                                                            Shadow(
+                                                              color: Colors
+                                                                  .black
+                                                                  .withOpacity(
+                                                                    .55,
+                                                                  ),
+                                                              blurRadius: 8,
+                                                              offset:
+                                                                  const Offset(
+                                                                    0,
+                                                                    1.5,
+                                                                  ),
+                                                            ),
+                                                          ]
+                                                        : null,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                const Spacer(),
+                                                Text(
+                                                  '펀드 가입 후 확인 가능',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: _idealOn(
+                                                      _bg,
+                                                    ).withOpacity(.7),
+                                                    shadows: _bg.isImage
+                                                        ? [
+                                                            Shadow(
+                                                              color: Colors
+                                                                  .black
+                                                                  .withOpacity(
+                                                                    .35,
+                                                                  ),
+                                                              blurRadius: 4,
+                                                              offset:
+                                                                  const Offset(
+                                                                    0,
+                                                                    1,
+                                                                  ),
+                                                            ),
+                                                          ]
+                                                        : null,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        )
+                                      : _buildTotalBalanceContent(),
+                                  // 기존 메서드 호출 유지
                                 ],
                               ),
                             ],
@@ -906,56 +1033,80 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: (_obscure || widget.myFunds.isEmpty)
                               ? const SizedBox.shrink()
                               : Container(
-                            color: Colors.white,
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                            child: Builder(builder: (_) {
-                              final up = _pnl >= 0;
-                              final sign = up ? '+' : '−';
-                              final c = up ? Colors.red : Colors.blue;
-                              final baseText = AppColors.fontColor;
-                              return Row(
-                                children: [
-                                  const Spacer(),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text('평가손익',
-                                              style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: baseText.withOpacity(.54))),
-                                          const SizedBox(width: 10),
-                                          Text('$sign ${_won(_pnl.abs())}',
-                                              style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: c)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text('수익률',
-                                              style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: baseText.withOpacity(.54))),
-                                          const SizedBox(width: 10),
-                                          Text('$sign ${_returnPct.abs().toStringAsFixed(2)}%',
-                                              style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: c)),
-                                        ],
-                                      ),
-                                    ],
+                                  color: Colors.white,
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    8,
+                                    16,
+                                    10,
                                   ),
-                                ],
-                              );
-                            }),
-                          ),
+                                  child: Builder(
+                                    builder: (_) {
+                                      final up = _pnl >= 0;
+                                      final sign = up ? '+' : '−';
+                                      final c = up ? Colors.red : Colors.blue;
+                                      final baseText = AppColors.fontColor;
+                                      return Row(
+                                        children: [
+                                          const Spacer(),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    '평가손익',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: baseText
+                                                          .withOpacity(.54),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Text(
+                                                    '$sign ${_won(_pnl.abs())}',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: c,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    '수익률',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: baseText
+                                                          .withOpacity(.54),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Text(
+                                                    '$sign ${_returnPct.abs().toStringAsFixed(2)}%',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: c,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
                         ),
                       ],
                     ),
@@ -970,106 +1121,123 @@ class _HomeScreenState extends State<HomeScreen> {
                 else if (widget.fundsError != null)
                   _buildErrorFundsSection()
                 else if (widget.myFunds.isEmpty)
-                    _buildEmptyFundsSection()
-                  else
+                  _buildEmptyFundsSection()
+                else
                   /* 기존 보유 펀드 섹션 */
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withOpacity(.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4))
-                        ],
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: tossBlue.withOpacity(0.12),
+                        width: 1,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(children: [
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
                             InkWell(
                               onTap: _toMyFinance,
                               borderRadius: BorderRadius.circular(8),
-                              child: Text('보유 펀드',
-                                  style: TextStyle(
-                                      fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.fontColor)),
+                              child: Text(
+                                '보유 펀드',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.fontColor,
+                                ),
+                              ),
                             ),
                             const Spacer(),
                             IconButton(
-                              icon: Icon(Icons.more_horiz, color: AppColors.fontColor.withOpacity(.54)),
+                              icon: Icon(
+                                Icons.more_horiz,
+                                color: AppColors.fontColor.withOpacity(.54),
+                              ),
                               onPressed: _openFundsOptionsSheet,
                             ),
-                          ]),
-                          const SizedBox(height: 10),
-
-                          for (int i = 0; i < firstTwo.length; i++) ...[
-                            _FundMiniTile(
-                              fund: firstTwo[i],
-                              obscure: _obscure,
-                              onTap: () => Navigator.of(context).pushNamed(
-                                '/fund/transactions',
-                                arguments: firstTwo[i].id,
-                              ),
-                            ),
-                            if (i != firstTwo.length - 1) const SizedBox(height: 10),
                           ],
+                        ),
+                        const SizedBox(height: 10),
 
-                          AnimatedSize(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeInOut,
-                            child: Column(
-                              children: [
-                                for (int i = 0; i < rest.length; i++) ...[
-                                  const SizedBox(height: 10),
-                                  _FundMiniTile(
-                                    fund: rest[i],
-                                    obscure: _obscure,
-                                    onTap: () => Navigator.of(context).pushNamed(
-                                      '/fund/transactions',
-                                      arguments: rest[i].id,
-                                    ),
-                                  ),
-                                ],
-                              ],
+                        for (int i = 0; i < firstTwo.length; i++) ...[
+                          _FundMiniTile(
+                            fund: firstTwo[i],
+                            obscure: _obscure,
+                            onTap: () => Navigator.of(context).pushNamed(
+                              '/fund/transactions',
+                              arguments: firstTwo[i].id,
                             ),
                           ),
+                          if (i != firstTwo.length - 1)
+                            const SizedBox(height: 10),
+                        ],
 
-                          if (funds.length > 2) const SizedBox(height: 14),
-                          if (funds.length > 2)
-                            GestureDetector(
-                              onTap: () => setState(() => _expandFunds = !_expandFunds),
-                              child: Container(
-                                height: 44,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: tossBlue,
-                                  borderRadius: BorderRadius.circular(10),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeInOut,
+                          child: Column(
+                            children: [
+                              for (int i = 0; i < rest.length; i++) ...[
+                                const SizedBox(height: 10),
+                                _FundMiniTile(
+                                  fund: rest[i],
+                                  obscure: _obscure,
+                                  onTap: () => Navigator.of(context).pushNamed(
+                                    '/fund/transactions',
+                                    arguments: rest[i].id,
+                                  ),
                                 ),
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 180),
-                                  child: Text(
-                                    _expandFunds ? '접기' : '더보기',
-                                    key: ValueKey(_expandFunds),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                              ],
+                            ],
+                          ),
+                        ),
+
+                        if (funds.length > 2) const SizedBox(height: 14),
+                        if (funds.length > 2)
+                          GestureDetector(
+                            onTap: () =>
+                                setState(() => _expandFunds = !_expandFunds),
+                            child: Container(
+                              height: 44,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: tossBlue,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                child: Text(
+                                  _expandFunds ? '접기' : '더보기',
+                                  key: ValueKey(_expandFunds),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
+                  ),
 
                 const SizedBox(height: 12),
 
                 _MbtiPromoCard(
-                  onTap: () => Navigator.of(context).pushNamed(AppRoutes.fundMbti),
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.fundMbti),
                 ),
 
                 const SizedBox(height: 12),
@@ -1085,8 +1253,11 @@ class _HomeScreenState extends State<HomeScreen> {
     value: v,
     child: Row(
       children: [
-        Icon(_sort == v ? Icons.radio_button_checked : Icons.radio_button_off,
-            size: 18, color: AppColors.fontColor),
+        Icon(
+          _sort == v ? Icons.radio_button_checked : Icons.radio_button_off,
+          size: 18,
+          color: AppColors.fontColor,
+        ),
         const SizedBox(width: 8),
         Text(label, style: const TextStyle(color: AppColors.fontColor)),
       ],
@@ -1099,7 +1270,12 @@ class _FundMiniTile extends StatelessWidget {
   final Fund fund;
   final bool obscure;
   final VoidCallback onTap;
-  const _FundMiniTile({required this.fund, required this.obscure, required this.onTap});
+
+  const _FundMiniTile({
+    required this.fund,
+    required this.obscure,
+    required this.onTap,
+  });
 
   String _fmtWon(int v) =>
       '${v.toString().replaceAll(RegExp(r"\B(?=(\d{3})+(?!\d))"), ",")}원';
@@ -1128,7 +1304,10 @@ class _FundMiniTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.fontColor),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.fontColor,
+                  ),
                 ),
               ),
               Column(
@@ -1137,12 +1316,19 @@ class _FundMiniTile extends StatelessWidget {
                   if (!obscure)
                     Text(
                       '${fund.balance.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원',
-                      style: const TextStyle(fontSize: 14, color: AppColors.fontColor),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.fontColor,
+                      ),
                     ),
                   const SizedBox(height: 2),
                   Text(
                     '$arrow ${_fmtWon(delta.abs())} (${fund.rate.toStringAsFixed(2)}%)',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
                   ),
                 ],
               ),
@@ -1183,25 +1369,29 @@ class _DesignSheetState extends State<_DesignSheet> {
 
   void _setObscure(bool v) {
     setState(() => _isObscure = v); // 모달 내 즉시 갱신
-    widget.onToggleObscure(v);      // 상위(HomeScreen)에도 반영(+ 저장은 상위에서 처리)
+    widget.onToggleObscure(v); // 상위(HomeScreen)에도 반영(+ 저장은 상위에서 처리)
   }
 
   @override
   Widget build(BuildContext context) {
-    Widget tile({required Widget child, required VoidCallback onTap}) => InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 68,
-        height: 68,
-        decoration: BoxDecoration(
+    Widget tile({required Widget child, required VoidCallback onTap}) =>
+        InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-          border: Border.all(color: Colors.black12),
-        ),
-        child: ClipRRect(borderRadius: BorderRadius.circular(10), child: child),
-      ),
-    );
+          child: Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+              border: Border.all(color: Colors.black12),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: child,
+            ),
+          ),
+        );
 
     final presets = <BgChoice>[
       BgChoice.solid(pastel(const Color(0xFFA8E6CF))), // 민트
@@ -1221,18 +1411,31 @@ class _DesignSheetState extends State<_DesignSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            const Text('메인 영역 설정',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.fontColor)),
-            const Spacer(),
-            IconButton(
-              icon: const Icon(Icons.close, color: AppColors.fontColor),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ]),
+          Row(
+            children: [
+              const Text(
+                '메인 영역 설정',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.fontColor,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close, color: AppColors.fontColor),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
           const SizedBox(height: 6),
-          Text('디자인 설정',
-              style: TextStyle(fontSize: 15, color: AppColors.fontColor.withOpacity(.6))),
+          Text(
+            '디자인 설정',
+            style: TextStyle(
+              fontSize: 15,
+              color: AppColors.fontColor.withOpacity(.6),
+            ),
+          ),
           const SizedBox(height: 12),
 
           Wrap(
@@ -1247,10 +1450,10 @@ class _DesignSheetState extends State<_DesignSheet> {
                       color: (!p.isImage && !p.isGradient) ? p.c1 : null,
                       gradient: p.isGradient
                           ? LinearGradient(
-                        colors: [p.c1!, p.c2!],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
+                              colors: [p.c1!, p.c2!],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
                           : null,
                     ),
                   ),
@@ -1337,19 +1540,31 @@ class _FundsOptionsSheetState extends State<_FundsOptionsSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            const Text(
-              '보유 펀드 옵션',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.fontColor),
-            ),
-            const Spacer(),
-            IconButton(
-              icon: const Icon(Icons.close, color: AppColors.fontColor),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ]),
+          Row(
+            children: [
+              const Text(
+                '보유 펀드 옵션',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.fontColor,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close, color: AppColors.fontColor),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
           const SizedBox(height: 6),
-          Text('정렬', style: TextStyle(fontSize: 15, color: AppColors.fontColor.withOpacity(.6))),
+          Text(
+            '정렬',
+            style: TextStyle(
+              fontSize: 15,
+              color: AppColors.fontColor.withOpacity(.6),
+            ),
+          ),
           const SizedBox(height: 6),
           _radio('금액 많은 순', FundSort.amountDesc),
           _radio('최신순', FundSort.newest),
@@ -1361,7 +1576,13 @@ class _FundsOptionsSheetState extends State<_FundsOptionsSheet> {
 
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('전체 보기', style: TextStyle(color: AppColors.fontColor, fontWeight: FontWeight.w600)),
+            title: const Text(
+              '전체 보기',
+              style: TextStyle(
+                color: AppColors.fontColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             subtitle: Text(
               _expanded ? '펀드를 모두 펼쳐 보기' : '펀드를 모두 펼쳐 보기',
               style: TextStyle(color: AppColors.fontColor.withOpacity(.6)),
@@ -1383,6 +1604,7 @@ class _FundsOptionsSheetState extends State<_FundsOptionsSheet> {
 
 class _PlusTile extends StatelessWidget {
   const _PlusTile();
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -1397,7 +1619,11 @@ class _PlusTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.black26, width: 1.2),
             ),
-            child: Icon(Icons.add, size: 20, color: AppColors.fontColor.withOpacity(.7)),
+            child: Icon(
+              Icons.add,
+              size: 20,
+              color: AppColors.fontColor.withOpacity(.7),
+            ),
           ),
         ),
       ],
@@ -1407,6 +1633,7 @@ class _PlusTile extends StatelessWidget {
 
 class _MbtiPromoCard extends StatelessWidget {
   final VoidCallback onTap;
+
   const _MbtiPromoCard({required this.onTap});
 
   @override
@@ -1480,8 +1707,6 @@ class _MbtiPromoCard extends StatelessWidget {
   }
 }
 
-
-
 // ========================================================
 
 const tossBlue = Color(0xFF0064FF);
@@ -1492,19 +1717,22 @@ Color pastel(Color c) => Color.lerp(Colors.white, c, 0.12)!;
 class BgChoice {
   final Color? c1, c2;
   final File? image;
+
   const BgChoice._({this.c1, this.c2, this.image});
+
   factory BgChoice.solid(Color c) => BgChoice._(c1: c);
+
   factory BgChoice.gradient(Color a, Color b) => BgChoice._(c1: a, c2: b);
+
   factory BgChoice.image(File f) => BgChoice._(image: f);
 
   bool get isImage => image != null;
+
   bool get isGradient => c2 != null && image == null;
 
   // ---- 직렬화/역직렬화 (secure storage용) ----
   Map<String, dynamic> toJson() => {
-    'type': isImage
-        ? 'image'
-        : (isGradient ? 'gradient' : 'solid'),
+    'type': isImage ? 'image' : (isGradient ? 'gradient' : 'solid'),
     'c1': c1?.value,
     'c2': c2?.value,
     'imagePath': image?.path,
@@ -1563,8 +1791,11 @@ class _DesignStorage {
 }
 
 /* 배경 대비용 글자색 계산 */
-Color _idealOn(BgChoice bg,
-    {Color light = AppColors.fontColor, Color dark = Colors.white}) {
+Color _idealOn(
+  BgChoice bg, {
+  Color light = AppColors.fontColor,
+  Color dark = Colors.white,
+}) {
   if (bg.isImage) return dark;
   if (bg.isGradient) {
     final l1 = bg.c1!.computeLuminance();
