@@ -13,17 +13,14 @@ import 'package:mobile_front/utils/exit_popup.dart';
 
 import '../core/routes/routes.dart';
 import '../models/fund.dart';
-import 'fund_list_screen.dart';
 
-/// pubspec.yaml 에 의존성 추가:
-/// flutter_secure_storage: ^9.2.2
 
 /* ===== 홈 ===== */
 class HomeScreen extends StatefulWidget {
   final List<Fund> myFunds;
-  final bool fundsLoading; // 🆕 추가
-  final String? fundsError; // 🆕 추가
-  final VoidCallback? onRefreshFunds; // 🆕 추가
+  final bool fundsLoading;
+  final String? fundsError;
+  final VoidCallback? onRefreshFunds;
   final String investType;
   final String userName;
   final String? accessToken;
@@ -62,6 +59,15 @@ class _HomeScreenState extends State<HomeScreen> {
   BgChoice _bg = BgChoice.solid(pastel(tossBlue));
   File? _bgImageFile;
 
+  int? _userId;
+  // 홈의 커스텀 배경(_bg) → 내 금융 카드색으로 변환
+  Color _myFinanceCardColor() {
+    // 이미지 테마면 가독성 때문에 파스텔 토스블루 고정
+    if (_bg.isImage) return pastel(tossBlue);
+    // 솔리드/그라데이션이면 첫 번째 색 기준으로 파스텔 처리
+    return pastel(_bg.c1 ?? tossBlue);
+  }
+
   //데이터 전달 받기 위한 클래스
   @override
   void initState() {
@@ -96,6 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // name이 비어있지 않으면 화면에 반영
         _displayName = me.name.isNotEmpty ? me.name : null;
         _investTypeName = me.typename.isNotEmpty ? me.typename : null;
+        _userId = me.userId;
       });
     } catch (e) {
       debugPrint('getMe failed: $e'); // 원인 확인용
@@ -548,7 +555,23 @@ class _HomeScreenState extends State<HomeScreen> {
     return (_pnl / base) * 100.0;
   }
 
-  void _toMyFinance() => Navigator.of(context).pushNamed('/my-finance');
+  void _toMyFinance() {
+    Navigator.of(context).pushNamed(
+      '/my-finance',
+      arguments: {
+        'assetCardColor': _myFinanceCardColor(),
+        'accessToken': widget.accessToken,
+        'userService': widget.userService,
+        'userId': _userId?.toString(), // String으로 넘기기(현재 MyFinance가 String? 예상)
+        'investTypeName': _investTypeName,
+        'onGoToFundTab': widget.onGoToFundTab,
+        'myFunds': widget.myFunds,
+        'fundsLoading': widget.fundsLoading,
+        'fundsError': widget.fundsError,
+        'onRefreshFunds': widget.onRefreshFunds == null // VoidCallback → AsyncCallback로 래핑
+      },
+    );
+  }
 
   /* ===== 설정 모달(디자인 + 금액 숨기기) ===== */
   Future<void> _openSettingsSheet() async {
@@ -562,14 +585,14 @@ class _HomeScreenState extends State<HomeScreen> {
         isObscure: _obscure,
         onToggleObscure: (v) async {
           setState(() => _obscure = v);
-          await _DesignStorage.saveObscure(v); // ✅ 저장
+          await _DesignStorage.saveObscure(v); // 저장
         },
         onPickPreset: (choice) async {
           setState(() {
             _bg = choice;
             _bgImageFile = choice.image;
           });
-          await _DesignStorage.saveBg(choice); // ✅ 저장
+          await _DesignStorage.saveBg(choice); // 저장
           if (context.mounted) Navigator.pop(context);
         },
         onPickImage: () async {
@@ -580,7 +603,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _bg = choice;
             _bgImageFile = File(x.path);
           });
-          await _DesignStorage.saveBg(choice); // ✅ 저장
+          await _DesignStorage.saveBg(choice); // 저장
           if (context.mounted) Navigator.pop(context);
         },
       ),
@@ -672,7 +695,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () async {
                     if (investTypeName == null || investTypeName.isEmpty) {
                       if (widget.onStartInvestFlow != null) {
-                        await widget.onStartInvestFlow!(); // ✅ 부모가 라우팅 + 리로드
+                        await widget.onStartInvestFlow!(); // 부모가 라우팅 + 리로드
                       }
                     }
                   },

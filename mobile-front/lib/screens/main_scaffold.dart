@@ -17,8 +17,6 @@ import '../widgets/circle_nav_bar.dart';
 import '../main.dart' show navigatorKey;
 import 'package:mobile_front/core/services/user_service.dart';
 
-
-
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
 
@@ -76,8 +74,13 @@ class _MainScaffoldState extends State<MainScaffold> {
       MyFinanceScreen(
         accessToken: _accessToken,
         userService: UserService(),
-        // myFunds: _myFunds,                    // 🆕 펀드 데이터 공유
-        // fundsLoading: _fundsLoading,
+        userId: _userId,
+        investTypeName: _investTypeName,
+        onGoToFundTab: () => setState(() => _index = 2),
+        myFunds: _myFunds,                    // 🆕 펀드 데이터 공유
+        fundsLoading: _fundsLoading,
+        fundsError: _fundsError,
+        onRefreshFunds: _loadMyFunds,
       ),
       FundListScreen(
         accessToken: _accessToken,

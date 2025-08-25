@@ -142,6 +142,8 @@ class FundService {
       return res.statusCode >= 200 && res.statusCode < 300;
     } catch (_) {
       return false;
+    }
+  }
 
   // ====================================
 

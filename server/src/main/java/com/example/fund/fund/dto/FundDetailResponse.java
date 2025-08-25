@@ -45,4 +45,5 @@ public class FundDetailResponse {
     private BigDecimal liquidity;
 
     private FundProductView product; // 목록에 Product 데이터 보이기
+    private Long productId;
 }
