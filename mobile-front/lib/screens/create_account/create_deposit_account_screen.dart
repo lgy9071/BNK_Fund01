@@ -426,154 +426,180 @@ class _CreateDepositAccountScreenState extends State<CreateDepositAccountScreen>
             },
           ),
         ),
+
+        // 프레임워크의 자동 밀어올리기 비활성화 (우리가 직접 처리)
+        resizeToAvoidBottomInset: false,
+
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 사용자 정보 표시
-                if (_userEmail.isNotEmpty) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16.0),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(8.0),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
+          child: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.all(24.0),
+                  child: ConstrainedBox(
+                    // 내용이 적을 때도 화면을 꽉 채워 overflow 방지
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // 사용자 정보 표시
+                        if (_userEmail.isNotEmpty) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16.0),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(8.0),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '사용자 정보',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _userEmail,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                        ],
+
+                        // 계좌 이름 입력
                         const Text(
-                          '사용자 정보',
+                          '계좌 이름 (선택사항)',
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _userEmail,
-                          style: const TextStyle(
+                          '입력하지 않으면 자동으로 설정됩니다',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _accountNameController,
+                          decoration: InputDecoration(
+                            hintText: '계좌의 별칭을 입력해주세요 (선택사항)',
+                            hintStyle: TextStyle(color: Colors.grey.shade400),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(color: primaryColor, width: 2),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          style: const TextStyle(fontSize: 16),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // 계좌 비밀번호 입력
+                        const Text(
+                          '계좌 비밀번호',
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
+                            color: Colors.black87,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _accountPinController,
+                          keyboardType: TextInputType.number,
+                          obscureText: true,
+                          maxLength: 4,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(4),
+                          ],
+                          decoration: InputDecoration(
+                            hintText: '숫자 4자리를 입력해주세요',
+                            hintStyle: TextStyle(color: Colors.grey.shade400),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(color: primaryColor, width: 2),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                            counterText: '',
+                          ),
+                          style: const TextStyle(fontSize: 16, letterSpacing: 8),
+                        ),
+
+                        // 남는 공간을 채워 버튼이 항상 하단에 위치하도록
+                        const SizedBox(height: 24),
+                        const SizedBox(height: 56), // bottom 버튼 높이만큼 여유 (겹침 방지)
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
-                ],
+                );
+              },
+            ),
+          ),
+        ),
 
-                // 계좌 이름 입력
-                const Text(
-                  '계좌 이름 (선택사항)',
+        // 하단 버튼: 키보드 높이만큼 자동으로 들어올림
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: AnimatedPadding(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _isFormValid && !_isLoading ? _createAccount : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+                    : const Text(
+                  '계좌 생성',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '입력하지 않으면 자동으로 설정됩니다',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _accountNameController,
-                  decoration: InputDecoration(
-                    hintText: '계좌의 별칭을 입력해주세요 (선택사항)',
-                    hintStyle: TextStyle(color: Colors.grey.shade400),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: primaryColor, width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  style: const TextStyle(fontSize: 16),
-                ),
-
-                const SizedBox(height: 32),
-
-                // 계좌 비밀번호 입력
-                const Text(
-                  '계좌 비밀번호',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _accountPinController,
-                  keyboardType: TextInputType.number,
-                  obscureText: true,
-                  maxLength: 4,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(4),
-                  ],
-                  decoration: InputDecoration(
-                    hintText: '숫자 4자리를 입력해주세요',
-                    hintStyle: TextStyle(color: Colors.grey.shade400),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: primaryColor, width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    counterText: '', // 글자 수 표시 숨기기
-                  ),
-                  style: const TextStyle(fontSize: 16, letterSpacing: 8),
-                ),
-
-                const Spacer(),
-
-                // 계좌 생성 버튼
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isFormValid && !_isLoading
-                        ? _createAccount
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            '계좌 생성',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-              ],
+              ),
             ),
           ),
         ),
