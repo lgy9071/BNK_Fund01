@@ -76,8 +76,8 @@ class _MainScaffoldState extends State<MainScaffold> {
       MyFinanceScreen(
         accessToken: _accessToken,
         userService: UserService(),
-        // myFunds: _myFunds,                    // 🆕 펀드 데이터 공유
-        // fundsLoading: _fundsLoading,
+        myFunds: _myFunds,                    // 🆕 펀드 데이터 공유
+        fundsLoading: _fundsLoading,
       ),
       FundListScreen(
         accessToken: _accessToken,

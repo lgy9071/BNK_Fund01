@@ -1,30 +1,30 @@
 // lib/screens/my_finance_screen.dart
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/core/services/user_service.dart';
 import 'package:mobile_front/widgets/common_button.dart';
+
 import '../models/fund.dart';
 
 const tossBlue = Color(0xFF0064FF);
-Color pastel(Color c) => c.withOpacity(.12);
 
-class BankAccount {
-  final String bank;
-  final String maskedNumber;
-  final int balance;
-  BankAccount({required this.bank, required this.maskedNumber, required this.balance});
-}
+Color pastel(Color c) => c.withOpacity(.12);
 
 class MyFinanceScreen extends StatefulWidget {
   final String? accessToken;
   final UserService? userService;
+  final List<Fund>? myFunds;
+  final bool? fundsLoading;
 
   const MyFinanceScreen({
     super.key,
     this.accessToken,
     this.userService,
+    this.myFunds,
+    this.fundsLoading,
   });
 
   @override
@@ -40,8 +40,8 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
   ];
   final _funds = <Fund>[
     Fund(id: 1, name: '글로벌채권펀드', rate: 3.2, balance: 4_000_000, featured: true),
-    Fund(id: 2, name: '테크성장펀드',   rate: -1.1, balance: 3_000_000),
-    Fund(id: 3, name: '헬스케어펀드',  rate: 2.5,  balance: 2_500_000, featured: true),
+    Fund(id: 2, name: '테크성장펀드', rate: -1.1, balance: 3_000_000),
+    Fund(id: 3, name: '헬스케어펀드', rate: 2.5, balance: 2_500_000, featured: true),
   ];
   final int _cash = 250_000;
 
@@ -50,10 +50,13 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
   final int _prevInflow = 1_900_000;
   final int _prevOutflow = 1_900_000;
 
-  String _won(int v) => '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원';
+  String _won(int v) =>
+      '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원';
 
   int get _sumAccounts => _accounts.fold(0, (s, a) => s + a.balance);
+
   int get _sumFunds => _funds.fold(0, (s, f) => s + f.balance);
+
   int get _totalAssets => _sumAccounts + _sumFunds + _cash;
 
   final Map<String, double> _target = const {'예·적금': .40, '펀드': .50, '현금': .10};
@@ -89,7 +92,14 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 총 자산
-            const Text('총 자산', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: AppColors.fontColor)),
+            const Text(
+              '총 자산',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: AppColors.fontColor,
+              ),
+            ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(16),
@@ -100,8 +110,14 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
               ),
               child: Align(
                 alignment: Alignment.centerRight,
-                child: Text(_won(_totalAssets),
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: AppColors.fontColor)),
+                child: Text(
+                  _won(_totalAssets),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.fontColor,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -112,7 +128,12 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
               subtitle: '예·적금/펀드/현금이 전체 자산에서 차지하는 비율을 한눈에 보여줍니다.',
             ),
             const SizedBox(height: 10),
-            _DonutCard(sumAccounts: _sumAccounts, sumFunds: _sumFunds, cash: _cash, total: _totalAssets),
+            _DonutCard(
+              sumAccounts: _sumAccounts,
+              sumFunds: _sumFunds,
+              cash: _cash,
+              total: _totalAssets,
+            ),
             const SizedBox(height: 20),
 
             // 이번 달 현금흐름 + 설명
@@ -122,14 +143,18 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
             ),
             const SizedBox(height: 10),
             _CashflowCard(
-              inflow: _inflow, outflow: _outflow, prevInflow: _prevInflow, prevOutflow: _prevOutflow,
+              inflow: _inflow,
+              outflow: _outflow,
+              prevInflow: _prevInflow,
+              prevOutflow: _prevOutflow,
             ),
             const SizedBox(height: 20),
 
             // 리밸런싱 알림 + 설명
             const _SectionHeader(
               title: '리밸런싱',
-              subtitle: '설정한 목표 비중(예·적금 40% / 펀드 50% / 현금 10%)에서 ±5%p 벗어나면 알려줍니다.',
+              subtitle:
+                  '설정한 목표 비중(예·적금 40% / 펀드 50% / 현금 10%)에서 ±5%p 벗어나면 알려줍니다.',
             ),
             const SizedBox(height: 10),
             _RebalanceCard(breaches: breaches),
@@ -161,7 +186,6 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
               },
             ),
 
-
             const SizedBox(height: 24),
 
             // 가입 펀드 — 2개씩 슬라이드
@@ -184,24 +208,48 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
 class _SectionHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
+
   const _SectionHeader({required this.title, this.subtitle});
+
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.fontColor)),
-      if (subtitle != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(subtitle!, style: TextStyle(fontSize: 12, color: AppColors.fontColor.withOpacity(.66))),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.fontColor,
+          ),
         ),
-    ]);
+        if (subtitle != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              subtitle!,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.fontColor.withOpacity(.66),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
 /* 도넛 카드 */
 class _DonutCard extends StatelessWidget {
   final int sumAccounts, sumFunds, cash, total;
-  const _DonutCard({required this.sumAccounts, required this.sumFunds, required this.cash, required this.total});
+
+  const _DonutCard({
+    required this.sumAccounts,
+    required this.sumFunds,
+    required this.cash,
+    required this.total,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -217,24 +265,34 @@ class _DonutCard extends StatelessWidget {
           SizedBox(
             height: 170,
             child: CustomPaint(
-              painter: _DonutPainter(values: [
-                sumAccounts.toDouble(),
-                sumFunds.toDouble(),
-                cash.toDouble()
-              ]),
+              painter: _DonutPainter(
+                values: [
+                  sumAccounts.toDouble(),
+                  sumFunds.toDouble(),
+                  cash.toDouble(),
+                ],
+              ),
               child: const Center(
-                child: Text('비중', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.fontColor)),
+                child: Text(
+                  '비중',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.fontColor,
+                  ),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 10),
-          Row(children: const [
-            _Legend(colorIndex: 0, label: '예·적금'),
-            SizedBox(width: 12),
-            _Legend(colorIndex: 1, label: '펀드'),
-            SizedBox(width: 12),
-            _Legend(colorIndex: 2, label: '현금'),
-          ]),
+          Row(
+            children: const [
+              _Legend(colorIndex: 0, label: '예·적금'),
+              SizedBox(width: 12),
+              _Legend(colorIndex: 1, label: '펀드'),
+              SizedBox(width: 12),
+              _Legend(colorIndex: 2, label: '현금'),
+            ],
+          ),
         ],
       ),
     );
@@ -244,9 +302,12 @@ class _DonutCard extends StatelessWidget {
 /* 현금흐름 카드 */
 class _CashflowCard extends StatelessWidget {
   final int inflow, outflow, prevInflow, prevOutflow;
+
   const _CashflowCard({
-    required this.inflow, required this.outflow,
-    required this.prevInflow, required this.prevOutflow,
+    required this.inflow,
+    required this.outflow,
+    required this.prevInflow,
+    required this.prevOutflow,
   });
 
   @override
@@ -276,7 +337,9 @@ class _CashflowCard extends StatelessWidget {
 /* 리밸런싱 카드 */
 class _RebalanceCard extends StatelessWidget {
   final List<String> breaches;
+
   const _RebalanceCard({required this.breaches});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -287,15 +350,26 @@ class _RebalanceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: breaches.isEmpty
-          ? const Text('목표 비중 내에서 잘 유지 중이에요.', style: TextStyle(color: AppColors.fontColor))
-          : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Icon(Icons.warning_amber, color: Colors.amber),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text('목표 비중에서 벗어난 자산: ${breaches.join(', ')}',
-              style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.fontColor)),
-        ),
-      ]),
+          ? const Text(
+              '목표 비중 내에서 잘 유지 중이에요.',
+              style: TextStyle(color: AppColors.fontColor),
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.warning_amber, color: Colors.amber),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '목표 비중에서 벗어난 자산: ${breaches.join(', ')}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.fontColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -303,8 +377,12 @@ class _RebalanceCard extends StatelessWidget {
 /* 계좌 카드: 테두리만, 좌상=은행, 좌하=계좌번호 */
 class _AccountCard extends StatelessWidget {
   final BankAccount a;
+
   const _AccountCard({required this.a});
-  String _won(int v) => '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원';
+
+  String _won(int v) =>
+      '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원';
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -314,19 +392,38 @@ class _AccountCard extends StatelessWidget {
         border: Border.all(color: pastel(tossBlue)),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(a.bank, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.fontColor)),
-              const SizedBox(height: 4),
-              Text(a.maskedNumber, style: TextStyle(color: AppColors.fontColor.withOpacity(.7))),
-            ],
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  a.bank,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.fontColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  a.maskedNumber,
+                  style: TextStyle(color: AppColors.fontColor.withOpacity(.7)),
+                ),
+              ],
+            ),
           ),
-        ),
-        Text(_won(a.balance), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.fontColor)),
-      ]),
+          Text(
+            _won(a.balance),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.fontColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -334,8 +431,12 @@ class _AccountCard extends StatelessWidget {
 /* 펀드 행 */
 class _FundRow extends StatelessWidget {
   final Fund f;
+
   const _FundRow({required this.f});
-  String _won(int v) => '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원';
+
+  String _won(int v) =>
+      '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원';
+
   @override
   Widget build(BuildContext context) {
     final up = f.rate >= 0;
@@ -348,17 +449,35 @@ class _FundRow extends StatelessWidget {
         border: Border.all(color: pastel(tossBlue)),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(children: [
-        Expanded(
-          child: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.fontColor)),
-        ),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text(_won(f.balance), style: const TextStyle(color: AppColors.fontColor)),
-          const SizedBox(height: 2),
-          Text('$icon ${f.rate.toStringAsFixed(2)}%', style: TextStyle(color: c, fontWeight: FontWeight.w700)),
-        ]),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              f.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.fontColor,
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _won(f.balance),
+                style: const TextStyle(color: AppColors.fontColor),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '$icon ${f.rate.toStringAsFixed(2)}%',
+                style: TextStyle(color: c, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -369,12 +488,14 @@ class _SlidingCardSection<T> extends StatefulWidget {
   final int pageSize;
   final Color indicatorActive;
   final Widget Function(BuildContext context, T item) itemBuilder;
+
   const _SlidingCardSection({
     required this.items,
     required this.pageSize,
     required this.indicatorActive,
     required this.itemBuilder,
   });
+
   @override
   State<_SlidingCardSection<T>> createState() => _SlidingCardSectionState<T>();
 }
@@ -423,7 +544,10 @@ class _SlidingCardSectionState<T> extends State<_SlidingCardSection<T>> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   for (var item in slice)
-                    SizedBox(height: _itemH, child: widget.itemBuilder(ctx, item)),
+                    SizedBox(
+                      height: _itemH,
+                      child: widget.itemBuilder(ctx, item),
+                    ),
                   if (slice.length < widget.pageSize)
                     for (int i = slice.length; i < widget.pageSize; i++)
                       const SizedBox(height: _itemH),
@@ -433,19 +557,24 @@ class _SlidingCardSectionState<T> extends State<_SlidingCardSection<T>> {
           ),
         ),
         const SizedBox(height: 8),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          for (int i = 0; i < pages; i++)
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: i == _current ? 10 : 8,
-              height: i == _current ? 10 : 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: widget.indicatorActive.withOpacity(i == _current ? 1 : .25),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (int i = 0; i < pages; i++)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: i == _current ? 10 : 8,
+                height: i == _current ? 10 : 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.indicatorActive.withOpacity(
+                    i == _current ? 1 : .25,
+                  ),
+                ),
               ),
-            ),
-        ]),
+          ],
+        ),
       ],
     );
   }
@@ -454,9 +583,14 @@ class _SlidingCardSectionState<T> extends State<_SlidingCardSection<T>> {
 /* ====== 차트 Painters (Donut / Bars) ====== */
 class _DonutPainter extends CustomPainter {
   final List<double> values;
+
   _DonutPainter({required this.values});
 
-  static const _palette = [Color(0xFF6AA3FF), Color(0xFF3DDC97), Color(0xFFFFC85C)];
+  static const _palette = [
+    Color(0xFF6AA3FF),
+    Color(0xFF3DDC97),
+    Color(0xFFFFC85C),
+  ];
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -480,7 +614,13 @@ class _DonutPainter extends CustomPainter {
         ..strokeCap = StrokeCap.butt
         ..strokeWidth = 24
         ..color = _palette[i % _palette.length];
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep, false, p);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        sweep,
+        false,
+        p,
+      );
       start += sweep;
     }
     final hole = Paint()..color = Colors.white;
@@ -495,21 +635,43 @@ class _DonutPainter extends CustomPainter {
 class _Legend extends StatelessWidget {
   final int colorIndex;
   final String label;
+
   const _Legend({required this.colorIndex, required this.label});
-  static const _palette = [Color(0xFF6AA3FF), Color(0xFF3DDC97), Color(0xFFFFC85C)];
+
+  static const _palette = [
+    Color(0xFF6AA3FF),
+    Color(0xFF3DDC97),
+    Color(0xFFFFC85C),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Row(children: [
-      Container(width: 10, height: 10, decoration: BoxDecoration(color: _palette[colorIndex], shape: BoxShape.circle)),
-      const SizedBox(width: 6),
-      Text(label, style: const TextStyle(color: AppColors.fontColor)),
-    ]);
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: _palette[colorIndex],
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(color: AppColors.fontColor)),
+      ],
+    );
   }
 }
 
 class _BarsPainter extends CustomPainter {
   final double inflow, outflow, prevInflow, prevOutflow;
-  _BarsPainter({required this.inflow, required this.outflow, required this.prevInflow, required this.prevOutflow});
+
+  _BarsPainter({
+    required this.inflow,
+    required this.outflow,
+    required this.prevInflow,
+    required this.prevOutflow,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -526,15 +688,59 @@ class _BarsPainter extends CustomPainter {
     final outflowP = Paint()..color = const Color(0xFFFF6B6B);
 
     // 지난달(희미)
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(gap, baseY - h(prevInflow), barW, h(prevInflow)), const Radius.circular(6)), ghost);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(gap * 2 + barW, baseY - h(prevOutflow), barW, h(prevOutflow)), const Radius.circular(6)), ghost);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(gap, baseY - h(prevInflow), barW, h(prevInflow)),
+        const Radius.circular(6),
+      ),
+      ghost,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          gap * 2 + barW,
+          baseY - h(prevOutflow),
+          barW,
+          h(prevOutflow),
+        ),
+        const Radius.circular(6),
+      ),
+      ghost,
+    );
 
     // 이번달
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(gap * 3 + barW * 2, baseY - h(inflow), barW, h(inflow)), const Radius.circular(6)), inflowP);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(gap * 4 + barW * 3, baseY - h(outflow), barW, h(outflow)), const Radius.circular(6)), outflowP);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(gap * 3 + barW * 2, baseY - h(inflow), barW, h(inflow)),
+        const Radius.circular(6),
+      ),
+      inflowP,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(gap * 4 + barW * 3, baseY - h(outflow), barW, h(outflow)),
+        const Radius.circular(6),
+      ),
+      outflowP,
+    );
   }
 
   @override
   bool shouldRepaint(covariant _BarsPainter old) =>
-      inflow != old.inflow || outflow != old.outflow || prevInflow != old.prevInflow || prevOutflow != old.prevOutflow;
+      inflow != old.inflow ||
+      outflow != old.outflow ||
+      prevInflow != old.prevInflow ||
+      prevOutflow != old.prevOutflow;
+}
+
+class BankAccount {
+  final String bank;
+  final String maskedNumber;
+  final int balance;
+
+  BankAccount({
+    required this.bank,
+    required this.maskedNumber,
+    required this.balance,
+  });
 }
