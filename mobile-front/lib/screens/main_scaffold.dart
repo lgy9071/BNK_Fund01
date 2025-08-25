@@ -29,13 +29,17 @@ class _MainScaffoldState extends State<MainScaffold> {
   int _index = 0;
   String? _accessToken;
   String? _investTypeName;
-  String? _userId;              // 🆕 userId 추가
+  String? _userId; // 🆕 userId
   late List<Widget> _pages;
 
   /// 홈 강제 새로고침 트리거
   int _homeRefreshTick = 0;
 
-  // 🔄 하드코딩된 데이터를 동적 데이터로 변경
+  /// 🆕 탭별 리프레시 트리거
+  int _financeRefreshTick = 0;
+  int _fundRefreshTick = 0;
+
+  // 🔄 동적 데이터
   List<Fund> _myFunds = [];
   bool _fundsLoading = true;
   String? _fundsError;
@@ -52,8 +56,8 @@ class _MainScaffoldState extends State<MainScaffold> {
       HomeScreen(
         key: ValueKey('home-$_homeRefreshTick'),
         myFunds: _myFunds,
-        fundsLoading: _fundsLoading,          // 🆕 로딩 상태 전달
-        fundsError: _fundsError,              // 🆕 에러 상태 전달
+        fundsLoading: _fundsLoading,
+        fundsError: _fundsError,
         investType: _investTypeName ?? '공격투자형',
         userName: '@@',
         accessToken: _accessToken,
@@ -67,23 +71,25 @@ class _MainScaffoldState extends State<MainScaffold> {
             await _loadUserInfo();
           }
         },
-        onRefreshFunds: _loadMyFunds,         // 🆕 펀드 새로고침 콜백
+        onRefreshFunds: _loadMyFunds,
         onGoToFundTab: () {
-          setState(() => _index = 2); // 🆕 펀드 가입 탭으로 이동
+          setState(() => _index = 2);
         },
       ),
       MyFinanceScreen(
+        key: ValueKey('finance-$_financeRefreshTick'), // 🆕 키 부여
         accessToken: _accessToken,
         userService: UserService(),
         userId: _userId,
         investTypeName: _investTypeName,
         onGoToFundTab: () => setState(() => _index = 2),
-        myFunds: _myFunds,                    // 🆕 펀드 데이터 공유
+        myFunds: _myFunds,
         fundsLoading: _fundsLoading,
         fundsError: _fundsError,
         onRefreshFunds: _loadMyFunds,
       ),
       FundListScreen(
+        key: ValueKey('fund-$_fundRefreshTick'), // 🆕 키 부여
         accessToken: _accessToken,
         userService: UserService(),
       ),
@@ -91,9 +97,8 @@ class _MainScaffoldState extends State<MainScaffold> {
     ];
   }
 
-  /// 🆕 사용자 가입 펀드 목록 로드
+  /// 사용자 가입 펀드 목록 로드
   Future<void> _loadMyFunds() async {
-    // 프레임 완료 후 상태 변경하도록 수정 (Build scheduled during frame 에러 방지)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         setState(() {
@@ -104,7 +109,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     });
 
     try {
-      // userId가 없으면 빈 리스트로 처리
       if (_userId == null || _userId!.isEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
@@ -131,7 +135,6 @@ class _MainScaffoldState extends State<MainScaffold> {
           _buildPages();
         }
       });
-
     } catch (e) {
       debugPrint('Failed to load my funds: $e');
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -157,7 +160,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         if (mounted) {
           setState(() {
             _accessToken = null;
-            _userId = null;          // 🔄 userId도 초기화
+            _userId = null;
             _investTypeName = null;
             _myFunds = [];
             _fundsLoading = false;
@@ -176,17 +179,14 @@ class _MainScaffoldState extends State<MainScaffold> {
         if (mounted) {
           setState(() {
             _accessToken = token;
-            _userId = me.userId.toString(); // 🆕 userId 설정
+            _userId = me.userId.toString();
             _investTypeName = me.typename.isNotEmpty ? me.typename : null;
           });
 
           _bumpHomeRefresh();
-
-          // 🔄 userId 설정 후 펀드 데이터 로드
           await _loadMyFunds();
         }
       });
-
     } catch (e) {
       debugPrint("MainScaffold.getMe failed: $e");
     }
@@ -198,7 +198,6 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   Future<void> _openFullMenu() async {
-    // 우선 상태의 토큰 사용, 없으면 스토리지 보조 조회
     String? accessToken = _accessToken;
     if (accessToken == null || accessToken.isEmpty) {
       const storage = FlutterSecureStorage();
@@ -308,7 +307,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                       AppRoutes.qnaList,
                       arguments: {
                         'baseUrl': ApiConfig.baseUrl,
-                        'accessToken': _accessToken, // 로그인 이후 보관 중인 토큰 변수
+                        'accessToken': _accessToken,
                       },
                     );
                   },
@@ -339,15 +338,44 @@ class _MainScaffoldState extends State<MainScaffold> {
               return;
             }
 
-            // 같은 탭 재탭 → 홈 리로드
+            // 같은 탭 재탭 → 강제 리프레시
             if (_index == i) {
               if (i == 0) {
                 _bumpHomeRefresh();
+              } else if (i == 1) {
+                setState(() {
+                  _financeRefreshTick++;
+                  _buildPages();
+                });
+              } else if (i == 2) {
+                if (_investTypeName == null || _investTypeName!.isEmpty) {
+                  final go = await showAppConfirmDialog(
+                    context: context,
+                    title: "안내",
+                    message: "펀드 가입을 위해서는 투자성향 \n분석이 필요합니다 진행하시겠습니까?",
+                    confirmText: "분석진행",
+                    cancelText: "취소",
+                    confirmColor: AppColors.primaryBlue,
+                  );
+                  if (go == true) {
+                    final result = await Navigator.pushNamed(context, AppRoutes.investType);
+                    if (result == true) {
+                      setState(() => _index = 0);
+                      _bumpHomeRefresh();
+                      _loadUserInfo();
+                    }
+                  }
+                } else {
+                  setState(() {
+                    _fundRefreshTick++;
+                    _buildPages();
+                  });
+                }
               }
               return;
             }
 
-            // 펀드 가입 탭 가드
+            // 다른 탭으로 이동하는 경우
             if (i == 2) {
               if (_investTypeName == null || _investTypeName!.isEmpty) {
                 final go = await showAppConfirmDialog(
@@ -367,10 +395,26 @@ class _MainScaffoldState extends State<MainScaffold> {
                   }
                 }
                 return;
+              } else {
+                setState(() {
+                  _fundRefreshTick++;
+                  _index = 2;
+                  _buildPages();
+                });
+                return;
               }
             }
 
-            setState(() => _index = i); // 정상 이동
+            if (i == 0) {
+              _bumpHomeRefresh();
+            } else if (i == 1) {
+              setState(() {
+                _financeRefreshTick++;
+                _buildPages();
+              });
+            }
+
+            setState(() => _index = i);
           },
         ),
       ),

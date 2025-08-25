@@ -813,13 +813,21 @@ class _KeyFactsRow extends StatelessWidget {
   });
 
   int _riskLevelFromText(String s) {
-    final m = RegExp(r'\((\d)\)').firstMatch(s);
-    return m != null ? int.parse(m.group(1)!) : 3;
+    // 1) "4등급", " 4 등급" 같이 괄호 없는 케이스
+    final m1 = RegExp(r'(\d+)\s*등급').firstMatch(s);
+    if (m1 != null) return int.parse(m1.group(1)!);
+
+    // 2) "(4)" 같이 괄호만 있는 케이스
+    final m2 = RegExp(r'\((\d+)\)').firstMatch(s);
+    if (m2 != null) return int.parse(m2.group(1)!);
+
+    // 못 찾으면 기본 3
+    return 3;
   }
 
   @override
   Widget build(BuildContext context) {
-    final level = _riskLevelFromText(riskText).clamp(1, 5);
+    final level = _riskLevelFromText(riskText).clamp(1, 6);
     final isNarrow = MediaQuery.of(context).size.width < 340;
 
     final boxDecoration = BoxDecoration(
@@ -853,13 +861,13 @@ class _KeyFactsRow extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: SizedBox(
-              height: 34,
+              height: 33,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerRight,
                 child: Text(
                   '${_won.format(navPrice)} 원',
-                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
                 ),
               ),
             ),
@@ -895,9 +903,21 @@ class _KeyFactsRow extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Level', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 18), // 👈 원하는 만큼 위로 이동
+                child: const Text(
+                  'Level',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ),
               const SizedBox(width: 6),
-              Text('$level', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 18),
+                child: Text(
+                  '$level',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                ),
+              ),
             ],
           ),
         ],
@@ -1055,29 +1075,38 @@ class _RiskCard extends StatelessWidget {
   const _RiskCard({required this.riskText, this.start = false});
 
   int _riskLevelFromText(String s) {
-    final m = RegExp(r'\((\d)\)').firstMatch(s);
-    return m != null ? int.parse(m.group(1)!) : 3;
+    final m1 = RegExp(r'(\d+)\s*등급').firstMatch(s);
+    if (m1 != null) return int.parse(m1.group(1)!);
+
+    final m2 = RegExp(r'\((\d+)\)').firstMatch(s);
+    if (m2 != null) return int.parse(m2.group(1)!);
+
+    return 3;
   }
 
   String _riskDescription(int level) {
     switch (level) {
       case 1:
-        return '위험이 매우 낮은 단계(보수적)';
+        return '위험이 매우 낮은 단계 (보수적)';
       case 2:
         return '위험이 낮은 단계';
       case 3:
-        return '보통 수준의 위험';
+        return '보통보다 낮은 수준의 위험';
       case 4:
-        return '위험이 높은 단계(공격적)';
+        return '보통보다 높은 수준의 위험';
+      case 5:
+        return '위험이 높은 단계 (공격적)';
+      case 6:
+        return '위험이 매우 높은 단계 (초공격적)';
       default:
-        return '위험이 매우 높은 단계(매우 공격적)';
+        return '위험 수준 미정';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final level = _riskLevelFromText(riskText).clamp(1, 5);
-    const maxLevel = 5;
+    final level = _riskLevelFromText(riskText).clamp(1, 6);
+    const maxLevel = 6;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1128,7 +1157,7 @@ class _RiskCard extends StatelessWidget {
                       labelTextColor: Colors.white,
                       labelFontSize: 16,
                       labelRadialFactor: .50,
-                      labels: const ['매우 낮음', '낮음', '보통', '높음', '매우 높음'],
+                      labels: const ['매우 낮음', '낮음', '보통 이하', '보통 이상', '높음', '매우 높음'],
 
                       // 애니메이션 진행도
                       progress: t,
@@ -1185,7 +1214,7 @@ class _SegmentGaugePainter extends CustomPainter {
 
   _SegmentGaugePainter({
     required this.level,
-    this.maxLevel = 5,
+    this.maxLevel = 6,
     this.stroke = 28,
     this.gap = 0.12,
     this.coverage = 0.96,

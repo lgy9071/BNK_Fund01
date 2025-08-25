@@ -117,10 +117,10 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
     return Scaffold(
       backgroundColor: Colors.white, // 전체 배경은 화이트
       appBar: AppBar(
-        title: const Text('My'),
+        title: const Text('내 금융', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),),
+        centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: AppColors.fontColor,
-        elevation: 0.5,
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -146,22 +146,24 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
               ),
               const SizedBox(height: 8),
               _CardShell(
-                // ⬅︎ 모든 카드 흰 배경 + 토스블루 테두리
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        _won(_totalAssets),
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.fontColor,
+                    // 🔹 총 자산이 0보다 클 때만 금액 표시
+                    if (_totalAssets > 0)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          _won(_totalAssets),
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.fontColor,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
+                    if (_totalAssets > 0) const SizedBox(height: 12),
+
                     if (_totalAssets > 0) ...[
                       SizedBox(
                         height: 170,
@@ -171,7 +173,7 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
                               _sumAccounts.toDouble(),
                               _sumFunds.toDouble(),
                             ],
-                            holeColor: Colors.white, // 카드 배경과 일치
+                            holeColor: Colors.white,
                           ),
                           child: const Center(
                             child: Text(
@@ -194,13 +196,12 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
                         ],
                       ),
                     ] else ...[
-                      // 총자산 0원일 때 동일 카드 내 안내
+                      // 총 자산 0원일 때 안내 메시지만
                       Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Column(
                           children: [
-                            Icon(Icons.pie_chart_outline,
-                                size: 40, color: Colors.black38),
+                            Icon(Icons.trending_up, size: 40, color: Colors.black38),
                             const SizedBox(height: 8),
                             Text(
                               '자산 데이터가 없습니다',
@@ -241,18 +242,21 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
                   ),
                 )
               else if (_accounts.isEmpty)
-                  const _CardShell(
-                    child: _EmptyAccountsCard(),
+                  _CardShell(
+                  child: _EmptyAccountsCard(
+                      accessToken: widget.accessToken,
+                      userService: widget.userService,
+                      ),
                   )
-                else
-                  Column(
-                    children: [
-                      for (final a in _accounts) ...[
-                        _AccountTile(account: a),
-                        const SizedBox(height: 10),
-                      ],
+              else
+                Column(
+                  children: [
+                    for (final a in _accounts) ...[
+                      _AccountTile(account: a),
+                      const SizedBox(height: 10),
                     ],
-                  ),
+                  ],
+                ),
 
               const SizedBox(height: 24),
 
@@ -582,14 +586,17 @@ class _ErrorBlock extends StatelessWidget {
 }
 
 class _EmptyAccountsCard extends StatelessWidget {
-  const _EmptyAccountsCard();
+  final String? accessToken;
+  final UserService? userService;
+
+  const _EmptyAccountsCard({this.accessToken, this.userService});  // ← 추가
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: const [
-        Text(
+      children: [
+        const Text(
           '등록된 입출금 계좌가 없어요.',
           style: TextStyle(
             fontSize: 16,
@@ -597,20 +604,24 @@ class _EmptyAccountsCard extends StatelessWidget {
             color: AppColors.fontColor,
           ),
         ),
-        SizedBox(height: 12),
-        _OpenAccountButton(),
+        const SizedBox(height: 12),
+        _OpenAccountButton(                         // ← 전달
+          accessToken: accessToken,
+          userService: userService,
+        ),
       ],
     );
   }
 }
 
 class _OpenAccountButton extends StatelessWidget {
-  const _OpenAccountButton();
+  final String? accessToken;
+  final UserService? userService;
+
+  const _OpenAccountButton({this.accessToken, this.userService});  // ← 추가
 
   @override
   Widget build(BuildContext context) {
-    // 버튼은 부모에서 OTP 네비게이션과 새로고침을 연결해도 되고,
-    // 여기서는 가벼운 placeholder 버튼만 스타일 통일
     return SizedBox(
       height: 46,
       child: ElevatedButton(
@@ -618,6 +629,10 @@ class _OpenAccountButton extends StatelessWidget {
           Navigator.pushNamed(
             context,
             AppRoutes.otp,
+            arguments: {                               // ← 토큰/서비스 전달
+              'accessToken': accessToken,
+              'userService': userService,
+            },
           );
         },
         style: ElevatedButton.styleFrom(
