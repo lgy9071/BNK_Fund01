@@ -1,4 +1,3 @@
-// lib/screens/my_finance_screen.dart
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -9,13 +8,8 @@ import 'package:mobile_front/core/services/account_service.dart';
 import 'package:mobile_front/core/services/user_service.dart';
 import 'package:mobile_front/widgets/common_button.dart';
 
+import '../models/bank_account_net.dart';
 import '../models/fund.dart';
-
-const tossBlue = Color(0xFF0064FF);
-
-Color pastel(Color c) => c.withOpacity(.12);
-import 'package:mobile_front/models/bank_account_net.dart';
-import 'package:mobile_front/models/fund.dart';
 
 const tossBlue = Color(0xFF0064FF);
 
@@ -23,21 +17,18 @@ const tossBlue = Color(0xFF0064FF);
 final Color kCardBorder = tossBlue.withOpacity(0.16);
 
 class MyFinanceScreen extends StatefulWidget {
-  // 색상 동기화 제거: assetCardColor 없음
   final String? accessToken;
   final UserService? userService;
-  final List<Fund>? myFunds;
-  final bool? fundsLoading;
 
   final String? userId;
   final String? investTypeName;
   final VoidCallback? onGoToFundTab;
 
-  // 홈에서 내려준 “가입 펀드” 상태 공유
+  // 홈에서 내려준 “가입 펀드” 상태 공유 (한 번만 선언)
   final List<Fund> myFunds;
   final bool fundsLoading;
   final String? fundsError;
-  final AsyncCallback? onRefreshFunds; // Future<void> Function()
+  final AsyncCallback? onRefreshFunds;
 
   const MyFinanceScreen({
     super.key,
@@ -46,6 +37,8 @@ class MyFinanceScreen extends StatefulWidget {
     this.userId,
     this.investTypeName,
     this.onGoToFundTab,
+
+    // 기본값 제공
     this.myFunds = const [],
     this.fundsLoading = false,
     this.fundsError,
@@ -488,24 +481,15 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(
-        title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AppColors.fontColor,
-        ),
-      ),
-      if (subtitle != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            subtitle!,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.fontColor.withOpacity(.66),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.fontColor,
           ),
         ),
         if (subtitle != null)
@@ -671,7 +655,7 @@ class _AccountTile extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: kCardBorder), // ✅ 토스블루 테두리
+        border: Border.all(color: kCardBorder),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -722,7 +706,7 @@ class _FundRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: kCardBorder), // ✅ 토스블루 테두리
+        border: Border.all(color: kCardBorder),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
