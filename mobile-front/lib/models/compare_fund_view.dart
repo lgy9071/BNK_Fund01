@@ -1,4 +1,5 @@
 class CompareFundView {
+  final int productId;
   final String fundId;
   final String name;
   final String type;                 // 펀드유형
@@ -9,6 +10,7 @@ class CompareFundView {
   final double return12m;
 
   const CompareFundView({
+    required this.productId,
     required this.fundId,
     required this.name,
     required this.type,

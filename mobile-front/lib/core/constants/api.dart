@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 class ApiConfig {
   // 기본 서버 주소 (IP/포트 변경 시 여기만 수정)
   static const String baseUrl = 'http://10.0.2.2:8090';
@@ -59,4 +61,7 @@ class ApiConfig {
   // 약관 동의 pdf
   static String fundDocuments(String fundId) =>
       '$baseUrl/api/funds/$fundId/documents';
+
+  // 임시저장
+  static const String confirmTerms = '$baseUrl/api/funds/confirm';
 }

@@ -22,6 +22,7 @@ import com.example.fund.account.entity.DepositTransaction;
 import com.example.fund.account.entity.FundAccount;
 import com.example.fund.account.entity.FundAccountTransaction;
 import com.example.fund.account.entity.FundTransaction;
+import com.example.fund.account.entity.TermsAgreement;
 import com.example.fund.account.entity.TransitAccount;
 import com.example.fund.account.entity.TransitTransaction;
 import com.example.fund.account.repository.BranchRepository;
@@ -30,6 +31,7 @@ import com.example.fund.account.repository.DepositTransactionRepository;
 import com.example.fund.account.repository.FundAccountRepository;
 import com.example.fund.account.repository.FundAccountTransactionRepository;
 import com.example.fund.account.repository.FundTransactionRepository;
+import com.example.fund.account.repository.TermsAgreementRepository;
 import com.example.fund.account.repository.TransitAccountRepository;
 import com.example.fund.account.repository.TransitTransactionRepository;
 import com.example.fund.fund.entity_fund.Fund;
@@ -62,6 +64,7 @@ public class FundJoinService {
 	private final UserRepository userRepository;
 	private final FundProductRepository fundProductRepository;
 	private final BranchRepository branchRepository;
+	private final TermsAgreementRepository termsAgreementRepo;
 	
 	private final HolidayService holidayService;
 
@@ -486,22 +489,50 @@ public class FundJoinService {
 	}
 	
 
-@Transactional(readOnly = true)
-public Map<String, Object> getJoinDates(Integer userId, Long transactionId) {
-    FundTransaction tx = fundTransactionRepo
-        .findByOrderIdAndUser_UserId(transactionId, userId)
-        .orElseThrow(() -> new IllegalArgumentException("거래를 찾을 수 없습니다."));
-
-    return Map.of(
-        "transactionId",  tx.getOrderId(),
-        "tradeDate",      tx.getTradeDate(),     // 투자신청일 (D)
-        "navDate",        tx.getNavDate(),       // 금액확정일 (T)
-        "processedAt",    tx.getProcessedAt(),   // 체결일
-        "settlementDate", tx.getSettlementDate() // 정산일
-    );
-}
+	@Transactional(readOnly = true)
+	public Map<String, Object> getJoinDates(Integer userId, Long transactionId) {
+	    FundTransaction tx = fundTransactionRepo
+	        .findByOrderIdAndUser_UserId(transactionId, userId)
+	        .orElseThrow(() -> new IllegalArgumentException("거래를 찾을 수 없습니다."));
+	
+	    return Map.of(
+	        "transactionId",  tx.getOrderId(),
+	        "tradeDate",      tx.getTradeDate(),     // 투자신청일 (D)
+	        "navDate",        tx.getNavDate(),       // 금액확정일 (T)
+	        "processedAt",    tx.getProcessedAt(),   // 체결일
+	        "settlementDate", tx.getSettlementDate() // 정산일
+	    );
+	}
 
 	
 	// 임시저장
+	@Transactional
+	public TermsAgreement createActiveAfterCompletion(Integer userId, Long productId) {
+	    ZoneId KST = ZoneId.of("Asia/Seoul");
+	    LocalDateTime now = LocalDateTime.now(KST);
+
+	    // 오늘 이미 유효한 동의가 있으면 재생성 금지
+	    Optional<TermsAgreement> todayActive = termsAgreementRepo
+	        .findTopByUserIdAndProductIdAndIsActiveIsTrueAndExpiredAtAfterOrderByAgreedAtDesc(
+	            userId, productId, now);
+
+	    if (todayActive.isPresent()) {
+	        return todayActive.get();
+	    }
+
+	    // 만료시각: 내일 00:00:00 (KST)
+	    LocalDateTime nextMidnight = LocalDate.now(KST).plusDays(1).atStartOfDay();
+
+	    return termsAgreementRepo.save(
+	        TermsAgreement.builder()
+	            .userId(userId)
+	            .productId(productId)
+	            .agreedAt(now)
+	            .expiredAt(nextMidnight) // ✅ 다음날 00:00:00
+	            .isActive(true)
+	            .build()
+	    );
+	}
+
 	
 }
