@@ -7,4 +7,7 @@ import java.util.Optional;
 
 public interface FundProductRepository extends JpaRepository<FundProduct, Long> {
     Optional<FundProduct> findTopByFund_FundIdOrderByProductIdDesc(String fundId);
+    
+    // fund_id로 상품 조회
+    FundProduct findByFund_FundId(String fundId);
 }
