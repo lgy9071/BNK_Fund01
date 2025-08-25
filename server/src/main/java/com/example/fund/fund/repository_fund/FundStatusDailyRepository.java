@@ -32,5 +32,9 @@ public interface FundStatusDailyRepository extends JpaRepository<FundStatusDaily
 
 
 	Optional<FundStatusDaily> findTopByFund_FundIdOrderByBaseDateDesc(String fundId);
+	
+	Optional<FundStatusDaily>
+	findTopByFund_FundIdAndBaseDateLessThanEqualOrderByBaseDateDesc(String fundId, LocalDate baseDate);
+
 
 }
