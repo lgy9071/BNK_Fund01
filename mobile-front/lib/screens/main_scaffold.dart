@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mobile_front/core/constants/api.dart';
 import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/utils/exit_guard.dart';
 import 'package:mobile_front/widgets/show_custom_confirm_dialog.dart';
@@ -291,11 +292,25 @@ class _MainScaffoldState extends State<MainScaffold> {
                   },
                   onAsk: () {
                     Navigator.of(context, rootNavigator: true).pop();
-                    Navigator.of(context).pushNamed('/qna/compose');
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.qnaCompose,
+                      arguments: {
+                        'baseUrl': ApiConfig.baseUrl,
+                        'accessToken': _accessToken,
+                      },
+                    );
                   },
                   onMyQna: () {
                     Navigator.of(context, rootNavigator: true).pop();
-                    Navigator.of(context).pushNamed('/qna/list');
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.qnaList,
+                      arguments: {
+                        'baseUrl': ApiConfig.baseUrl,
+                        'accessToken': _accessToken, // 로그인 이후 보관 중인 토큰 변수
+                      },
+                    );
                   },
                   onFundStatus: () {
                     Navigator.of(context, rootNavigator: true).pop();

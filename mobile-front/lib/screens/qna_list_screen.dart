@@ -1,12 +1,22 @@
-import 'dart:ui' show FontFeature;
 import 'package:flutter/material.dart';
-import 'package:mobile_front/core/routes/routes.dart';
+import 'package:intl/intl.dart';
+import 'package:mobile_front/core/services/qna_api.dart';
+import 'package:mobile_front/models/qna_item.dart';
+import 'package:mobile_front/screens/qna_compose_screen.dart';
 
 const tossBlue = Color(0xFF0064FF);
+const successGreen = Color(0xFF16A34A);
 Color pastel(Color c, [double t = .16]) => Color.lerp(Colors.white, c, t)!;
 
 class QnaListScreen extends StatefulWidget {
-  const QnaListScreen({super.key});
+  final String baseUrl;
+  final String accessToken;
+
+  const QnaListScreen({
+    super.key,
+    required this.baseUrl,
+    required this.accessToken,
+  });
 
   @override
   State<QnaListScreen> createState() => _QnaListScreenState();
@@ -14,20 +24,23 @@ class QnaListScreen extends StatefulWidget {
 
 class _QnaListScreenState extends State<QnaListScreen> {
   final _q = TextEditingController();
-  String _status = '전체'; // '전체' | '대기' | '완료'
+  String _status = '전체'; // 전체 | 대기 | 완료
 
-  static const _pageSize = 5;
-  int _page = 1;
+  static const _pageSize = 10;
+  int _page = 0;
+  bool _loading = false;
+  bool _hasMore = true;
 
-  // demo data
-  final List<({String title, String status, DateTime date})> _all = List.generate(
-    20,
-        (i) => (
-    title: '문의 제목 ${i + 1}',
-    status: i.isEven ? '대기' : '완료',
-    date: DateTime.now().subtract(Duration(days: i)),
-    ),
-  );
+  late final QnaApi _api;
+  final List<QnaItem> _items = [];
+  final _fmt = DateFormat('yyyy.MM.dd');
+
+  @override
+  void initState() {
+    super.initState();
+    _api = QnaApi(baseUrl: widget.baseUrl, accessToken: widget.accessToken);
+    _load();
+  }
 
   @override
   void dispose() {
@@ -35,26 +48,147 @@ class _QnaListScreenState extends State<QnaListScreen> {
     super.dispose();
   }
 
-  String _fmtDate(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  Future<void> _load({bool refresh = false}) async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    try {
+      if (refresh) {
+        _items.clear();
+        _page = 0;
+        _hasMore = true;
+      }
+      final r = await _api.myQnas(page: _page, size: _pageSize);
+      _items.addAll(r.items);
+      _hasMore = _page + 1 < r.totalPages;
+      _page++;
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('목록 조회 실패: $e'), behavior: SnackBarBehavior.floating),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _fmtDate(DateTime d) => _fmt.format(d);
+
+  Future<void> _openCompose() async {
+    final created = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QnaComposeScreen(
+          baseUrl: widget.baseUrl,
+          accessToken: widget.accessToken,
+        ),
+      ),
+    );
+    if (created == true) await _load(refresh: true);
+  }
+
+  Future<void> _openDetailSheet(QnaItem item) async {
+    final detail = await _api.detail(item.qnaId);
+    if (!mounted) return;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16, right: 16, top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 4, width: 42,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              Row(
+                children: [
+                  _StatusChip.small(
+                    label: detail.status,
+                    bg: detail.status == '완료'
+                        ? pastel(successGreen, .22)
+                        : pastel(tossBlue, .22),
+                    text: Colors.black,
+                    icon: detail.status == '완료'
+                        ? Icons.task_alt_rounded
+                        : Icons.schedule_rounded,
+                  ),
+                  const Spacer(),
+                  Text(_fmtDate(detail.regDate),
+                      style: const TextStyle(color: Colors.black54)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(detail.title,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827))),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              Text(detail.content, style: const TextStyle(height: 1.45)),
+              if (detail.answer != null && detail.answer!.trim().isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: pastel(successGreen, .18),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE6F4EA)),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.reply_rounded, color: successGreen),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('답변',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF065F46))),
+                            const SizedBox(height: 6),
+                            Text(detail.answer!, style: const TextStyle(height: 1.45)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    // sort (desc)
-    final sorted = [..._all]..sort((a, b) => b.date.compareTo(a.date));
-
-    // filter
     final q = _q.text.trim().toLowerCase();
-    final filtered = sorted.where((e) {
+    final filtered = _items.where((e) {
       final okStatus = _status == '전체' ? true : e.status == _status;
       final okQuery = q.isEmpty ? true : e.title.toLowerCase().contains(q);
       return okStatus && okQuery;
     }).toList();
-
-    // paging: 5 per page
-    final showCount = (_page * _pageSize).clamp(0, filtered.length);
-    final visible = filtered.take(showCount).toList();
-    final hasMore = showCount < filtered.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -67,234 +201,218 @@ class _QnaListScreenState extends State<QnaListScreen> {
       backgroundColor: Colors.white,
 
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, AppRoutes.qnaCompose),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        shape: StadiumBorder(
-          side: BorderSide(color: Colors.black87), // 연한 테두리
-        ),
-        icon: const Icon(Icons.edit),
-        label: const Text('문의하기'),
+        onPressed: _openCompose,
+        backgroundColor: tossBlue,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.edit_rounded),
+        label: const Text('새 문의'),
       ),
 
-      body: Column(
-        children: [
-          // 검색창
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: TextField(
-              controller: _q,
-              onChanged: (_) => setState(() => _page = 1),
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: '제목으로 검색',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _q.text.isEmpty
-                    ? null
-                    : IconButton(
-                  onPressed: () {
-                    _q.clear();
-                    setState(() => _page = 1);
-                  },
-                  icon: const Icon(Icons.close_rounded),
-                  tooltip: '지우기',
-                ),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: tossBlue, width: 1.5),
+      body: RefreshIndicator(
+        onRefresh: () => _load(refresh: true),
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 120),
+          children: [
+            // 검색 + 상태 칩
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: TextField(
+                controller: _q,
+                onChanged: (_) => setState(() {}),
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: '제목으로 검색',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _q.text.isEmpty
+                      ? null
+                      : IconButton(
+                    onPressed: () {
+                      _q.clear();
+                      setState(() {});
+                    },
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: '지우기',
+                  ),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: tossBlue, width: 1.5),
+                  ),
                 ),
               ),
             ),
-          ),
-
-          // 상태 토글 (풀폭)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-            child: SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: '전체', label: Text('전체')),
-                  ButtonSegment(value: '대기', label: Text('대기')),
-                  ButtonSegment(value: '완료', label: Text('완료')),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: Row(
+                children: [
+                  _filterChip('전체'),
+                  const SizedBox(width: 8),
+                  _filterChip('대기'),
+                  const SizedBox(width: 8),
+                  _filterChip('완료'),
+                  const Spacer(),
+                  if (_loading)
+                    const SizedBox(
+                      width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                 ],
-                selected: {_status},
-                onSelectionChanged: (s) => setState(() {
-                  _status = s.first;
-                  _page = 1;
-                }),
-                showSelectedIcon: false,
-                style: ButtonStyle(
-                  visualDensity: VisualDensity.compact,
-                  padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 10)),
-                ),
               ),
             ),
-          ),
-
-          // 결과 개수
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
-            child: Row(
-              children: [
-                Text('총 ${filtered.length}건',
-                    style: TextStyle(color: Colors.black.withOpacity(.6), fontSize: 12.5)),
-              ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
+              child: Text('총 ${filtered.length}건',
+                  style: TextStyle(color: Colors.black.withOpacity(.6), fontSize: 12.5)),
             ),
-          ),
 
-          // 리스트 / 빈 상태
-          Expanded(
-            child: visible.isEmpty
-                ? Padding(
-              padding: const EdgeInsets.all(20),
-              child: Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                color: Colors.grey[100],
-                elevation: 0,
-                child: const SizedBox(
-                  width: double.infinity,
-                  height: 150,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline, size: 40, color: Colors.grey),
-                        SizedBox(height: 12),
-                        Text(
-                          '문의 내역이 없습니다.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.black54,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+            // 리스트
+            if (filtered.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  color: Colors.grey[100],
+                  elevation: 0,
+                  child: const SizedBox(
+                    height: 160,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.chat_bubble_outline, size: 42, color: Colors.grey),
+                          SizedBox(height: 10),
+                          Text('문의 내역이 없습니다.', style: TextStyle(color: Colors.black54)),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            )
-                : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-              itemCount: visible.length + (hasMore ? 1 : 0),
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (_, i) {
-                if (hasMore && i == visible.length) {
-                  return Center(
-                    child: OutlinedButton(
-                      onPressed: () => setState(() => _page += 1),
-                      child: const Text('더보기'),
-                    ),
-                  );
-                }
-
-                final e = visible[i];
-                final style = _statusStyle(e.status);
-
-                return InkWell(
-                  onTap: () {},
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                    constraints: const BoxConstraints(minHeight: 96), // 세로 여유 조금 더
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+              )
+            else
+              ...[
+                for (final e in filtered) _qnaCard(e),
+                if (_hasMore)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Center(
+                      child: OutlinedButton(
+                        onPressed: _loading ? null : _load,
+                        child: _loading
+                            ? const SizedBox(
+                          height: 18, width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween, // Spacer 없이 하단 배치
-                      children: [
-                        // 헤더: 아이콘 + (제목 | 날짜 | 화살표)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.chat_bubble_outline, size: 22),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      e.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 17,
-                                        height: 1.2,
-                                        fontWeight: FontWeight.w900,
-                                        color: Color(0xFF1E1F23),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  SizedBox(
-                                    width: 96,
-                                    child: Text(
-                                      _fmtDate(e.date),
-                                      textAlign: TextAlign.right,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        color: Colors.black.withOpacity(.55),
-                                        fontFeatures: const [FontFeature.tabularFigures()],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.chevron_right, color: Colors.black38),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        // 상태칩: 왼쪽 하단, 아주 작게
-                        UnconstrainedBox(
-                          alignment: Alignment.centerLeft,
-                          child: _StatusChip.tiny(
-                            label: e.status,
-                            bg: style.bg,
-                            text: Colors.black,
-                            icon: style.icon,
-                          ),
-                        ),
-                      ],
+                            : const Text('더보기'),
+                      ),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+              ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _qnaCard(QnaItem e) {
+    final style = _statusStyle(e.status);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+      child: InkWell(
+        onTap: () => _openDetailSheet(e),
+        borderRadius: BorderRadius.circular(16),
+        child: Container
+          (
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE6E8EC)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _StatusChip.tiny(
+                    label: e.status,
+                    bg: style.bg,
+                    text: Colors.black,
+                    icon: style.icon,
+                  ),
+                  const Spacer(),
+                  Text(
+                    _fmtDate(e.regDate),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.black.withOpacity(.55),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right, color: Colors.black26),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                e.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E1F23),
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip(String label) {
+    final selected = _status == label;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: selected ? Colors.white : Colors.black,
+        ),
+      ),
+      selected: selected,
+      onSelected: (_) => setState(() => _status = label),
+      selectedColor: tossBlue,
+      backgroundColor: const Color(0xFFF3F4F6),
+      shape: StadiumBorder(
+        side: BorderSide(color: selected ? tossBlue : const Color(0xFFE5E7EB)),
+      ),
+        showCheckmark: false
     );
   }
 
   _StatusStyle _statusStyle(String status) {
     if (status == '완료') {
       return _StatusStyle(
-        bg: pastel(const Color(0xFF22C55E), .22),
+        bg: pastel(successGreen, .22),
         icon: Icons.task_alt_rounded,
       );
     }
@@ -344,7 +462,6 @@ class _StatusChip extends StatelessWidget {
     fontSize: 11.5,
   );
 
-  // tiny 추가
   const _StatusChip.tiny({
     required String label,
     required Color bg,

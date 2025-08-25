@@ -25,4 +25,10 @@ public interface QnaRepository extends JpaRepository<Qna, Integer> {
     Optional<Qna> findFirstByStatusIsNullOrderByRegDateAsc();
 
     long countByUser_UserId(long userId);
+
+    Page<Qna> findByUser_UserIdOrderByRegDateDesc(int userId, Pageable pageable);
+
+    Optional<Qna> findByQnaIdAndUser_UserId(Integer qnaId, Integer userId);
+
+    boolean existsByQnaIdAndUser_UserId(Integer qnaId, Integer userId);
 }

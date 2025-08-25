@@ -49,11 +49,21 @@ class AppRouter {
       case AppRoutes.home:
         return _page(const MainScaffold());
 
-      case AppRoutes.qnaCompose:
-        return _page(const QnaComposeScreen());
+      case AppRoutes.qnaCompose: {
+        final args = s.arguments as Map<String, dynamic>?;
+        final baseUrl = (args?['baseUrl'] as String?) ?? ApiConfig.baseUrl;
+        final accessToken = (args?['accessToken'] as String?) ?? '';
+        // ✅ bool? 반환을 기대하는 Route로 생성
+        return _page<bool?>(QnaComposeScreen(baseUrl: baseUrl, accessToken: accessToken));
+      }
 
-      case AppRoutes.qnaList:
-        return _page(const QnaListScreen());
+      case AppRoutes.qnaList: {
+        final args = s.arguments as Map<String, dynamic>?;
+        final baseUrl = (args?['baseUrl'] as String?) ?? ApiConfig.baseUrl;
+        final accessToken = (args?['accessToken'] as String?) ?? '';
+        // 반환값 안쓸거면 void나 dynamic로 충분
+        return _page<void>(QnaListScreen(baseUrl: baseUrl, accessToken: accessToken));
+      }
 
       case AppRoutes.faq:
         return _page(const FaqScreen());
