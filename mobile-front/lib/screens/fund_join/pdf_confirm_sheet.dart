@@ -124,13 +124,24 @@ class _PdfConfirmSheetState extends State<PdfConfirmSheet> {
                           ? const Center(child: Text('컨트롤러 생성 실패'))
                           : Stack(
                         children: [
-                          PdfViewPinch(
-                            controller: _controller!,
-                            onPageChanged: (page) {
-                              if (!mounted) return;
-                              setState(() => _currentPage = page);
-                            },
+                          RawScrollbar(
+                            thumbVisibility: true,
+                            trackVisibility: true,
+                            thickness: 6,
+                            radius: const Radius.circular(8),
+                            minThumbLength: 48,          // ✅ 엄지 최소 길이(긴 문서에서 너무 짧아지는 것 방지)
+                            timeToFade: const Duration(seconds: 1), // ✅ 스크롤 멈춘 뒤 페이드아웃
+                            notificationPredicate: (_) => true, // 하위 스크롤 알림 모두 허용
+                            child: PdfViewPinch(
+                              controller: _controller!,
+                              onPageChanged: (page) {
+                                if (!mounted) return;
+                                setState(() => _currentPage = page);
+                              },
+                            ),
                           ),
+
+
                           Positioned(
                             right: 12,
                             top: 12,

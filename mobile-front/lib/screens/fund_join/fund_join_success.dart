@@ -7,7 +7,10 @@ import 'package:http/http.dart' as http;
 
 import 'package:mobile_front/screens/my_finance_screen.dart';
 import 'package:mobile_front/core/constants/colors.dart';
-import 'package:mobile_front/core/constants/api.dart'; // ApiConfig.joinSummaryByTxId 사용
+import 'package:mobile_front/core/constants/api.dart';
+import 'package:mobile_front/screens/main_scaffold.dart';
+
+import '../../core/routes/routes.dart';
 
 void main() {
   runApp(const MaterialApp(
@@ -267,10 +270,11 @@ class _FundJoinSuccessState extends State<FundJoinSuccess>
                       onPressed: () {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (_) => const MyFinanceScreen()),
+                          MaterialPageRoute(builder: (_) => const MainScaffold(initialIndex: 1)), // ✅ 탭 1 시작
                               (route) => false,
                         );
                       },
+
                       style: ElevatedButton.styleFrom(
                         backgroundColor: blue,
                         foregroundColor: Colors.white,

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/constants/api.dart';
-import '../pdf_confirm_sheet.dart';
+import 'pdf_confirm_sheet.dart';
 import 'fund_non_deposit.dart';
 
 class FundJoinPage extends StatefulWidget {
@@ -148,6 +148,7 @@ class _FundJoinPageState extends State<FundJoinPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        centerTitle: true,
         title: const Text('펀드 가입'),
         leading: IconButton(
           onPressed: () => Navigator.pop(context),

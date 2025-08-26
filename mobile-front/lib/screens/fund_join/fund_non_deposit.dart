@@ -879,6 +879,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
+        centerTitle: true,
         title: const Text(
           '펀드 가입',
           style: TextStyle(color: AppColors.text),
