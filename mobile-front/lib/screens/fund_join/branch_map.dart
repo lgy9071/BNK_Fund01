@@ -457,22 +457,7 @@ class _BranchMapScreenState extends State<BranchMapScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Column(
-                    children: [
-                      const Text('정확(네이버)', style: TextStyle(fontSize: 12)),
-                      Switch(
-                        value: _useNaver,
-                        onChanged: (v) async {
-                          setState(() => _useNaver = v);
-                          if (_useNaver) {
-                            await _loadBnkPoisFromProxy();
-                          } else {
-                            _applyFilters();
-                          }
-                        },
-                      ),
-                    ],
-                  ),
+
                 ],
               ),
             ),
