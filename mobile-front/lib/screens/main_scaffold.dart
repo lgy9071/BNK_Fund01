@@ -91,9 +91,10 @@ class _MainScaffoldState extends State<MainScaffold> {
         onRefreshFunds: _loadMyFunds,
       ),
       FundListScreen(
-        key: ValueKey('fund-$_fundRefreshTick'), // 🆕 키 부여
+        key: ValueKey('fund-$_fundRefreshTick'),
         accessToken: _accessToken,
         userService: UserService(),
+        investTypeName: _investTypeName, // ✅ 투자성향 전달
       ),
       const SizedBox.shrink(),
     ];

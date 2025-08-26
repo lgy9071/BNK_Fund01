@@ -205,26 +205,39 @@ class _HomeScreenState extends State<HomeScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                // 펀드 목록으로 이동
-                if (widget.onGoToFundTab != null) {
-                  widget.onGoToFundTab!();
+                final investTypeName = _investTypeName ?? widget.investType;
+                final hasInvestType = investTypeName.isNotEmpty;
+
+                if (hasInvestType) {
+                  // 투자성향이 있으면 → 펀드 탭으로 이동
+                  if (widget.onGoToFundTab != null) {
+                    widget.onGoToFundTab!();
+                  }
+                } else {
+                  // 투자성향이 없으면 → 모달 표시
+                  final go = await _showInvestTypeDialog();
+                  if (go && widget.onStartInvestFlow != null) {
+                    // '분석하러 가기' 선택 시 → 투자성향 분석 플로우 진입
+                    await widget.onStartInvestFlow!();
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                backgroundColor: AppColors.primaryBlue,
+                backgroundColor: tossBlue,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 0,
               ),
               child: const Text(
                 '펀드 둘러보기',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
+          )
         ],
       ),
     );
@@ -285,6 +298,112 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Future<bool> _showInvestTypeDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black54,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+
+          // 헤더
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: tossBlue.withOpacity(.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.analytics_outlined, color: tossBlue),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  '투자성향분석이 필요해요',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.fontColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // 본문
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '펀드를 가입하기 전에 간단한 분석으로\n나에게 맞는 상품을 추천해드릴게요.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.fontColor.withOpacity(.8),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const _BulletRow(text: '소요 시간 약 1분'),
+              const _BulletRow(text: '분석 결과로 맞춤 펀드 추천'),
+              const _BulletRow(text: '언제든 재검사 가능'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: tossBlue.withOpacity(.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: tossBlue.withOpacity(.12)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 18, color: tossBlue),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '분석은 투자 권유가 아닌\n정보 제공 절차예요.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.fontColor.withOpacity(.7),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // 버튼
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('나중에', style: TextStyle(color: AppColors.fontColor)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: tossBlue,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(0, 44),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+              child: const Text('분석하러 가기'),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
   }
 
   // 🆕 에러 상태 UI
@@ -1882,4 +2001,35 @@ Color _idealOn(
   }
   final lum = (bg.c1 ?? Colors.white).computeLuminance();
   return lum < 0.55 ? dark : light;
+}
+
+
+
+// 모달에 쓰일 불릿 위젯 추가
+class _BulletRow extends StatelessWidget {
+  final String text;
+  const _BulletRow({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 5),
+            child: Icon(Icons.circle, size: 6, color: AppColors.fontColor),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14, color: AppColors.fontColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -291,3 +291,192 @@ body {
   color: inherit;             /* 기존 텍스트 컬러 유지 */
   cursor: default;
 }
+
+
+/* =========================
+   Reset & Base (변경 사항)
+========================= */
+.main-wrapper{display:flex;flex:1;min-height:0;overflow:hidden} /* min-height 추가 */
+
+/* =========================
+   Content (신규)
+========================= */
+.content{
+  flex:1;display:flex;flex-direction:column;gap:16px;
+  padding:16px 24px;overflow:hidden;background:#f8f8f8
+}
+
+/* =========================
+   Aside (변경 및 추가)
+========================= */
+.admin-aside{
+  width:180px;background:#117C88;color:#fff;flex-shrink:0;height:100%;
+  text-align:center;overflow:hidden /* 기존: overflow-y:auto → 변경 */
+}
+.semi-title{
+  font-family:'Pretendard';font-weight:600;
+  text-decoration:none !important;  
+  border: none !important;
+}
+.admin-aside nav{display:flex;flex-direction:column;height:100%}
+.admin-aside .menu-list{flex:1;overflow-y:auto;padding-bottom:64px}
+.line{width:140px;margin:0 auto 5px;border-bottom:1.5px solid rgba(255,255,255,.35)} /* border 색상 변경 */
+
+/* Submenu link (변경) */
+.admin-aside .submenu li a{
+  display:block;padding:10px 40px;font-size:.9rem;color:#fff;
+  text-decoration:none;border-radius:4px
+}
+.admin-aside .submenu li a:hover{background:rgba(255,255,255,.12)} /* hover 색상 변경 */
+
+/* Active states (변경) */
+.admin-aside .group-btn.active,
+.admin-aside .group_a.active{background:#0E6974;color:#fff} /* 기존: #8b0303dc → 변경 */
+.admin-aside .group-btn.active .arrow{border-color:#fff}
+.admin-aside .group-btn.active:hover,
+.admin-aside .group_a.active:hover{cursor:default}
+
+/* Aside bottom sticky button (신규) */
+.admin-aside .aside-bottom{
+  position:sticky;bottom:0;padding:10px 12px;background:#117C88;
+  border-top:1px solid rgba(255,255,255,.25)
+}
+.admin-aside .aside-bottom .group-btn{width:100%;border-radius:8px}
+
+/* =========================
+   Modal (신규)
+========================= */
+.modal{
+  position:fixed;inset:0;z-index:9999;opacity:0;visibility:hidden;
+  transition:opacity .22s ease,visibility .22s ease
+}
+.modal.is-open{opacity:1;visibility:visible}
+.modal__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;transition:opacity .22s}
+.modal.is-open .modal__backdrop{opacity:1}
+.modal__dialog{
+  position:relative;
+  width:min(860px,92vw);
+  max-height:86vh;
+  overflow:visible;              /* ← 핵심 */
+  margin:6vh auto 0;
+  background:#fff;
+  border-radius:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.2);
+  transform:translateY(8px) scale(.98);
+  transition:transform .22s;
+}
+.modal.is-open .modal__dialog{transform:translateY(0) scale(1)}
+.modal__header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #edf2f7}
+.modal__header h3{margin:0;font-size:18px;font-weight:800;color:#0f3a53}
+.modal__close{background:transparent;border:0;font-size:22px;cursor:pointer}
+.modal__body{
+  padding:16px 18px;
+  position:relative;
+  max-height:calc(86vh - 56px);
+  overflow:auto;
+}
+.modal__body::after{
+  content:"";
+  display:block;
+  height:340px;                  /* 플라이아웃 예상높이만큼 여유 */
+}
+.modal__search{display:flex;gap:8px;margin-bottom:12px}
+.modal__search input{flex:1;padding:10px 12px;border:1px solid #d9e2ec;border-radius:10px}
+.modal__search button{padding:10px 12px;border:1px solid #d9e2ec;background:#f7fafc;border-radius:10px;font-weight:700;cursor:pointer}
+.modal__results{border:1px solid #edf2f7;border-radius:12px;padding:12px;min-height:220px;background:#fbfdff}
+.modal__empty{color:#6b7c93;text-align:center;padding:40px 10px}
+.customer-card{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;border:1px solid #e6eef6;
+  border-radius:12px;background:#fff;margin-bottom:10px;cursor:pointer
+}
+.customer-card h4{grid-column:1/-1;margin:0 0 6px;font-size:16px;color:#12344d}
+.kv{display:flex;gap:8px}.kv b{min-width:72px;color:#425466}
+
+/* =========================
+   Dashboard / Cards / Charts (신규)
+========================= */
+.topbar{
+  flex:0 0 56px;height:56px;margin:0;display:flex;align-items:center;justify-content:space-between;
+  background:#0B3C5D;color:#fff;padding:0 24px
+}
+.super-dashboard-grid,
+.planner-dashboard-grid{
+  flex:1;min-height:0;display:grid;
+  grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:16px
+}
+.super-dashboard-grid>.super-chart-card{grid-column:1/2;grid-row:1/3}
+.super-dashboard-grid>.super-metrics{
+  grid-column:2/3;grid-row:1/3;display:grid;grid-template-rows:1fr 1fr;gap:16px;height:100%
+}
+.card{
+  background:#fff;border:1px solid #e1e5ea;border-radius:16px;
+  box-shadow:0 6px 18px rgba(11,60,93,.08);
+  display:flex;flex-direction:column;gap:12px;min-height:0;height:100%;padding:20px;transition:.25s
+}
+.card:hover{transform:translateY(-4px);box-shadow:0 10px 22px rgba(11,60,93,.08)}
+.card h3{font-size:1.1rem;font-weight:700;color:#0B3C5D}
+.chart-wrapper{
+  position:relative;width:100%;height:clamp(180px,32vh,320px);
+  max-width:none;margin:0
+}
+.chart-wrapper canvas{position:absolute;inset:0;width:100% !important;height:100% !important}
+.info-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;width:100%;min-height:0}
+.info-list li{padding:12px;border-radius:8px;background:#117C88;color:#fff;font-weight:600;text-align:center}
+
+/* =========================
+   Anchor Title Fix (신규)
+========================= */
+a h1.semi-title {
+  text-decoration: none !important;
+  border: none !important;
+  color: #fff; 
+}
+
+/* 검색 결과 리스트: 한 줄, 축약, #333 */
+.customer-list{ border:1px solid #edf2f7;border-radius:12px;overflow:auto;background:#fbfdff }
+
+/* 리스트 줄표시(#333) — 기존과 동일 */
+.list-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer;color:#333;font-size:14px;line-height:1.6}
+.list-row .name,.list-row .email,.list-row .phone{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;color:#333}
+.list-row .name{flex:0 1 28%}.list-row .email{flex:1 1 52%}.list-row .phone{flex:0 0 auto}
+.list-row .sep{color:#bbb}.list-row:hover{background:#f7fafc}.list-row.selected{background:#eef6ff;border-left:3px solid #4f8cff}
+
+/* 상세 플라이아웃 사이즈 업 */
+.customer-detail-flyout{
+  position:absolute;
+  right:12px;
+  z-index:3;
+  width:min(760px, 96%);
+  max-height:calc(86vh - 160px);
+  overflow:auto;
+  background:#fff;
+  border:1px solid #e6eef6;
+  border-radius:14px;
+  box-shadow:0 12px 30px rgba(0,0,0,.18);
+}
+.customer-detail-flyout .flyout__header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #edf2f7}
+.customer-detail-flyout .flyout__title{margin:0;font-size:18px;font-weight:800;color:#0f3a53}
+.customer-detail-flyout .flyout__btns{display:flex;gap:8px}
+.customer-detail-flyout .flyout__close{background:transparent;border:0;font-size:20px;cursor:pointer;line-height:1}
+.customer-detail-flyout .flyout__content{padding:14px 16px;color:#333}
+
+/* 섹션 타이틀 & key-value rows */
+.section-title{margin:12px 0 8px;font-size:15px;color:#0f3a53;font-weight:800}
+.kv{display:flex;gap:10px;margin:6px 0}.kv b{min-width:92px;color:#425466}
+
+/* 칩(가입 펀드명) */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 10px;border-radius:999px;background:#f1f5f9;border:1px solid #e6eef6;font-size:13px}
+
+/* 좁은 화면에선 중앙 배치로 전환(선택 사항) */
+@media (max-width: 720px){
+  .customer-detail-flyout{
+    left:50%;
+    right:auto;
+    transform:translateX(-50%);
+    width:min(92vw, 680px);
+    top:8vh;
+    max-height:84vh;
+  }
+  .modal__body::after{ height:0; } /* 모바일에선 여유 높이 불필요 */
+}

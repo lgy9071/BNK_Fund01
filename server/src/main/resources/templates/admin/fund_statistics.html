@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>상품 통계</title>
+  <link rel="stylesheet" href="/css/admin/admin_layout.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+  <style>
+    .layout { display:flex; flex-direction:column; height:100%; }
+    .main-wrapper { display:flex; flex:1; }
+    main.content { display:flex; flex-direction:column; gap:22px; flex:1; padding:24px; }
+
+    /* 대시보드 그리드 */
+    .dashboard-grid{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 18px;
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      overflow: auto !important ; 
+    }
+
+    /* 카드 공통 */
+    .card{
+      background:#fff;
+      border-radius:16px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.06);
+      padding:18px 20px 22px;
+      display:flex; flex-direction:column; min-height:220px;
+    }
+    .card-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+    .card-title{ font-size:18px; font-weight:800; color:#0f3a53; margin:0; }
+    .card-toolbar{ display:flex; align-items:center; gap:8px; }
+    .card select{
+      border:1px solid #d9e2ec; background:#f7fafc; padding:6px 8px; border-radius:8px; font-weight:600;
+    }
+
+    /* 차트 캔버스 영역 */
+    .chart-box{ position:relative; height:300px; }
+    .chart-box.sm{ height:260px; }
+    .empty{
+      flex:1; display:flex; align-items:center; justify-content:center; color:#6b7c93; font-weight:600; border:2px dashed #e6eef6; border-radius:12px; padding:18px;
+    }
+
+    /* 리스트 */
+    .list{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+    .list-item{
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding:7px 10px; border:1px solid #edf2f7; border-radius:12px; background:#fbfdff;
+    }
+    .rank{ width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-weight:800; background:#f3f7fb; }
+    .item-name{ font-weight:700; color:#12344d; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .item-metric{ font-weight:800; }
+
+    /* 그리드 배치 */
+    /* lg 이상 */
+    .col-12{ grid-column: span 12; }
+    .col-8{ grid-column: span 8; }
+    .col-6{ grid-column: span 6; }
+    .col-4{ grid-column: span 4; }
+
+    /* 반응형 */
+    @media (max-width: 1080px){
+      .col-8{ grid-column: span 12; }
+      .col-6{ grid-column: span 12; }
+      .col-4{ grid-column: span 12; }
+      .chart-box{ height:280px; }
+    }
+
+    .item-text {
+      flex: 1 1 auto;
+      min-width: 0;                 /* ellipsis 적용 */
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;  /* 왼쪽 정렬 */
+      gap: 6px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .rank {
+      flex: 0 0 28px;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      background: #f3f7fb;
+
+      margin-right: 12px;   /* 숫자랑 텍스트 사이 여백 */
+    }
+
+
+      .btn-primary{
+    padding:8px 12px;border:none;border-radius:10px;font-weight:800;
+    background:#0e7afe;color:#fff;box-shadow:0 6px 16px rgba(14,122,254,.25);
+    cursor:pointer;transition:transform .08s ease;
+  }
+  .btn-primary:active{ transform:translateY(1px); }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="admin/admin_header :: adminHeader"></div>
+  <div class="main-wrapper">
+    <div th:replace="admin/admin_aside :: adminAside"></div>
+
+    <main class="content">
+
+  <div class="page-toolbar" style="display:flex;justify-content:flex-end;gap:8px;">
+    <button id="btnExportPdf" class="btn-primary">PDF로 저장</button>
+  </div>
+<div class="dashboard-grid">
+
+  <!-- (윗줄) 1) 가입자 투자 성향 분포 -->
+  <section class="card col-4">
+    <div class="card-header">
+      <h3 class="card-title">가입자 투자 성향 분포</h3>
+    </div>
+    <div class="chart-box sm" id="profileBox">
+      <canvas id="profileChart"></canvas>
+    </div>
+  </section>
+
+  <!-- (윗줄) 2) 클릭 수가 많은 펀드 TOP5 -->
+  <section class="card col-8">
+    <div class="card-header">
+      <h3 class="card-title">클릭 수가 많은 펀드 TOP 5</h3>
+    </div>
+    <div id="popularList" class="list"></div>
+  </section>
+
+  <!-- (아랫줄) 4) 일별/월별 판매 금액 추이 -->
+  <section class="card col-6">
+    <div class="card-header">
+      <h3 class="card-title">일별/월별 판매 금액 추이</h3>
+      <div class="card-toolbar">
+        <label for="salesPeriod" style="font-weight:700">기간</label>
+        <select id="salesPeriod">
+          <option value="daily">일별</option>
+          <option value="monthly">월별</option>
+        </select>
+      </div>
+    </div>
+    <div class="chart-box" id="salesBox">
+      <canvas id="salesChart"></canvas>
+    </div>
+  </section>
+
+  <!-- (아랫줄) 5) 현재 등록된 펀드 수 -->
+  <section class="card col-6">
+    <div class="card-header">
+      <h3 class="card-title">현재 등록된 펀드 수</h3>
+    </div>
+    <div class="chart-box" id="fundCountBox">
+      <canvas id="fundCountChart"></canvas>
+    </div>
+  </section>
+
+</div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  // Chart.js 플러그인
+  Chart.register(ChartDataLabels);
+
+  // 차트 인스턴스 보관
+  let salesChart, profileChart, sentimentChart, fundCountChart;
+
+  const API_BASE = '/admin/api/stats';
+
+
+  // 짧은 돈표기
+  function fmtMoneyShort(v){
+    const n = Number(v)||0;
+    if (n >= 100_000_000) return (n/100_000_000).toFixed(1)+'억';
+    if (n >= 10_000)      return Math.round(n/10_000).toLocaleString('ko-KR')+'만';
+    return n.toLocaleString('ko-KR');
+  }
+  // 라벨 짧게
+  function shortLabel(lbl, period){ return period==='daily' ? String(lbl||'').slice(5) : String(lbl||''); }
+
+  // ✅ 최대 maxPoints 개만 남기기 (균등 간격으로 샘플링, 마지막은 보장)
+  function compactSeries(labels, values, maxPoints){
+    if (!Array.isArray(labels) || !Array.isArray(values)) return {labels:[], values:[]};
+    if (labels.length <= maxPoints) return {labels:[...labels], values:[...values]};
+    const step = Math.ceil(labels.length / maxPoints);
+    const L=[], V=[];
+    for (let i=0; i<labels.length; i+=step){ L.push(labels[i]); V.push(values[i]); }
+    if (L[L.length-1] !== labels[labels.length-1]){ L.push(labels.at(-1)); V.push(values.at(-1)); }
+    return {labels:L, values:V};
+  }
+
+  // 1) 판매 추이: { labels:[...], values:[...] } or { items:[{label,value}...] } 등 방어
+  const fetchSales = async (period='daily') => {
+    const qs = new URLSearchParams({ period });
+    if (period === 'monthly') qs.set('months','12');   // 최근 12개월
+    else qs.set('days','14');                          // 최근 14일
+
+    const url = `${API_BASE}/sales?${qs.toString()}`;
+    try{
+      const res = await fetch(url, { credentials:'include' });
+      const ct = res.headers.get('content-type') || '';
+      if (!res.ok || !ct.includes('application/json')) return {labels:[], values:[]};
+
+      const body = await res.json();
+      let labels = Array.isArray(body.labels) ? body.labels : (Array.isArray(body.items)? body.items.map(r=>r.label):[]);
+      let values = Array.isArray(body.values) ? body.values : (Array.isArray(body.items)? body.items.map(r=>Number(r.value)||0):[]);
+
+      // 혹시 서버가 더 많이 줘도 화면은 최대 12개로 제한
+      const MAX_POINTS = 12;
+      ({labels, values} = compactSeries(labels, values, MAX_POINTS));
+
+      return { labels, values };
+    }catch(e){
+      console.warn('[sales] fail', e);
+      return { labels: [], values: [] };
+    }
+  };
+
+  // 2) 판매 추이 차트 (멋진 그라데이션 + 단위/툴팁 개선)
+function buildSalesChart(data, period='daily'){
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    const labels = (data?.labels ?? []).map(l => shortLabel(l, period));
+    const values = (data?.values ?? []).map(v => Number(v)||0);
+    const hasData = labels.length && values.some(v => v>0);
+
+    if (salesChart) salesChart.destroy();
+
+    // x축 라벨/라벨표시 샘플링 간격
+    const maxXTicks = 8;
+    const step = Math.max(1, Math.ceil(labels.length / maxXTicks));
+    const maxV = Math.max(0, ...values);
+
+    salesChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: (period==='monthly'?'월별':'일별') + ' 판매 금액',
+          data: values,
+          borderWidth: 0,
+          borderRadius: 12,
+          barThickness: 18,
+          maxBarThickness: 26,
+          categoryPercentage: 0.7,
+          barPercentage: 0.9,
+          backgroundColor: (c)=>{
+            const {chart} = c;
+            const {ctx, chartArea} = chart;
+            if (!chartArea) return 'rgba(0,0,0,0.08)';
+            const g = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+            if (period==='monthly'){ g.addColorStop(0,'rgba(255,159,64,0.25)'); g.addColorStop(1,'rgba(255,159,64,0.9)'); }
+            else                   { g.addColorStop(0,'rgba(56,189,248,0.25)'); g.addColorStop(1,'rgba(56,189,248,0.9)'); }
+            return g;
+          }
+        }]
+      },
+      options: withEmptySubtitle({
+        responsive:true,
+        maintainAspectRatio:false,
+        animation:{ duration: 350 },
+        layout:{ padding:{ top: 12, right: 8, bottom: 4, left: 8 } },
+        plugins:{
+          legend:{ display:false },
+          tooltip:{
+            callbacks:{
+              title:(items)=> items?.[0]?.label ?? '',
+              label:(ctx)=> ' ' + (Number(ctx.raw)||0).toLocaleString('ko-KR') + ' 원'
+            }
+          },
+          datalabels:{
+            display: hasData,
+            formatter:(v,ctx)=>{
+              const i = ctx.dataIndex;
+              if (v===maxV || i===values.length-1 || i%step===0) return fmtMoneyShort(v);
+              return '';
+            },
+            color:'#2d3748',
+            backgroundColor:'rgba(255,255,255,0.85)',
+            borderRadius:6,
+            padding:4,
+            anchor:'end',
+            align:'end',
+            offset:4,
+            clamp:true,
+            font:{ weight:'700' }
+          }
+        },
+        scales:{
+          x:{
+            grid:{ color:'rgba(15,58,83,0.06)' },
+            ticks:{
+              autoSkip:true,
+              maxTicksLimit: maxXTicks,
+              maxRotation:0,
+              minRotation:0,
+              callback:(value, index)=> (index%step===0 ? labels[index] : '')
+            },
+            border:{ display:false }
+          },
+          y:{
+            beginAtZero:true,
+            grace:'10%',
+            ticks:{ callback:(v)=> fmtMoneyShort(v) },
+            grid:{ color:'rgba(15,58,83,0.06)' },
+            border:{ display:false }
+          }
+        }
+      }, !hasData)
+    });
+  }
+
+  // 2) 투자 성향 분포: [{ label:'안정형', value: 10 }, ...]
+  const fetchInvestorProfiles = async () => {
+    try{
+      const res = await fetch('/admin/api/stats/investor-profiles', { credentials:'include' });
+      if(!res.ok) throw new Error();
+      return await res.json();
+    }catch(e){ return []; }
+  };
+
+  // 5) 등록 펀드 수 (상태/유형별): { labels:[...], values:[...] }
+  const fetchFundCounts = async () => {
+    try{
+      const res = await fetch('/admin/api/stats/funds-count', { credentials:'include' });
+      if(!res.ok) throw new Error();
+      return await res.json();
+    }catch(e){ return { labels:[], values:[] }; }
+  };
+
+// 공통: 빈 상태 서브타이틀 옵션
+function withEmptySubtitle(baseOptions, empty) {
+  return {
+    ...baseOptions,
+    plugins: {
+      ...baseOptions.plugins,
+      subtitle: {
+        display: empty,
+        text: empty ? '데이터 없음' : '',
+        font: { weight: '700' },
+        color: '#6b7c93',
+        padding: { bottom: 6 }
+      }
+    }
+  };
+}
+
+// 2) 투자 성향 (Doughnut)
+function buildProfileChart(rows){
+  const ctx = document.getElementById('profileChart').getContext('2d');
+  const hasData = rows?.some(r => Number(r.value) > 0);
+
+  const labels = hasData ? rows.map(r=>r.label) : ['데이터 없음'];
+  const values = hasData ? rows.map(r=>Number(r.value)||0) : [1];
+
+  if (profileChart) profileChart.destroy();
+  profileChart = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data: values, borderWidth:1 }] },
+    options: withEmptySubtitle({
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display: hasData, position:'bottom' },
+        datalabels:{ formatter:(v,ctx)=> {
+          if(!hasData) return '';
+          return v>0? `${v}`:'';
+        }, color:'#111', font:{ weight:'700' } }
+      },
+      cutout:'55%'
+    }, !hasData)
+  });
+}
+
+  // 3) 인기 펀드 TOP5: [{ name, company, clicks, users }]
+const fetchPopularFunds = async () => {
+  try {
+    const url = '/admin/api/stats/popular-funds?limit=5';
+    const res = await fetch(url, { credentials:'include' });
+
+    // 네트워크 상태 로그
+    console.log('[popular-funds] status:', res.status, 'ok:', res.ok, 'redirected:', res.redirected);
+    const ct = res.headers.get('content-type') || '';
+    console.log('[popular-funds] content-type:', ct);
+
+    if (!res.ok || !ct.includes('application/json')) {
+      // 로그인 리다이렉트(HTML) 등
+      const text = await res.text();
+      console.warn('[popular-funds] non-json body preview:', text.slice(0, 200));
+      return [];
+    }
+
+    const raw = await res.json();
+    console.log('[popular-funds] raw:', raw);
+
+    // 서버가 배열이 아닌 {items:[]}/{content:[]} 형태일 수 있으니 안전 추출
+    const rows =
+      Array.isArray(raw) ? raw :
+      Array.isArray(raw.items) ? raw.items :
+      Array.isArray(raw.data) ? raw.data :
+      Array.isArray(raw.content) ? raw.content :
+      [];
+
+    // 키 이름 매핑
+    const mapped = rows.map(r => ({
+      id:      r.id ?? r.fundId ?? r.FUND_ID ?? '',
+      name:    r.name ?? r.fundName ?? r.FUND_NAME ?? '',
+      company: r.company ?? r.managementCompany ?? r.MANAGEMENT_COMPANY ?? '',
+      clicks:  Number(r.clicks ?? r.CLICKS ?? 0) || 0,
+      users:   Number(r.users ?? r.USERS ?? 0) || 0,
+    }));
+
+    console.log('[popular-funds] mapped:', mapped);
+    return mapped;
+  } catch (e) {
+    console.error('popular-funds load failed:', e);
+    return [];
+  }
+};
+
+  // (중복 제거) buildPopularList는 하나만 남기세요
+function buildPopularList(items){
+  const wrap = document.getElementById('popularList');
+  wrap.innerHTML = '';
+  if(!items?.length){
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.style.height = '220px';
+    empty.textContent = '데이터 없음';
+    wrap.appendChild(empty);
+    return;
+  }
+  items.slice(0,5).forEach((it, idx)=>{
+    const li = document.createElement('div');
+    li.className = 'list-item';
+    li.innerHTML = `
+      <span class="rank">${idx+1}</span>
+      <div class="item-text" title="${(it.name||'')}${it.company? ' · '+it.company : ''}">
+        <span class="item-name">${it.name || '-'}</span>
+        ${it.company ? `<span class="item-company">· ${it.company}</span>` : ''}
+      </div>
+      <div class="item-metric">
+        ${Number(it.clicks ?? 0).toLocaleString()} 클릭 /
+        ${Number(it.users ?? 0).toLocaleString()} 명
+      </div>
+    `;
+    wrap.appendChild(li);
+  });
+}
+
+
+// 5) 등록 펀드 수 (Bar)
+function buildFundCountChart(data){
+  const ctx2d = document.getElementById('fundCountChart').getContext('2d');
+  const hasData = (data.labels?.length||0) > 0 && data.values?.some(v => Number(v) > 0);
+  const labels = hasData ? data.labels : [''];
+  const values = hasData ? data.values.map(v=>Number(v)||0) : [0];
+
+  if (fundCountChart) fundCountChart.destroy();
+
+  fundCountChart = new Chart(ctx2d, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '펀드 수',
+        data: values,
+        // 🔥 각 바마다 라벨을 보고 그라데이션 결정 (가로막대 대응)
+        backgroundColor: (ctx) => {
+          const {chart, dataIndex} = ctx;
+          const {ctx: c, chartArea} = chart;
+          if (!chartArea) return 'rgba(0,0,0,0.08)'; // 초기 렌더 패스
+
+          // 가로 방향 그라데이션 (left -> right)
+          const makeGrad = (from, to) => {
+            const g = c.createLinearGradient(chartArea.left, 0, chartArea.right, 0);
+            g.addColorStop(0, from);
+            g.addColorStop(1, to);
+            return g;
+          };
+
+          const label = String(chart.data.labels[dataIndex] ?? '').trim();
+          const isRunning = label.includes('운용중');
+
+          // 파랑(기본) / 빨강(운용중) 그라데이션
+          const blueGrad = makeGrad('rgba(14,122,254,0.92)', 'rgba(14,122,254,0.55)');
+          const redGrad  = makeGrad('rgba(239,68,68,0.92)',  'rgba(239,68,68,0.55)');
+          return isRunning ? redGrad : blueGrad;
+        },
+        borderWidth: 0,
+        borderRadius: 12,
+        barThickness: 36,
+        maxBarThickness: 44,
+        minBarLength: 6
+      }]
+    },
+    options: withEmptySubtitle({
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 8, right: 12, bottom: 8, left: 8 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c)=> `${c.raw.toLocaleString()} 개` } },
+        datalabels: {
+          display: hasData,
+          formatter: (v)=> v.toLocaleString(),
+          color: '#fff', font: { weight: '800' },
+          anchor: 'center', align: 'center', clamp: true
+        }
+      },
+      scales: {
+        x: { beginAtZero: true, grace: '10%',
+             grid: { color: 'rgba(15,58,83,0.06)' },
+             ticks: { callback: (v)=> v.toLocaleString() } },
+        y: { grid: { display: false } }
+      }
+    }, !hasData)
+  });
+}
+
+
+
+  // ===== 초기화 =====
+  (async function init(){
+    // 판매 추이
+    const salesPeriod = document.getElementById('salesPeriod');
+    let salesData = await fetchSales(salesPeriod.value);
+    buildSalesChart(salesData, salesPeriod.value);
+
+    salesPeriod.addEventListener('change', async ()=>{
+      const p = salesPeriod.value;
+      const fresh = await fetchSales(p);
+      buildSalesChart(fresh, p);
+    });
+
+    // 2) 투자 성향
+    const profiles = await fetchInvestorProfiles();
+    buildProfileChart(profiles);
+
+    // 3) 인기 펀드
+    const popular = await fetchPopularFunds();
+    buildPopularList(popular);
+
+    // 5) 등록 펀드 수
+    const counts = await fetchFundCounts();
+    buildFundCountChart(counts);
+  })();
+</script>
+<script>
+  // 2x2 타일로 여러 카드를 한 페이지에 배치해서 PDF로 저장
+  async function exportDashboardPDFGrid(){
+    const cards = Array.from(document.querySelectorAll('.dashboard-grid .card'));
+    if (!cards.length) return;
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('l','mm','a4');
+
+    // 페이지·그리드 설정
+    const margin = 10;          // mm
+    const gapX = 6, gapY = 8;   // 카드 간 간격(mm)
+    const COLS = 2, ROWS = 2;   // 페이지 당 가로×세로 개수 (2x2 → 한 페이지 최대 4개)
+
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const usableW = pageW - margin * 2;
+    const usableH = pageH - margin * 2;
+
+    const slotW = (usableW - gapX * (COLS - 1)) / COLS;     // 각 카드가 들어갈 영역의 너비
+    const slotH = (usableH - gapY * (ROWS - 1)) / ROWS;     // 각 카드가 들어갈 영역의 높이
+
+    // 차트 애니메이션이 끝나도록 잠깐 대기
+    await new Promise(r => setTimeout(r, 200));
+
+    let idxOnPage = 0;
+
+    for (let i = 0; i < cards.length; i++) {
+      if (i > 0 && idxOnPage === COLS * ROWS) {
+        pdf.addPage();
+        idxOnPage = 0;
+      }
+
+      // 캡처
+      const canvas = await html2canvas(cards[i], {
+        backgroundColor: '#ffffff',
+        scale: 2,          // 고해상도
+        useCORS: true,
+        allowTaint: true
+      });
+
+      // 슬롯 위치 계산 (좌측상단 기준)
+      const col = idxOnPage % COLS;
+      const row = Math.floor(idxOnPage / COLS);
+      const slotX = margin + col * (slotW + gapX);
+      const slotY = margin + row * (slotH + gapY);
+
+      // 슬롯에 맞게 비율 유지하며 축소
+      const ratio = canvas.width / canvas.height;
+      let drawW = slotW;
+      let drawH = drawW / ratio;
+      if (drawH > slotH) {           // 세로 넘치면 세로 기준으로 맞춤
+        drawH = slotH;
+        drawW = drawH * ratio;
+      }
+
+      // 슬롯 중앙 정렬
+      const x = slotX + (slotW - drawW) / 2;
+      const y = slotY + (slotH - drawH) / 2;
+
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, drawW, drawH);
+      idxOnPage++;
+    }
+
+    const fname = `상품통계_${new Date().toISOString().slice(0,10)}.pdf`;
+    pdf.save(fname);
+  }
+
+  // 버튼에 재연결 (이전에 연결한 함수가 있더라도 이걸로 덮어씀)
+  const btn = document.getElementById('btnExportPdf');
+  if (btn) {
+    btn.onclick = exportDashboardPDFGrid;
+  }
+</script>
+
+
+</body>
+</html>
