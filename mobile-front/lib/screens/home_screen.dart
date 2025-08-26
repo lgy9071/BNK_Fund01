@@ -49,6 +49,8 @@ class HomeScreen extends StatefulWidget {
 enum FundSort { amountDesc, newest, nameAsc, rateDesc }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _meLoading = true;           // 프로필(투자성향) 로딩 중?
+  bool _investCardVisible = false;  // 실제 카드 표시 여부(애니메이션용)
   bool _obscure = false; // 금액 숨김
   bool _expandFunds = false; // 더보기
   FundSort _sort = FundSort.amountDesc;
@@ -93,27 +95,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadMe() async {
     final token = widget.accessToken;
-    if (token == null || token.isEmpty) return; // 토큰 없으면 패스
+    if (token == null || token.isEmpty) return;
+
+    setState(() {
+      _meLoading = true;
+      _investCardVisible = false; // 로딩 시작 시 실제 카드 숨김
+    });
+
     try {
       final svc = widget.userService ?? UserService();
       final me = await svc.getMe(token);
       if (!mounted) return;
       setState(() {
-        // name이 비어있지 않으면 화면에 반영
         _displayName = me.name.isNotEmpty ? me.name : null;
         _investTypeName = me.typename.isNotEmpty ? me.typename : null;
         _userId = me.userId;
       });
     } catch (e) {
-      debugPrint('getMe failed: $e'); // 원인 확인용
-      // 실패 시 조용히 무시 (props 유지)
+      debugPrint('getMe failed: $e');
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _meLoading = false;
+      });
+      // 살짝 기다렸다가 카드 페이드 인
+      await Future.delayed(const Duration(milliseconds: 180));
+      if (mounted) {
+        setState(() => _investCardVisible = true);
+      }
     }
   }
 
   //데이터 전달 받기 위한 클래스2
 
   String _won(int v) =>
-      '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원';
+      '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')} 원';
 
   // =================================================
 
@@ -165,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(32),
             ),
             child: Icon(
-              Icons.account_balance_outlined,
+              Icons.trending_up,
               size: 32,
               color: tossBlue,
             ),
@@ -543,7 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     key: const ValueKey('shown-empty'),
                     children: [
                       Text(
-                        '0원',
+                        '0 원',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
@@ -751,6 +767,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final baseText = AppColors.fontColor;
     final baseDim = baseText.withOpacity(.54);
     final onColor = _idealOn(_bg); // 총 평가금액 상단 텍스트 대비색
+    final targetHeight = (investTypeName != null && investTypeName.isNotEmpty)
+        ? 72.h
+        : 180.h;
 
     // 더보기: 처음 2개 고정 + 나머지는 아래로 추가
     final int baseCount = math.min(2, funds.length);
@@ -807,193 +826,190 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 10),
 
                 /* 투자성향 카드 */
-                InkWell(
-                  onTap: () async {
-                    if (investTypeName == null || investTypeName.isEmpty) {
-                      if (widget.onStartInvestFlow != null) {
-                        await widget.onStartInvestFlow!(); // 부모가 라우팅 + 리로드
-                      }
-                    }
-                  },
+              // /* 투자성향 카드 */
+
+                AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, anim) {
+              // 페이드 + 아주 가벼운 슬라이드업
+              final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+              return FadeTransition(
+                opacity: curved,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                      begin: const Offset(0, .04), end: Offset.zero
+                  ).animate(curved),
+                  child: child,
+                ),
+              );
+            },
+            child: (!_investCardVisible)
+                ? _InvestCardSkeleton(height: targetHeight, key: const ValueKey('ske'))
+                : InkWell(
+              key: const ValueKey('real'),
+              onTap: () async {
+                if (investTypeName == null || investTypeName.isEmpty) {
+                  if (widget.onStartInvestFlow != null) {
+                    await widget.onStartInvestFlow!();
+                  }
+                }
+              },
+              borderRadius: BorderRadius.circular(14.r),
+              child: Container(
+                height: targetHeight,
+                padding: EdgeInsets.symmetric(horizontal: 14.w),
+                decoration: BoxDecoration(
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(14.r),
-                  child: Container(
-                    height:
-                        (investTypeName != null && investTypeName.isNotEmpty)
-                        ? 72.h
-                        : 180.h,
-                    padding: EdgeInsets.symmetric(horizontal: 14.w),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14.r),
-                      border: Border.all(
-                        color: tossBlue.withOpacity(0.16),
-                        width: 1.w,
+                  border: Border.all(
+                    color: tossBlue.withOpacity(0.16),
+                    width: 1.w,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    if (investTypeName != null && investTypeName.isNotEmpty) ...[
+                      // ✅ (기존 “결과 있음” UI 그대로)
+                      Expanded(
+                        child: AutoSizeText(
+                          '$displayName 님의 투자성향',
+                          maxLines: 1,
+                          minFontSize: 10,
+                          stepGranularity: 0.5,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 15.sp, color: AppColors.fontColor),
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        if (investTypeName != null &&
-                            investTypeName.isNotEmpty) ...[
-                          // ✅ 좌측 라벨: 한 줄 + 말줄임
-                          Expanded(
-                            child: AutoSizeText(
-                              '$displayName 님의 투자성향',
-                              maxLines: 1,
-                              minFontSize: 10,
-                              stepGranularity: 0.5,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15.sp,
-                                color: baseText,
+                      SizedBox(width: 8.w),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(8.r),
+                        onTap: () async {
+                          if (widget.onStartInvestFlow != null) {
+                            await widget.onStartInvestFlow!();
+                          }
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: 160.w),
+                              child: AutoSizeText(
+                                investTypeName!,
+                                maxLines: 1,
+                                minFontSize: 10,
+                                stepGranularity: 0.5,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 20.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.fontColor,
+                                ),
                               ),
                             ),
-                          ),
-                          SizedBox(width: 8.w),
-
-                          // 🔹 우측 결과(텍스트 + 화살표): 폭 제한 + 한 줄 유지(자동 축소)
-                          InkWell(
-                            borderRadius: BorderRadius.circular(8.r),
-                            onTap: () async {
-                              if (widget.onStartInvestFlow != null) {
-                                await widget
-                                    .onStartInvestFlow!(); // ✅ 결과 화면/재검사 진입 포함
-                              }
-                            },
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // 결과 텍스트: 너무 길면 자동 축소해서 1줄 유지
-                                ConstrainedBox(
-                                  constraints: BoxConstraints(maxWidth: 160.w),
-                                  child: AutoSizeText(
-                                    investTypeName!,
-                                    maxLines: 1,
-                                    minFontSize: 10,
-                                    stepGranularity: 0.5,
-                                    overflow: TextOverflow.ellipsis,
+                            SizedBox(width: 8.w),
+                            Icon(Icons.chevron_right,
+                                color: AppColors.fontColor.withOpacity(.54),
+                                size: 20.sp),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      // ❌ (기존 “결과 없음” UI 그대로)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(height: 5.h),
+                            AutoSizeText.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: displayName,
                                     style: TextStyle(
-                                      fontSize: 20.sp,
-                                      fontWeight: FontWeight.w800,
-                                      color: baseText,
+                                      fontSize: 24.sp,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.fontColor,
                                     ),
                                   ),
-                                ),
-                                SizedBox(width: 8.w),
-                                Icon(
-                                  Icons.chevron_right,
-                                  color: baseDim,
-                                  size: 20.sp,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ] else ...[
-                          // ❌ 투자성향 결과가 없을 때
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(height: 5.h),
-
-                                // 🔹 유저 이름 + 환영 문구: 한 줄 고정(자동 축소)
-                                // RichText 대신 AutoSizeText.rich로 1줄 강제
-                                AutoSizeText.rich(
                                   TextSpan(
-                                    children: [
-                                      TextSpan(
-                                        text: displayName,
-                                        style: TextStyle(
-                                          fontSize: 24.sp,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.fontColor,
-                                        ),
-                                      ),
-                                      TextSpan(
-                                        text: ' 님 환영합니다',
-                                        style: TextStyle(
-                                          fontSize: 20.sp,
-                                          fontWeight: FontWeight.w500,
-                                          color: baseText,
-                                        ),
-                                      ),
-                                    ],
+                                    text: ' 님 환영합니다',
+                                    style: TextStyle(
+                                      fontSize: 20.sp,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.fontColor,
+                                    ),
                                   ),
-                                  maxLines: 1,
-                                  minFontSize: 12,
-                                  stepGranularity: 0.5,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
+                                ],
+                              ),
+                              maxLines: 1,
+                              minFontSize: 12,
+                              stepGranularity: 0.5,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 10.h),
+                            SizedBox(
+                              width: double.infinity,
+                              child: AutoSizeText(
+                                '투자성향분석을 진행하고 펀드 가입을 시작해보세요!',
+                                maxLines: 1,
+                                minFontSize: 11,
+                                stepGranularity: 0.5,
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16.sp,
+                                  color: AppColors.fontColor.withOpacity(0.7),
+                                  fontWeight: FontWeight.w600,
                                 ),
-
-                                SizedBox(height: 10.h),
-
-                                // 🔹 안내 문구: 반드시 한 줄 + 자동 축소
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: AutoSizeText(
-                                    '투자성향분석을 진행하고 펀드 가입을 시작해보세요!',
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  if (widget.onStartInvestFlow != null) {
+                                    await widget.onStartInvestFlow!();
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(vertical: 10.h),
+                                  backgroundColor: AppColors.primaryBlue,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10.r),
+                                  ),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '투자성향 분석하기',
                                     maxLines: 1,
-                                    minFontSize: 11,
-                                    stepGranularity: 0.5,
-                                    textAlign: TextAlign.center,
+                                    softWrap: false,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 16.sp,
-                                      color: baseText.withOpacity(0.7),
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
-
-                                SizedBox(height: 16.h),
-
-                                // 🔹 맨 아래 버튼: 텍스트 한 줄 강제(FittedBox로 축소)
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: () async {
-                                      if (widget.onStartInvestFlow != null) {
-                                        await widget
-                                            .onStartInvestFlow!(); // ✅ 부모가 끝까지 처리
-                                      }
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 10.h,
-                                      ),
-                                      backgroundColor: AppColors.primaryBlue,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          10.r,
-                                        ),
-                                      ),
-                                    ),
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        '투자성향 분석하기',
-                                        maxLines: 1,
-                                        softWrap: false,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 16.sp,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 12),
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 12),
 
                 /* 총 평가금액 카드 */
                 Container(
@@ -1127,7 +1143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 children: [
                                                   const Spacer(),
                                                   Text(
-                                                    '0원',
+                                                    '0 원',
                                                     style: TextStyle(
                                                       fontSize: 28,
                                                       fontWeight:
@@ -1228,80 +1244,79 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: (_obscure || widget.myFunds.isEmpty)
                               ? const SizedBox.shrink()
                               : Container(
-                                  color: Colors.white,
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    8,
-                                    16,
-                                    10,
-                                  ),
-                                  child: Builder(
-                                    builder: (_) {
-                                      final up = _pnl >= 0;
-                                      final sign = up ? '+' : '−';
-                                      final c = up ? Colors.red : Colors.blue;
-                                      final baseText = AppColors.fontColor;
-                                      return Row(
-                                        children: [
-                                          const Spacer(),
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    '평가손익',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: baseText
-                                                          .withOpacity(.54),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 10),
-                                                  Text(
-                                                    '$sign ${_won(_pnl.abs())}',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: c,
-                                                    ),
-                                                  ),
-                                                ],
+                            color: Colors.white,
+                            padding: const EdgeInsets.fromLTRB(
+                              16,
+                              8,
+                              16,
+                              10,
+                            ),
+                            child: Builder(
+                              builder: (_) {
+                                final up = _pnl > 0;
+                                final down = _pnl < 0;
+                                final zero = _pnl == 0;
+
+                                final sign = up ? '+' : (down ? '−' : '');
+                                final c = zero ? Colors.grey.shade600 : (up ? Colors.red : Colors.blue);
+                                final baseText = AppColors.fontColor;
+
+                                return Row(
+                                  children: [
+                                    const Spacer(),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              '평가손익',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: baseText.withOpacity(.54),
                                               ),
-                                              const SizedBox(height: 2),
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    '수익률',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: baseText
-                                                          .withOpacity(.54),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 10),
-                                                  Text(
-                                                    '$sign ${_returnPct.abs().toStringAsFixed(2)}%',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: c,
-                                                    ),
-                                                  ),
-                                                ],
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              '$sign ${_won(_pnl.abs())}',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: c,
                                               ),
-                                            ],
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              '수익률',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: baseText.withOpacity(.54),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              '$sign ${_returnPct.abs().toStringAsFixed(2)}%',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: c,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -1311,15 +1326,31 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 12),
 
                 /* 🆕 조건부 펀드 섹션 렌더링 */
-                if (widget.fundsLoading)
-                  _buildLoadingFundsSection()
-                else if (widget.fundsError != null)
-                  _buildErrorFundsSection()
-                else if (widget.myFunds.isEmpty)
-                  _buildEmptyFundsSection()
-                else
-                  /* 기존 보유 펀드 섹션 */
+                /* 🆕 조건부 펀드 섹션 렌더링 */
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, anim) {
+                    final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+                    return FadeTransition(
+                      opacity: curved,
+                      child: SlideTransition(
+                        position: Tween<Offset>(begin: const Offset(0, .04), end: Offset.zero).animate(curved),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: widget.fundsLoading
+                      ? const _FundsSkeletonSection(key: ValueKey('ske'), rows: 3)
+                      : (widget.fundsError != null)
+                      ? _buildErrorFundsSection()
+                      : widget.myFunds.isEmpty
+                      ? _buildEmptyFundsSection()
+                      :
+                  // ▼▼ 기존 보유 펀드 섹션 Container 그대로 유지 (단, 키만 추가) ▼▼
                   Container(
+                    key: const ValueKey('real'),
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -1365,6 +1396,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 10),
 
+                        // ▼ 기존 firstTwo / rest 렌더링 그대로 ▼
                         for (int i = 0; i < firstTwo.length; i++) ...[
                           _FundMiniTile(
                             fund: firstTwo[i],
@@ -1401,8 +1433,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (funds.length > 2) const SizedBox(height: 14),
                         if (funds.length > 2)
                           GestureDetector(
-                            onTap: () =>
-                                setState(() => _expandFunds = !_expandFunds),
+                            onTap: () => setState(() => _expandFunds = !_expandFunds),
                             child: Container(
                               height: 44,
                               alignment: Alignment.center,
@@ -1427,6 +1458,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
+                ),
 
                 const SizedBox(height: 12),
 
@@ -1477,9 +1509,12 @@ class _FundMiniTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final up = fund.rate >= 0;
-    final arrow = up ? '▲' : '▼';
-    final color = up ? Colors.red : Colors.blue;
+    final up = fund.rate > 0;
+    final down = fund.rate < 0;
+    final zero = fund.rate == 0;
+
+    final arrow = up ? '▲' : (down ? '▼' : '');
+    final color = zero ? Colors.grey.shade600 : (up ? Colors.red : Colors.blue);
     final delta = (fund.balance * (fund.rate / 100)).round();
 
     return Material(
@@ -1508,19 +1543,17 @@ class _FundMiniTile extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // 🔥 레거시 스타일: 금액 숨기기 시 잔액만 숨김
                   if (!obscure)
                     Text(
-                      '${fund.balance.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원',
+                      '${fund.balance.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')} 원',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.fontColor,
                       ),
                     ),
                   const SizedBox(height: 2),
-                  // 🔥 수익률 정보는 항상 표시
                   Text(
-                    '$arrow ${_fmtWon(delta.abs())} (${fund.rate.toStringAsFixed(2)}%)',
+                    '${arrow.isNotEmpty ? '$arrow ' : ''}${_fmtWon(delta.abs())} (${fund.rate.toStringAsFixed(2)}%)',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -2029,6 +2062,144 @@ class _BulletRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _InvestCardSkeleton extends StatelessWidget {
+  final double height;
+  const _InvestCardSkeleton({super.key, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: tossBlue.withOpacity(0.16), width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _bar(width: 120, height: 14),   // 상단 작은 바
+                const SizedBox(height: 12),
+                _bar(width: 180, height: 20),   // 중간 긴 바
+                const SizedBox(height: 8),
+                _bar(width: 140, height: 16),   // 하단 바
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bar({required double width, required double height}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDEFF3), // 연한 회색
+        borderRadius: BorderRadius.circular(6),
+      ),
+    );
+  }
+}
+
+class _FundsSkeletonSection extends StatelessWidget {
+  final int rows;
+  const _FundsSkeletonSection({super.key, this.rows = 3});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tossBlue.withOpacity(0.12), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 헤더
+          Row(
+            children: [
+              const Text(
+                '보유 펀드',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.fontColor,
+                ),
+              ),
+              const Spacer(),
+              Icon(Icons.more_horiz, color: AppColors.fontColor.withOpacity(.28)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // 리스트 스켈레톤
+          for (int i = 0; i < rows; i++) ...[
+            const _FundMiniTileSkeleton(),
+            if (i != rows - 1) const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FundMiniTileSkeleton extends StatelessWidget {
+  const _FundMiniTileSkeleton({super.key});
+
+  Widget _bar(double w, double h) => Container(
+    width: w, height: h,
+    decoration: BoxDecoration(
+      color: const Color(0xFFEDEFF3),
+      borderRadius: BorderRadius.circular(6),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      elevation: .5,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            // 펀드명 자리
+            Expanded(
+              child: _bar(140, 16),
+            ),
+            const SizedBox(width: 12),
+            // 우측 금액/수익률 자리
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _bar(80, 14),
+                const SizedBox(height: 6),
+                _bar(110, 14),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

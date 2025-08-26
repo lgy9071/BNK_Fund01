@@ -145,84 +145,15 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              _CardShell(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // 🔹 총 자산이 0보다 클 때만 금액 표시
-                    if (_totalAssets > 0)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          _won(_totalAssets),
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.fontColor,
-                          ),
-                        ),
-                      ),
-                    if (_totalAssets > 0) const SizedBox(height: 12),
 
-                    if (_totalAssets > 0) ...[
-                      SizedBox(
-                        height: 170,
-                        child: CustomPaint(
-                          painter: _DonutPainter(
-                            values: [
-                              _sumAccounts.toDouble(),
-                              _sumFunds.toDouble(),
-                            ],
-                            holeColor: Colors.white,
-                          ),
-                          child: const Center(
-                            child: Text(
-                              '비중',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.fontColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          _Legend(colorIndex: 0, label: '입출금계좌'),
-                          SizedBox(width: 12),
-                          _Legend(colorIndex: 1, label: '펀드'),
-                        ],
-                      ),
-                    ] else ...[
-                      // 총 자산 0원일 때 안내 메시지만
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Column(
-                          children: [
-                            Icon(Icons.trending_up, size: 40, color: Colors.black38),
-                            const SizedBox(height: 8),
-                            Text(
-                              '자산 데이터가 없습니다',
-                              style: TextStyle(
-                                color: AppColors.fontColor.withOpacity(.7),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '계좌 개설이나 펀드 가입 후 확인하세요',
-                              style: TextStyle(
-                                color: AppColors.fontColor.withOpacity(.6),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    ],
-                  ],
+              // ✅ 변경: 로딩 중이면 스켈레톤, 아니면 기존 카드
+              (_acctLoading || widget.fundsLoading)
+                  ? const _CardShell(child: _TotalAssetsSkeleton())
+                  : _CardShell(
+                child: _TotalAssetsCard(
+                  total: _totalAssets,
+                  accountsSum: _sumAccounts,
+                  fundsSum: _sumFunds,
                 ),
               ),
 
@@ -233,7 +164,7 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
               const SizedBox(height: 10),
 
               if (_acctLoading)
-                const _CardShell(child: _LoadingBlock(text: '계좌 불러오는 중...'))
+                const _AccountSkeletonList() // 카드 테두리는 각 row 안에 이미 적용
               else if (_acctError != null)
                 _CardShell(
                   child: _ErrorBlock(
@@ -251,8 +182,8 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
               else
                 Column(
                   children: [
-                    for (final a in _accounts) ...[
-                      _AccountTile(account: a),
+                    for (int i = 0; i < _accounts.length; i++) ...[
+                      _AccountTile(account: _accounts[i], index: i + 1), // ✅ index 전달
                       const SizedBox(height: 10),
                     ],
                   ],
@@ -279,12 +210,14 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
-                          '가입한 펀드가 없어요.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.fontColor,
+                        Center(
+                          child: const Text(
+                            '가입한 펀드가 없습니다',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.fontColor,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -595,12 +528,14 @@ class _EmptyAccountsCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '등록된 입출금 계좌가 없어요.',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.fontColor,
+        Center(
+          child: const Text(
+            '등록된 입출금 계좌가 없습니다',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.fontColor,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -651,19 +586,17 @@ class _OpenAccountButton extends StatelessWidget {
 
 class _AccountTile extends StatelessWidget {
   final BankAccountNet account;
-  const _AccountTile({required this.account});
+  final int index; // ✅ 추가
 
-  String _mask(String n) {
-    final parts = n.split('-');
-    if (parts.isEmpty) return n;
-    parts[parts.length - 1] = parts.last.length <= 2
-        ? '*' * parts.last.length
-        : '*' * (parts.last.length - 1);
-    return parts.join('-');
-  }
+  const _AccountTile({required this.account, required this.index});
 
   @override
   Widget build(BuildContext context) {
+    // 별칭 없으면 기본값으로 "입출금계좌{index}" 표시
+    final displayName = (account.accountName.isEmpty)
+        ? '입출금계좌$index'
+        : account.accountName;
+
     return Container(
       height: 84,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -680,16 +613,21 @@ class _AccountTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(account.accountName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.fontColor)),
+                Text(
+                  displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.fontColor,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(_mask(account.accountNumber),
-                    style: TextStyle(color: AppColors.fontColor.withOpacity(.7))),
+                Text(
+                  account.accountNumber,
+                  style: TextStyle(color: AppColors.fontColor.withOpacity(.7)),
+                ),
               ],
             ),
           ),
@@ -697,7 +635,10 @@ class _AccountTile extends StatelessWidget {
           Text(
             '${account.balance.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원',
             style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.fontColor),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.fontColor,
+            ),
           ),
         ],
       ),
@@ -711,11 +652,18 @@ class _FundRow extends StatelessWidget {
   const _FundRow({required this.f});
   String _won(int v) =>
       '${v.toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}원';
+
   @override
   Widget build(BuildContext context) {
-    final up = f.rate >= 0;
-    final c = up ? Colors.red : Colors.blue;
-    final icon = up ? '▲' : '▼';
+    final String pct = f.rate.toStringAsFixed(2);
+    final bool isZero = pct == '0.00';
+    final bool up = f.rate > 0;
+
+    final Color pctColor = isZero
+        ? const Color(0xFF5A5F6B)
+        : (up ? Colors.red : Colors.blue);
+    final String prefix = isZero ? '' : (up ? '▲ ' : '▼ ');
+
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
@@ -725,19 +673,38 @@ class _FundRow extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // 펀드명 (왼쪽) + 간격
           Expanded(
-            child: Text(f.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700, color: AppColors.fontColor)),
+            child: Text(
+              f.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.fontColor,
+              ),
+            ),
           ),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(_won(f.balance), style: const TextStyle(color: AppColors.fontColor)),
-            const SizedBox(height: 2),
-            Text('$icon ${f.rate.toStringAsFixed(2)}%',
-                style: TextStyle(color: c, fontWeight: FontWeight.w700)),
-          ]),
+          const SizedBox(width: 12), // ✅ 숫자랑 충분한 간격 확보
+
+          // 금액 + 수익률 (오른쪽)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _won(f.balance),
+                style: const TextStyle(color: AppColors.fontColor),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '$prefix$pct%',
+                style: TextStyle(
+                  color: pctColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -826,6 +793,370 @@ class _Legend extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text(label, style: const TextStyle(color: AppColors.fontColor)),
+      ],
+    );
+  }
+}
+
+class _AccountSkeletonList extends StatelessWidget {
+  const _AccountSkeletonList({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget _bar({required double w, required double h}) => Container(
+      width: w,
+      height: h,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDEFF3),
+        borderRadius: BorderRadius.circular(6),
+      ),
+    );
+
+    Widget _row() => Container(
+      height: 84,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: kCardBorder),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _bar(w: 120, h: 16),
+                const SizedBox(height: 8),
+                _bar(w: 160, h: 14),
+              ],
+            ),
+          ),
+          _bar(w: 80, h: 18),
+        ],
+      ),
+    );
+
+    return Column(
+      children: [
+        _row(),
+        const SizedBox(height: 10),
+        _row(),
+      ],
+    );
+  }
+}
+
+class _TotalAssetsSkeleton extends StatelessWidget {
+  const _TotalAssetsSkeleton({super.key});
+
+  Widget _bar(double w, double h) => Container(
+    width: w,
+    height: h,
+    decoration: BoxDecoration(
+      color: const Color(0xFFEDEFF3),
+      borderRadius: BorderRadius.circular(8),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 금액 자리
+        Align(
+          alignment: Alignment.centerRight,
+          child: _bar(160, 26),
+        ),
+        const SizedBox(height: 12),
+        // 도넛 차트 자리
+        SizedBox(
+          height: 170,
+          child: Center(
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFE3E6EC), width: 24),
+              ),
+              child: Center(
+                child: Container(
+                  width: 90,
+                  height: 90,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // 범례 자리
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 점 + 텍스트 바
+            Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFDDE1E8),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                _bar(72, 12),
+              ],
+            ),
+            const SizedBox(width: 16),
+            Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFDDE1E8),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                _bar(48, 12),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TotalAssetsCard extends StatelessWidget {
+  final int total;
+  final int accountsSum;
+  final int fundsSum;
+
+  const _TotalAssetsCard({
+    super.key,
+    required this.total,
+    required this.accountsSum,
+    required this.fundsSum,
+  });
+
+  String _won(int v) =>
+      '${v.toString().replaceAll(RegExp(r"\B(?=(\d{3})+(?!\d))"), ",")}원';
+
+  @override
+  Widget build(BuildContext context) {
+    // 총 자산이 0원일 때는 기존 “빈 상태” 메시지 유지
+    if (total <= 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          children: [
+            Icon(Icons.savings_outlined, size: 40, color: Colors.black38),
+            const SizedBox(height: 8),
+            Text(
+              '자산 데이터가 없습니다',
+              style: TextStyle(
+                color: AppColors.fontColor.withOpacity(.7),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '계좌 개설이나 펀드 가입 후 확인하세요',
+              style: TextStyle(
+                color: AppColors.fontColor.withOpacity(.6),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final double accPct =
+    total == 0 ? 0 : (accountsSum / total * 100.0);
+    final double fundPct =
+    total == 0 ? 0 : (fundsSum / total * 100.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── 섹션 1: 금액 영역 ──────────────────────────────
+        Align(
+          alignment: Alignment.centerRight,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Text(
+                '보유 총액',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0x99000000),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _won(total),
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.fontColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 8),
+        Divider(height: 24, thickness: 1, color: kCardBorder),
+
+        // ── 섹션 2: 그래프/분포 영역 ─────────────────────────
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // 왼쪽: 도넛 차트
+            Expanded(
+              flex: 6,
+              child: SizedBox(
+                height: 170,
+                child: CustomPaint(
+                  painter: _DonutPainter(
+                    values: [
+                      accountsSum.toDouble(),
+                      fundsSum.toDouble(),
+                    ],
+                    holeColor: Colors.white,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '비중',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.fontColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 중간 세로 구분선
+            Container(
+              width: 1,
+              height: 120,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              color: kCardBorder,
+            ),
+
+            // 오른쪽: 범례 + 카테고리별 금액/비중
+            Expanded(
+              flex: 7,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // _Legend(colorIndex: 0, label: '입출금계좌'),
+                  const SizedBox(height: 6),
+                  _BreakdownRow(
+                    label: '입출금계좌',
+                    amount: _won(accountsSum),
+                    percent: '${accPct.toStringAsFixed(1)}%',
+                    dotColor: const Color(0xFF6AA3FF),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // _Legend(colorIndex: 1, label: '펀드'),
+                  const SizedBox(height: 6),
+                  _BreakdownRow(
+                    label: '펀드',
+                    amount: _won(fundsSum),
+                    percent: '${fundPct.toStringAsFixed(1)}%',
+                    dotColor: const Color(0xFF3DDC97),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _BreakdownRow extends StatelessWidget {
+  final String label;
+  final String amount;
+  final String percent;
+  final Color dotColor;
+
+  const _BreakdownRow({
+    super.key,
+    required this.label,
+    required this.amount,
+    required this.percent,
+    required this.dotColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ● 색 점
+        Container(
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.only(top: 4, right: 8),
+          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+        ),
+
+        // 라벨 + 금액/퍼센트 (세로 정렬)
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 라벨
+              Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.fontColor,
+                ),
+              ),
+              const SizedBox(height: 2),
+              // 금액 + 퍼센트
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      amount,
+                      style: const TextStyle(
+                        color: AppColors.fontColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    percent,
+                    style: TextStyle(
+                      color: AppColors.fontColor.withOpacity(.7),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

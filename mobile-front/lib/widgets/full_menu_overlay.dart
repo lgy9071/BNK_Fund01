@@ -180,30 +180,41 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
                     FutureBuilder<UserProfile?>(
                       future: _meFuture,
                       builder: (_, snap) {
-                        if (snap.connectionState == ConnectionState.waiting) {
-                          return const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                            ),
-                          );
-                        }
+                        final waiting = snap.connectionState == ConnectionState.waiting;
+
+                        // 에러여도 props 폴백으로 카드 보여줄 거라서 여기서는 로그만
                         if (snap.hasError) {
-                          debugPrint('getMe error: ${snap.error}');   // 콘솔 출력
-                          // 에러여도 props 폴백으로 계속 진행
+                          debugPrint('getMe error: ${snap.error}');
                         }
 
                         final data = snap.data;
                         final name  = (data != null && data.name.isNotEmpty)  ? data.name  : widget.userName;
                         final idTxt = (data != null && data.email.isNotEmpty) ? data.email : widget.userId;
 
-                        return _ProfileCard(
-                          userName: name,
-                          userId: idTxt,
-                          onLogout: widget.onLogout,
-                          onAsk: widget.onAsk,
-                          onMyQna: widget.onMyQna,
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 280),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
+                          transitionBuilder: (child, anim) {
+                            final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+                            return FadeTransition(
+                              opacity: curved,
+                              child: SlideTransition(
+                                position: Tween<Offset>(begin: const Offset(0, .04), end: Offset.zero).animate(curved),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: waiting
+                              ? const _ProfileSkeleton(key: ValueKey('ske'))
+                              : _ProfileCard(
+                            key: const ValueKey('real'),
+                            userName: name,
+                            userId: idTxt,
+                            onLogout: widget.onLogout,
+                            onAsk: widget.onAsk,
+                            onMyQna: widget.onMyQna,
+                          ),
                         );
                       },
                     ),
@@ -318,6 +329,7 @@ class _ProfileCard extends StatelessWidget {
   final String userName, userId;
   final VoidCallback onLogout, onAsk, onMyQna;
   const _ProfileCard({
+    super.key,
     required this.userName,
     required this.userId,
     required this.onLogout,
@@ -564,6 +576,89 @@ class _MenuList extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileSkeleton extends StatelessWidget {
+  const _ProfileSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withOpacity(.3), width: 1),
+      ),
+      margin: const EdgeInsets.only(bottom: 0),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // 상단 프로필 행
+            Row(
+              children: [
+                // 아바타 자리
+                Container(
+                  width: 48, height: 48,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEDEFF3),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // 이름/아이디 자리
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _bar(width: 120, height: 16),
+                      const SizedBox(height: 8),
+                      _bar(width: 160, height: 14),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // 로그아웃 버튼 자리
+                _pill(width: 68, height: 32),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Divider(height: 1, color: Colors.grey.shade300),
+            const SizedBox(height: 12),
+            // 하단 버튼 2개 자리
+            Row(
+              children: [
+                Expanded(child: _pill(height: 44)),
+                const SizedBox(width: 8),
+                Expanded(child: _pill(height: 44)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget _bar({required double width, required double height}) {
+    return Container(
+      width: width, height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDEFF3),
+        borderRadius: BorderRadius.circular(6),
+      ),
+    );
+  }
+
+  static Widget _pill({double? width, required double height}) {
+    return Container(
+      width: width, height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F4F8),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.black12),
       ),
     );
   }
