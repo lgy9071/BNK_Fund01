@@ -3,8 +3,8 @@ class Fund {
   final String name;
   final double rate;
   final int balance;
-  final DateTime? joinedDate;  // 🆕 가입일 추가
-  final String? fundCode;      // 🆕 펀드 코드 추가
+  final DateTime? joinedDate;
+  final String? fundCode;
   bool featured;
 
   Fund({
@@ -17,7 +17,7 @@ class Fund {
     this.featured = true,  // 기본값: 노출
   });
 
-  // 🆕 JSON 파싱 메서드 추가
+  // JSON 파싱 메서드
   factory Fund.fromJson(Map<String, dynamic> json) {
     return Fund(
       id: json['fundId'] ?? 0,

@@ -436,9 +436,6 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
     );
   }
 
-
-
-
   @override
   void initState() {
     super.initState();
@@ -449,7 +446,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
     );
     _joinSvc = FundJoinService(
       _api,
-      staticToken: widget.accessToken, // 있으면 사용, 없어도 됨(인터셉터+storage가 처리)
+      staticToken: widget.accessToken,
     );
     _load();
 
@@ -470,7 +467,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
       final res = await _svc.getFundDetail(widget.fundId);
       final net = res.data;
       if (net == null) throw Exception('상세 데이터가 없습니다.');
-      setState(() => data = toUiDetail(net));
+      setState(() => data = toUiDetail(net)); // ← UI 모델로 변환 후 바인딩
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1039,10 +1036,14 @@ class _SimpleDcaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final months = years * 12;
-    final r = assumedAnnualReturn <= -1 ? 0.0 : (math.pow(1 + assumedAnnualReturn, 1 / 12) - 1);
-    final total = monthly * months;
-    final fv = r == 0 ? total.toDouble() : monthly * ((math.pow(1 + r, months) - 1) / r);
-    final rate = fv / total - 1;
+    final r = assumedAnnualReturn <= -1 ? 0.0 : (
+        math.pow(1 + assumedAnnualReturn, 1 / 12) - 1 // 월수익률
+    );
+    final total = monthly * months; // 총 납입
+    final fv = r == 0 ? total.toDouble() : monthly * (
+        (math.pow(1 + r, months) - 1) / r // 미래 가치
+    );
+    final rate = fv / total - 1; // 누적수익률
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -64,8 +64,8 @@ class FullMenuOverlay extends StatefulWidget {
 }
 
 class _FullMenuOverlayState extends State<FullMenuOverlay> {
-  double _dragAccum = 0;
-  static const _kDismissThreshold = 80;
+  double _dragAccum = 0; // ← 드래그 이동 누적값
+  static const _kDismissThreshold = 80; // ← 닫기 임계치(문지방), 80px
 
   // 프로필 비동기 로딩 Future
   Future<UserProfile?>? _meFuture;
@@ -157,20 +157,20 @@ class _FullMenuOverlayState extends State<FullMenuOverlay> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg, // 상태바/내비바와 톤 맞춤
+      backgroundColor: AppColors.bg,
       body: Stack(
         children: [
           // 본문(스와이프 닫기)
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onTapDown: (_) => _pingSession(),
+              onTapDown: (_) => _pingSession(), // (세션 핑은 무시 가능)
               onHorizontalDragUpdate: (d) {
-                _dragAccum += d.delta.dx;
+                _dragAccum += d.delta.dx; // ← 가로 이동 누적
                 _pingSession();
-                if (_dragAccum > _kDismissThreshold) _maybePop();
+                if (_dragAccum > _kDismissThreshold) _maybePop(); // ← 오른쪽으로 80px 넘으면 즉시 닫기
               },
-              onHorizontalDragEnd: (_) => _dragAccum = 0,
+              onHorizontalDragEnd: (_) => _dragAccum = 0, // ← 드래그 종료 시 리셋
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 64, 20, 24),
                 child: Column(

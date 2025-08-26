@@ -50,7 +50,9 @@ public class FundApiController {
             @RequestParam(defaultValue = "false") boolean eligibleOnly,
             @CurrentUid Integer uid
     ) {
-        ApiResponse<List<FundListResponseDTO>> body = fundQueryService.getFundsEligible(keyword, page, size, uid);
+        ApiResponse<List<FundListResponseDTO>> body = fundQueryService.getFundsEligible(
+                keyword, page, size, uid
+        );
         return ResponseEntity.ok(body);
     }
 

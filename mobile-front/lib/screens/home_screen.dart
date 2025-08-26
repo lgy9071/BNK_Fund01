@@ -701,7 +701,7 @@ class _HomeScreenState extends State<HomeScreen> {
         isObscure: _obscure,
         onToggleObscure: (v) async {
           setState(() => _obscure = v);
-          await _DesignStorage.saveObscure(v); // 저장
+          await _DesignStorage.saveObscure(v);
         },
         onPickPreset: (choice) async {
           setState(() {

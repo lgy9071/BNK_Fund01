@@ -60,7 +60,7 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
   void initState() {
     super.initState();
     if (widget.userId != null && widget.userId!.isNotEmpty) {
-      _loadAccounts();
+      _loadAccounts(); // ← 최초 로드
     } else {
       _acctLoading = false;
       _acctError = null;
@@ -73,7 +73,7 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
     if (oldWidget.userId != widget.userId &&
         widget.userId != null &&
         widget.userId!.isNotEmpty) {
-      _loadAccounts();
+      _loadAccounts(); // ← userId 바뀌면 재로딩
     }
   }
 
@@ -93,12 +93,12 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
     try {
       final list = await _accountSvc.getDepositAccountsByUser(widget.userId!);
       setState(() {
-        _accounts = list;
+        _accounts = list; // ← 성공: 계좌 목록 저장
         _acctLoading = false;
       });
     } catch (e) {
       setState(() {
-        _acctLoading = false;
+        _acctLoading = false; // ← 실패: 에러 메시지 저장
         _acctError = e.toString();
         _accounts = const [];
       });
@@ -294,7 +294,6 @@ class _MyFinanceScreenState extends State<MyFinanceScreen> {
                                 (widget.investTypeName ?? '').isNotEmpty;
 
                             if (!hasInvestType) {
-                              // 예쁘게 꾸민 커스텀 모달
                               final go = await _showInvestTypeDialog();
                               if (!go) return;
 

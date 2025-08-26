@@ -222,7 +222,7 @@ class _FundMbtiFlowScreenState extends State<FundMbtiFlowScreen>
 
 class _CloudsIntro extends StatefulWidget {
   final AnimationController lettersCtl;
-  final VoidCallback onSkip;
+  final VoidCallback onSkip; // ← 스킵 콜백
   const _CloudsIntro({required this.lettersCtl, required this.onSkip});
 
   @override
