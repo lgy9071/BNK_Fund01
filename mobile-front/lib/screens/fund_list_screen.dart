@@ -601,348 +601,280 @@ class _FundListScreenState extends State<FundListScreen>
           children: [
             LayoutBuilder(
               builder: (context, _) {
-                return (!_initialized && _loading)
-                    ? const Center(
-                        child: CircularProgressIndicator(color: tossBlue),
-                      )
-                    : RefreshIndicator(
-                        key: _refreshKey,
-                        onRefresh: () async {
-                          try {
-                            await _load(page: 0);
-                          } finally {
-                            _autoRefreshing = false; // ✅ 끝나면 해제
+                return RefreshIndicator(
+                  key: _refreshKey,
+                  onRefresh: () async {
+                    try {
+                      await _load(page: 0);
+                    } finally {
+                      _autoRefreshing = false; // ✅ 끝나면 해제
+                    }
+                  },
+                  // 스피너를 더 아래에서 보이게 → 체감상 덜 민감
+                  edgeOffset: headerH + 8,
+                  displacement: headerH + 36,
+                  color: tossBlue,
+                  backgroundColor: Colors.white,
+                  strokeWidth: 2.6,
+                  notificationPredicate: (n) => n.depth == 0,
+                  child: Container(
+                    color: pastel(tossBlue),
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (n) {
+                        final atTop = n.metrics.extentBefore == 0;
+
+                        if (atTop) {
+                          if (n is OverscrollNotification && n.overscroll < 0) {
+                            _pullAccum += -n.overscroll;
+                          } else if (n is ScrollUpdateNotification) {
+                            final d = n.scrollDelta ?? 0;
+                            if (d < 0) _pullAccum += -d;
                           }
-                        },
-                        // 스피너를 더 아래에서 보이게 → 체감상 덜 민감
-                        edgeOffset: headerH + 8,
-                        displacement: headerH + 36,
-                        color: tossBlue,
-                        backgroundColor: Colors.white,
-                        strokeWidth: 2.6,
-                        notificationPredicate: (n) => n.depth == 0,
-                        child: Container(
-                          color: pastel(tossBlue),
-                          child: NotificationListener<ScrollNotification>(
-                            onNotification: (n) {
-                              final atTop = n.metrics.extentBefore == 0;
 
-                              if (atTop) {
-                                if (n is OverscrollNotification &&
-                                    n.overscroll < 0) {
-                                  _pullAccum += -n.overscroll;
-                                } else if (n is ScrollUpdateNotification) {
-                                  final d = n.scrollDelta ?? 0;
-                                  if (d < 0) _pullAccum += -d;
-                                }
+                          // 임계 넘으면 플래그만 세팅 (즉시 새로고침 금지)
+                          if (_pullAccum >= kPullToRefreshThreshold) {
+                            _pulledEnough = true;
+                          }
 
-                                // 임계 넘으면 플래그만 세팅 (즉시 새로고침 금지)
-                                if (_pullAccum >= kPullToRefreshThreshold) {
-                                  _pulledEnough = true;
-                                }
+                          // 손을 뗐을 때만 실제 트리거
+                          if (n is ScrollEndNotification) {
+                            final now = DateTime.now();
+                            final cooledDown = _lastRefreshAt == null ||
+                                now.difference(_lastRefreshAt!) >= kRefreshCooldown;
 
-                                // 손을 뗐을 때만 실제 트리거
-                                if (n is ScrollEndNotification) {
-                                  final now = DateTime.now();
-                                  final cooledDown =
-                                      _lastRefreshAt == null ||
-                                      now.difference(_lastRefreshAt!) >=
-                                          kRefreshCooldown;
+                            if (!_loading && !_autoRefreshing && _pulledEnough && cooledDown) {
+                              _autoRefreshing = true;
+                              _lastRefreshAt = now;
+                              _refreshKey.currentState?.show();
+                            }
 
-                                  if (!_loading &&
-                                      !_autoRefreshing &&
-                                      _pulledEnough &&
-                                      cooledDown) {
-                                    _autoRefreshing = true;
-                                    _lastRefreshAt = now;
-                                    _refreshKey.currentState?.show();
+                            // 초기화
+                            _pullAccum = 0.0;
+                            _pulledEnough = false;
+                          }
+                        } else {
+                          // 맨 위가 아니면 누적/플래그 초기화
+                          if (n is ScrollUpdateNotification) {
+                            _pullAccum = 0.0;
+                            _pulledEnough = false;
+                          }
+                        }
+                        return false;
+                      },
+                      child: CustomScrollView(
+                        controller: _scroll,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                        slivers: [
+                          // ① 헤더 (항상 표시)
+                          SliverToBoxAdapter(
+                            child: Container(
+                              color: Colors.white,
+                              child: _buildHeader(headerH),
+                            ),
+                          ),
+
+                          // ② 펀드 리스트: 아이템이 아직 없고 로딩 중(초기/검색/필터) → 스켈레톤
+                          if ((_items.isEmpty && _loading) || (!_initialized && _loading))
+                            const _FundListSkeleton(count: 6)
+                          else
+                          // 실제 리스트
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate((ctx, i) {
+                                  // 꼬리: 다음 페이지 로딩 → 스켈레톤 2장
+                                  if (i == _items.length) {
+                                    if (_loading) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Column(
+                                          children: const [
+                                            _FundCardSkeleton(),
+                                            SizedBox(height: 12),
+                                            _FundCardSkeleton(),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                    if (!(_page?.hasNext ?? false)) {
+                                      return const SizedBox(height: 24);
+                                    }
+                                    return const SizedBox.shrink();
                                   }
 
-                                  // 초기화
-                                  _pullAccum = 0.0;
-                                  _pulledEnough = false;
-                                }
-                              } else {
-                                // 맨 위가 아니면 누적/플래그 초기화
-                                if (n is ScrollUpdateNotification) {
-                                  _pullAccum = 0.0;
-                                  _pulledEnough = false;
-                                }
-                              }
-                              return false;
-                            },
-                            child: CustomScrollView(
-                              controller: _scroll,
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              keyboardDismissBehavior:
-                                  ScrollViewKeyboardDismissBehavior.onDrag,
-                              slivers: [
-                                // ① 헤더
-                                SliverToBoxAdapter(
-                                  child: Container(
-                                    color: Colors.white,
-                                    child: _buildHeader(headerH),
-                                  ),
-                                ),
-                                // ② 목록
-                                SliverPadding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    8,
-                                    16,
-                                    16,
-                                  ),
-                                  sliver: SliverList(
-                                    delegate: SliverChildBuilderDelegate((
-                                      ctx,
-                                      i,
-                                    ) {
-                                      if (i == _items.length) {
-                                        if (_loading) {
-                                          return const Padding(
-                                            padding: EdgeInsets.all(16),
-                                            child: Center(
-                                              child: CircularProgressIndicator(
-                                                color: tossBlue,
+                                  final f = _items[i];
+
+                                  Animation<double> it;
+                                  if (_animateFirstPage && i < _firstPageCount) {
+                                    final start = (i * 0.06).clamp(0.0, 0.9);
+                                    final end = (start + 0.4).clamp(0.0, 1.0);
+                                    it = CurvedAnimation(
+                                      parent: _listCtl,
+                                      curve: Interval(start, end, curve: Curves.easeOut),
+                                    );
+                                  } else {
+                                    it = const AlwaysStoppedAnimation(1.0);
+                                  }
+
+                                  final selected = _isPicked(f.fundId);
+
+                                  final card = _Pressable(
+                                    child: Material(
+                                      color: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                        side: selected
+                                            ? const BorderSide(color: tossBlue, width: 1.6)
+                                            : BorderSide.none,
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: InkWell(
+                                        onTap: () {
+                                          HapticFeedback.lightImpact();
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => FundDetailScreen(
+                                                fundId: f.fundId,
+                                                title: f.name,
                                               ),
                                             ),
                                           );
-                                        }
-                                        if (!(_page?.hasNext ?? false)) {
-                                          return const SizedBox(height: 24);
-                                        }
-                                        return const SizedBox.shrink();
-                                      }
-
-                                      final f = _items[i];
-
-                                      Animation<double> it;
-                                      if (_animateFirstPage &&
-                                          i < _firstPageCount) {
-                                        final start = (i * 0.06).clamp(
-                                          0.0,
-                                          0.9,
-                                        );
-                                        final end = (start + 0.4).clamp(
-                                          0.0,
-                                          1.0,
-                                        );
-                                        it = CurvedAnimation(
-                                          parent: _listCtl,
-                                          curve: Interval(
-                                            start,
-                                            end,
-                                            curve: Curves.easeOut,
-                                          ),
-                                        );
-                                      } else {
-                                        it = const AlwaysStoppedAnimation(1.0);
-                                      }
-
-                                      final selected = _isPicked(f.fundId);
-
-                                      final card = _Pressable(
-                                        child: Material(
-                                          color: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              14,
-                                            ),
-                                            side: selected
-                                                ? const BorderSide(
-                                                    color: tossBlue,
-                                                    width: 1.6,
-                                                  )
-                                                : BorderSide.none,
-                                          ),
-                                          clipBehavior: Clip.antiAlias,
-                                          child: InkWell(
-                                            onTap: () {
-                                              HapticFeedback.lightImpact();
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      FundDetailScreen(
-                                                        fundId: f.fundId,
-                                                        title: f.name,
-                                                      ),
-                                                ),
-                                              );
-                                            },
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(12),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              // 위 라벨/설정일 행
+                                              Row(
                                                 children: [
-                                                  // 위 라벨/설정일 행
-                                                  Row(
-                                                    children: [
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 6,
-                                                              vertical: 2,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: tossBlue
-                                                              .withOpacity(
-                                                                0.12,
-                                                              ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                8,
-                                                              ),
-                                                        ),
-                                                        child: Text(
-                                                          _divisionOf(f),
-                                                          style:
-                                                              const TextStyle(
-                                                                fontSize: 10,
-                                                                color: tossBlue,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w700,
-                                                              ),
-                                                        ),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                        horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: tossBlue.withOpacity(0.12),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Text(
+                                                      _divisionOf(f),
+                                                      style: const TextStyle(
+                                                        fontSize: 10,
+                                                        color: tossBlue,
+                                                        fontWeight: FontWeight.w700,
                                                       ),
-                                                      const Spacer(),
-                                                      if (f.launchedAt != null)
-                                                        Text(
-                                                          '설정일 ${_fmtDate(f.launchedAt!)}',
-                                                          style:
-                                                              const TextStyle(
-                                                                fontSize: 12,
-                                                              ),
-                                                        ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 6),
-
-                                                  // 제목/서브
-                                                  Text(
-                                                    f.name,
-                                                    maxLines: 2,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: const TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.w800,
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    f.subName,
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
+                                                  const Spacer(),
+                                                  if (f.launchedAt != null)
+                                                    Text(
+                                                      '설정일 ${_fmtDate(f.launchedAt!)}',
+                                                      style: const TextStyle(fontSize: 12),
+                                                    ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 6),
+
+                                              // 제목/서브
+                                              Text(
+                                                f.name,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                f.subName,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+
+                                              const SizedBox(height: 10),
+
+                                              // 위험/유형 칩
+                                              Row(
+                                                crossAxisAlignment: CrossAxisAlignment.center,
+                                                children: [
+                                                  Flexible(
+                                                    child: Wrap(
+                                                      spacing: 6,
+                                                      runSpacing: 6,
+                                                      alignment: WrapAlignment.start,
+                                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                                      children: [
+                                                        if (f.badges.any((b) => b.startsWith('위험')))
+                                                          _badgeChip(
+                                                            f.badges.firstWhere((b) => b.startsWith('위험')),
+                                                          ),
+                                                        _badgeChip(f.type),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                ],
+                                              ),
+
+                                              const SizedBox(height: 15),
+
+                                              // 수익률 + 담기 버튼
+                                              Row(
+                                                children: [
+                                                  _PickChipButton(
+                                                    selected: selected,
+                                                    enabled: selected || _picked.length < 2,
+                                                    onTap: () {
+                                                      HapticFeedback.selectionClick();
+                                                      _togglePick(f.fundId);
+                                                    },
+                                                  ),
+                                                  const Spacer(),
+                                                  const Text(
+                                                    '1개월 수익률',
                                                     style: TextStyle(
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                                      fontSize: 12,
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w600,
                                                     ),
                                                   ),
-
-                                                  const SizedBox(height: 10),
-
-                                                  // 위험/유형 칩
-                                                  Row(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .center,
-                                                    children: [
-                                                      Flexible(
-                                                        child: Wrap(
-                                                          spacing: 6,
-                                                          runSpacing: 6,
-                                                          alignment:
-                                                              WrapAlignment
-                                                                  .start,
-                                                          crossAxisAlignment:
-                                                              WrapCrossAlignment
-                                                                  .center,
-                                                          children: [
-                                                            if (f.badges.any(
-                                                              (b) =>
-                                                                  b.startsWith(
-                                                                    '위험',
-                                                                  ),
-                                                            ))
-                                                              _badgeChip(
-                                                                f.badges.firstWhere(
-                                                                  (b) => b
-                                                                      .startsWith(
-                                                                        '위험',
-                                                                      ),
-                                                                ),
-                                                              ),
-                                                            _badgeChip(f.type),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                    ],
-                                                  ),
-
-                                                  const SizedBox(height: 15),
-
-                                                  // 수익률 + 담기 버튼
-                                                  Row(
-                                                    children: [
-                                                      _PickChipButton(
-                                                        selected: selected,
-                                                        enabled:
-                                                            selected ||
-                                                            _picked.length < 2,
-                                                        onTap: () {
-                                                          HapticFeedback.selectionClick();
-                                                          _togglePick(f.fundId);
-                                                        },
-                                                      ),
-                                                      const Spacer(),
-                                                      const Text(
-                                                        '1개월 수익률',
-                                                        style: TextStyle(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                      Text(
-                                                        '${f.return1m.toStringAsFixed(2)}%',
-                                                        style: _ret(f.return1m),
-                                                      ),
-                                                    ],
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    '${f.return1m.toStringAsFixed(2)}%',
+                                                    style: _ret(f.return1m),
                                                   ),
                                                 ],
                                               ),
-                                            ),
+                                            ],
                                           ),
                                         ),
-                                      );
+                                      ),
+                                    ),
+                                  );
 
-                                      return __SlideFade(
-                                        t: it,
-                                        dy: .06,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 12,
-                                          ),
-                                          child: card,
-                                        ),
-                                      );
-                                    }, childCount: _items.length + 1),
-                                  ),
-                                ),
-                              ],
+                                  return __SlideFade(
+                                    t: it,
+                                    dy: .06,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: card,
+                                    ),
+                                  );
+                                }, childCount: _items.length + 1),
+                              ),
                             ),
-                          ),
-                        ),
-                      );
+                        ],
+                      ),
+                    ),
+                  ),
+                );
               },
             ),
 
@@ -1313,6 +1245,94 @@ class _PickChipButton extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+class _FundCardSkeleton extends StatelessWidget {
+  const _FundCardSkeleton({super.key});
+
+  Widget _bar(double w, double h) => Container(
+    width: w, height: h,
+    decoration: BoxDecoration(
+      color: const Color(0xFFEDEFF3),
+      borderRadius: BorderRadius.circular(6),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: tossBlue.withOpacity(.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const SizedBox(width: 54, height: 12),
+              ),
+              const Spacer(),
+              _bar(88, 12),
+            ]),
+            const SizedBox(height: 8),
+            _bar(220, 16),
+            const SizedBox(height: 6),
+            _bar(140, 12),
+            const SizedBox(height: 12),
+            Row(children: [
+              Container(width: 64, height: 22, decoration: BoxDecoration(
+                color: const Color(0xFFF2F4F8), borderRadius: BorderRadius.circular(8),
+              )),
+              const SizedBox(width: 6),
+              Container(width: 54, height: 22, decoration: BoxDecoration(
+                color: const Color(0xFFF2F4F8), borderRadius: BorderRadius.circular(8),
+              )),
+            ]),
+            const SizedBox(height: 14),
+            Row(children: [
+              Container(
+                width: 72, height: 30,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: tossBlue.withOpacity(.6), width: 1.2),
+                ),
+              ),
+              const Spacer(),
+              _bar(70, 14),
+              const SizedBox(width: 8),
+              _bar(46, 20),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FundListSkeleton extends StatelessWidget {
+  final int count;
+  const _FundListSkeleton({super.key, this.count = 6});
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      sliver: SliverList.builder(
+        itemCount: count,
+        itemBuilder: (_, i) => const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: _FundCardSkeleton(),
         ),
       ),
     );
