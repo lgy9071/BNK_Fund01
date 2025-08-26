@@ -19,7 +19,8 @@ import '../main.dart' show navigatorKey;
 import 'package:mobile_front/core/services/user_service.dart';
 
 class MainScaffold extends StatefulWidget {
-  const MainScaffold({super.key});
+  const MainScaffold({super.key, this.initialIndex});
+  final int? initialIndex;
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -47,6 +48,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialIndex != null) _index = widget.initialIndex!;
     _buildPages();
     _loadUserInfo();
   }
