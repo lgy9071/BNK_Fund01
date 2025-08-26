@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -16,10 +17,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class HolidayService {
+
     private final RestClient client;
     private final HolidayApiProps props;
 
-    public HolidayService(RestClient holidayRestClient, HolidayApiProps props) {
+    public HolidayService(
+        @Qualifier("holidayRestClient") RestClient holidayRestClient, 
+        HolidayApiProps props
+    ) {
         this.client = holidayRestClient;
         this.props = props;
     }

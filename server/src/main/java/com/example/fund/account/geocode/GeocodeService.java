@@ -1,7 +1,7 @@
 package com.example.fund.account.geocode;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
@@ -16,10 +16,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service("legacyGeocodeService")
-@RequiredArgsConstructor
 public class GeocodeService {
 
-    private final RestClient geocodeRestClient;
+    // ❗ RestClient 주입 대상: 생성자 파라미터에서 @Qualifier로 확정
+    private final RestClient client;
 
     // 부산을 기본 바이어스(지오코딩 후보를 부산/울산 인근으로 유도)
     @Value("${geocode.bias.lat:35.1796}")
@@ -30,6 +30,11 @@ public class GeocodeService {
 
     // 간단 캐시 (동일 주소 중복 호출 방지)
     private final Map<String, Coords> cache = new ConcurrentHashMap<>();
+
+    // ✅ 롬복 @RequiredArgsConstructor 대신 “직접 생성자” + @Qualifier 로 명시
+    public GeocodeService(@Qualifier("geocodeRestClient") RestClient client) {
+        this.client = client;
+    }
 
     /**
      * 주소 → 좌표 (Optional)
@@ -52,7 +57,7 @@ public class GeocodeService {
                 .toUriString();
 
         try {
-            GeocodeResponse res = geocodeRestClient.get()
+            GeocodeResponse res = client.get()
                     .uri(uri)
                     .retrieve()
                     .body(GeocodeResponse.class);
@@ -72,7 +77,6 @@ public class GeocodeService {
             return Optional.of(coords);
 
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            // 여기서 응답 본문(body)을 안전하게 확인 가능
             String body = e.getResponseBodyAsString();
             log.warn("GEOCODE {} for '{}': status={}, body={}",
                     e.getClass().getSimpleName(), normalized, e.getStatusCode(), body);
@@ -102,5 +106,3 @@ public class GeocodeService {
         return s;
     }
 }
-
-

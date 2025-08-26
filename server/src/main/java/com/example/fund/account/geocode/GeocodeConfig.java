@@ -25,7 +25,7 @@ public class GeocodeConfig {
     @Value("${naver.api.timeout-ms:7000}")
     private int timeoutMs;
 
-    @Bean
+    @Bean("geocodeRestClient")
     public RestClient geocodeRestClient(RestClient.Builder builder) {
         SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
         rf.setConnectTimeout(timeoutMs);
