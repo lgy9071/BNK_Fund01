@@ -1,8 +1,6 @@
 // lib/pdf_confirm_sheet.dart
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:pdfx/pdfx.dart';
+import 'package:pdfrx/pdfrx.dart';
 
 class PdfConfirmSheet extends StatefulWidget {
   final String title;
@@ -19,62 +17,12 @@ class PdfConfirmSheet extends StatefulWidget {
 }
 
 class _PdfConfirmSheetState extends State<PdfConfirmSheet> {
-  PdfControllerPinch? _controller;
+  final PdfViewerController _viewerController = PdfViewerController();
+
   int _currentPage = 1;
   int _totalPages = 1;
   bool _loading = true;
-  Uint8List? _bytes;
   String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPdf();
-  }
-
-  Future<void> _loadPdf() async {
-    try {
-      final String url = _fixUrl(widget.url);
-      final res = await http.get(Uri.parse(url));
-
-      if (res.statusCode != 200) {
-        _fail('PDF 로드 실패 (${res.statusCode})');
-        return;
-      }
-
-      _bytes = res.bodyBytes;
-
-      _controller = PdfControllerPinch(
-        document: PdfDocument.openData(_bytes!), // Future<PdfDocument>
-      );
-
-      final tempDoc = await PdfDocument.openData(_bytes!);
-      _totalPages = tempDoc.pagesCount;
-
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = null;
-      });
-    } catch (e) {
-      _fail('PDF 로드 중 오류: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  void _fail(String msg) {
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _error = msg;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
 
   String _fixUrl(String url) {
     // return url.startsWith('http') ? url : '${ApiConfig.baseUrl}$url';
@@ -84,24 +32,35 @@ class _PdfConfirmSheetState extends State<PdfConfirmSheet> {
   bool get _atLastPage => _currentPage >= _totalPages && _totalPages > 0;
 
   @override
+  void dispose() {
+    // PdfViewerController에는 dispose 없음
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     const tossBlue = Color(0xFF0061FF);
-    final borderRadius = BorderRadius.vertical(top: Radius.circular(16));
+    final borderRadius = const BorderRadius.vertical(top: Radius.circular(16));
+    final uri = Uri.parse(_fixUrl(widget.url));
 
-    // 👇 시트 전체를 둥글게: ClipRRect + Material(white)
+    // 하단 버튼에 가리지 않도록 여유 패딩
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+    const barInnerHeight = 56.0;
+    const barVPadding = 16.0;
+    final bottomBarHeight = barInnerHeight + barVPadding + safeBottom;
+
     return ClipRRect(
       borderRadius: borderRadius,
       child: Material(
-        color: Colors.white, // 내부 배경 (모달 배경은 투명으로 설정했음)
+        color: Colors.white,
         child: SafeArea(
           child: DraggableScrollableSheet(
             initialChildSize: 0.94,
             minChildSize: 0.7,
             maxChildSize: 0.98,
             expand: false,
-            builder: (context, scrollController) {
+            builder: (context, _) {
               return Scaffold(
-                // 배경은 Material에 이미 있으니 투명해도 OK
                 backgroundColor: Colors.transparent,
                 appBar: AppBar(
                   automaticallyImplyLeading: false,
@@ -113,84 +72,117 @@ class _PdfConfirmSheetState extends State<PdfConfirmSheet> {
                     ),
                   ],
                 ),
-                body: Column(
+                body: Stack(
                   children: [
-                    Expanded(
-                      child: _loading
-                          ? const Center(child: CircularProgressIndicator())
-                          : _error != null
-                          ? Center(child: Text(_error!))
-                          : _controller == null
-                          ? const Center(child: Text('컨트롤러 생성 실패'))
-                          : Stack(
-                        children: [
-                          RawScrollbar(
-                            thumbVisibility: true,
-                            trackVisibility: true,
-                            thickness: 6,
-                            radius: const Radius.circular(8),
-                            minThumbLength: 48,          // ✅ 엄지 최소 길이(긴 문서에서 너무 짧아지는 것 방지)
-                            timeToFade: const Duration(seconds: 1), // ✅ 스크롤 멈춘 뒤 페이드아웃
-                            notificationPredicate: (_) => true, // 하위 스크롤 알림 모두 허용
-                            child: PdfViewPinch(
-                              controller: _controller!,
-                              onPageChanged: (page) {
-                                if (!mounted) return;
-                                setState(() => _currentPage = page);
-                              },
-                            ),
-                          ),
-
-
-                          Positioned(
-                            right: 12,
-                            top: 12,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black54,
-                                borderRadius:
-                                BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '$_currentPage / $_totalPages',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                    // PDF 뷰어 (마지막 페이지가 버튼에 가리지 않게 하단 패딩)
+                    Positioned.fill(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: bottomBarHeight),
+                        child: PdfViewer.uri(
+                          uri,
+                          controller: _viewerController,
+                          params: PdfViewerParams(
+                            // 문서 준비 완료: 총 페이지 계산 + 1페이지로 강제 시작
+                            onViewerReady: (document, controller) {
+                              if (!mounted) return;
+                              setState(() {
+                                _totalPages = document.pages.length;
+                                _loading = false;
+                                _error = null;
+                                _currentPage = 1;
+                              });
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _viewerController.goToPage(pageNumber: 1);
+                              });
+                            },
+                            // 페이지 변경 추적
+                            onPageChanged: (pageNumber) {
+                              if (!mounted) return;
+                              final p = pageNumber ?? _currentPage;
+                              if (p != _currentPage) {
+                                setState(() => _currentPage = p);
+                              }
+                            },
+                            // 스크롤 썸(기본 제공) — 2.1.x에서는 커스텀 파라미터 제한적
+                            viewerOverlayBuilder: (context, size, handleLinkTap) {
+                              return [
+                                PdfViewerScrollThumb(
+                                  controller: _viewerController,
+                                  // 2.1.x에선 alignment/label/height 등의 파라미터가 없을 수 있어요.
+                                  // 기본 썸을 그대로 사용(기능만).
                                 ),
-                              ),
-                            ),
+                              ];
+                            },
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _atLastPage ? tossBlue : Colors.grey.shade300,
-                            minimumSize: const Size(double.infinity, 40),
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            elevation: 0,
+
+                    // 페이지 카운터 배지
+                    Positioned(
+                      right: 12,
+                      top: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$_currentPage / $_totalPages',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+
+                    // 하단 확인 버튼
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 16 + MediaQuery.of(context).padding.bottom,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _atLastPage ? tossBlue : Colors.grey.shade300,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          onPressed: _atLastPage ? () => Navigator.pop(context, true) : null,
-                          child: Text(
-                            '확인했습니다',
-                            style: TextStyle(
-                              fontSize: 20,              // ⬅️ 글자도 같이 키우면 균형 좋아짐
-                              fontWeight: FontWeight.w600,
-                              color: _atLastPage ? Colors.white : Colors.grey[700],
+                          elevation: 0,
+                        ),
+                        onPressed: _atLastPage ? () => Navigator.pop(context, true) : null,
+                        child: Text(
+                          '확인했습니다',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: _atLastPage ? Colors.white : Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // 로딩/에러 오버레이
+                    if (_loading)
+                      const Positioned.fill(
+                        child: IgnorePointer(
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      ),
+                    if (_error != null)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                _error!,
+                                style: const TextStyle(color: Colors.red),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           ),
                         ),
-
                       ),
-                    ),
                   ],
                 ),
               );
