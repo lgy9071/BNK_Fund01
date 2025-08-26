@@ -62,11 +62,11 @@ class _InvestTypeResultScreenState extends State<InvestTypeResultScreen> {
       context: context,
       title: isFirstTime ? '분석 시작 안내' : '재검사 정책 확인',
       message: isFirstTime
-          ? '• 투자성향 검사는 1년마다 재실시해야 합니다\n'
-          '• 최초 분석 완료 후 결과가 표시됩니다\n\n'
+          ? '투자성향 검사는 1년마다 재실시해야 합니다\n'
+          '최초 분석 완료 후 결과가 표시됩니다\n\n'
           '계속 진행하시겠습니까?'
-          : '• 투자성향 검사는 1년마다 재실시해야 합니다\n'
-          '• 재분석은 하루에 한 번만 가능합니다\n\n'
+          : '투자성향 검사는 1년마다 재실시해야 합니다\n'
+          '재분석은 하루에 한 번만 가능합니다\n\n'
           '위 정책 확인 후 계속 진행을 눌러주세요',
       confirmText: '계속 진행',
       cancelText: '취소',

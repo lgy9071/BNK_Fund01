@@ -28,7 +28,8 @@ class AppColors {
 
 class NonDepositGuidePage extends StatefulWidget {
   final String fundId;
-  const NonDepositGuidePage({super.key, required this.fundId});
+  final int productId;
+  const NonDepositGuidePage({super.key, required this.fundId, required this.productId});
 
   @override
   State<NonDepositGuidePage> createState() => _NonDepositGuidePageState();
@@ -40,6 +41,45 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   static const double kGap = 8; // 이미지와 텍스트 사이의 간격
   static const double kGutter = kAvatar + kGap; // 48 -> 이미지 없는 줄의 좌측 들여쓰기
 
+
+
+  bool _confirmSaved = false;
+
+  Future<void> _postConfirmOnce() async {
+    if (_confirmSaved) return;
+    _confirmSaved = true;
+
+    try {
+      final storage = const FlutterSecureStorage();
+      final token = await storage.read(key: 'accessToken');
+
+      final body = {
+        "productId": widget.productId,
+        "termsAgreed": true,
+        "docConfirmed": true,
+      };
+
+      final res = await http.post(
+        Uri.parse(ApiConfig.fundJoinConfirm),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[confirm] fail ${res.statusCode} ${res.body}');
+        // 실패해도 다음 단계는 진행 (UX 끊기지 않게)
+        _confirmSaved = false; // 재시도 허용 (선택)
+      } else {
+        debugPrint('[confirm] ok ${res.body}');
+      }
+    } catch (e) {
+      debugPrint('[confirm] error $e');
+      _confirmSaved = false; // 재시도 허용 (선택)
+    }
+  }
 
   // 최소 가입금액
   Future<void> _fetchMinAmount() async {
@@ -157,7 +197,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
   // [ADD] 투자 규칙 요약 문자열 → 서버 enum/값으로 변환
   ({String type, String value}) _parsePlanToServer(String? summary) {
     if (summary == null || summary.isEmpty || summary == "선택 안 함" || summary == "한 번만 투자하기") {
-      return (type: "ONE_TIME", value: "");
+      return (type: "ONCE", value: "");
     }
     if (summary.startsWith("매일")) {
       return (type: "DAILY", value: "EVERYDAY");
@@ -212,17 +252,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
     _fetchMinAmount();
     _fetchAccountNumber();
 
-    messages.add({
-      "type": "notice",
-      "title": "상품명에 가입하기 위해 추가 정보를 확인할게요",
-      "desc": "펀드와 같은 비예금 상품은 일반 예금상품과 달리 원금의 일부 또는 전부 손실이 발생할 수 있어요"
-    });
-
-    messages.add({
-      "type": "choice",
-      "question": steps[0]["question"],
-      "options": steps[0]["options"]
-    });
+    _precheckAgreementAndSkip();
 
     _amountController.addListener(_onAmountChanged);
   }
@@ -289,6 +319,7 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
 
         final isLast = currentStep == steps.length - 1;
         if (isLast && answer == "확인했어요") {
+          _postConfirmOnce();
           messages.add({
             "type": "investChoice",
             "question": "어떻게 투자할까요?",
@@ -350,6 +381,59 @@ class _NonDepositGuidePageState extends State<NonDepositGuidePage> {
 
     _scrollToBottom();
   }
+  Future<void> _precheckAgreementAndSkip() async {
+    // 기본 메시지: 동의 ‘없을’ 때 (기존과 동일)
+    void _showDefaultIntro() {
+      setState(() {
+        messages.add({
+          "type": "notice",
+          "title": "상품명에 가입하기 위해 추가 정보를 확인할게요",
+          "desc": "펀드와 같은 비예금 상품은 일반 예금상품과 달리 원금의 일부 또는 전부 손실이 발생할 수 있어요"
+        });
+        messages.add({
+          "type": "choice",
+          "question": steps[0]["question"],
+          "options": steps[0]["options"]
+        });
+      });
+    }
+
+    try {
+      final storage = const FlutterSecureStorage();
+      final token = await storage.read(key: 'accessToken');
+
+      final uri = Uri.parse(
+        '${ApiConfig.fundJoinConfirm}?productId=${Uri.encodeComponent(widget.productId.toString())}',
+      );
+
+      final res = await http.get(uri, headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+      });
+
+      if (res.statusCode == 200) {
+        // ✅ 이미 ‘당일 유효 동의’가 있음 → 질문 3개 스킵하고 바로 다음 단계
+        setState(() {
+          // 선택상태 반영(기록만): 마지막 질문을 "확인했어요"로 처리했다고 간주
+          currentStep = steps.length - 1;
+          answers[currentStep] = "확인했어요";
+
+          messages.add({
+            "type": "investChoice",
+            "question": "어떻게 투자할까요?",
+            "desc": "가입 후에도 변경할 수 있어요.\n펀드 투자자의 12%가 매월 투자를 하고 있어요.",
+            "options": ["매일/매주/매월 투자하기", "한 번만 투자하기"],
+          });
+        });
+      } else {
+        // 404/204/기타 → 동의 없음. 기존 플로우 시작
+        _showDefaultIntro();
+      }
+    } catch (e) {
+      debugPrint('[confirm status] error: $e');
+      _showDefaultIntro(); // 네트워크 실패 시에도 기존 플로우
+    }
+  }
+
 
   // 투자 방식 선택: 바텀시트
   Future<void> _openScheduleSheet() async {

@@ -1,14 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_front/core/routes/routes.dart';
 import 'package:mobile_front/widgets/step_header.dart';
 import 'package:mobile_front/core/constants/colors.dart';
 
 /// 작성동의 (큰 단계 1/3)
-/// - onNext: (선택) 상위가 라우팅을 직접 수행하고 결과(bool?)를 반환하고 싶을 때 사용
-///           true를 반환하면 이 화면도 pop(true) 하여 상위(MainScaffold)까지 전파.
-/// - onSubmit: (선택) 서버에 동의 저장할 때 사용. 없으면 바로 다음 단계로 진행.
 class ConsentStepPage extends StatefulWidget {
-  final Future<bool?> Function()? onNext;                // ✅ 변경: 값 반환 가능
+  final Future<bool?> Function()? onNext;
   final Future<void> Function(bool agreed)? onSubmit;
 
   const ConsentStepPage({
@@ -26,36 +24,65 @@ class _ConsentStepPageState extends State<ConsentStepPage> {
   bool expandInvestorInfo = false; // 아코디언
   bool submitting = false;
 
+  bool _canCheckAgree = false;
+  int _agreeRemain = 0;
+  Timer? _agreeTimer;
+
+  @override
+  void dispose() {
+    _agreeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAgreeCountdown() {
+    _agreeTimer?.cancel();
+    setState(() {
+      _canCheckAgree = false;
+      _agreeRemain = 3;
+    });
+
+    _agreeTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      if (_agreeRemain <= 1) {
+        t.cancel();
+        setState(() {
+          _agreeRemain = 0;
+          _canCheckAgree = true;
+        });
+      } else {
+        setState(() {
+          _agreeRemain -= 1;
+        });
+      }
+    });
+  }
+
   Future<void> _handleNext() async {
     if (!agreeInvestorInfo || submitting) return;
 
     setState(() => submitting = true);
     try {
-      // 1) 서버 저장 훅(옵션)
       if (widget.onSubmit != null) {
         await widget.onSubmit!(agreeInvestorInfo);
       }
 
-      // 2) 상위가 라우팅을 맡는 경우(옵션)
       if (widget.onNext != null) {
         final needRefresh = await widget.onNext!();
         if (!mounted) return;
         if (needRefresh == true) {
-          Navigator.of(context).pop(true); // ✅ 상위로 true 전파
+          Navigator.of(context).pop(true);
         }
         return;
       }
 
-      // 3) 기본 라우팅: 동의 → 테스트(설문) 진입
       if (!mounted) return;
       final bool? res = await Navigator.pushNamed<bool>(
         context,
-        AppRoutes.investTest, // '/invest-test' : 실제 테스트(설문) 진입 라우트
+        AppRoutes.investTest,
       );
 
-      // 테스트/결과 플로우에서 true가 올라오면 여기서도 pop(true)
       if (res == true && mounted) {
-        Navigator.of(context).pop(true);    // ✅ 체인 전파
+        Navigator.of(context).pop(true);
       }
     } finally {
       if (mounted) setState(() => submitting = false);
@@ -104,7 +131,20 @@ class _ConsentStepPageState extends State<ConsentStepPage> {
                   sub_title:
                   '투자자 정보를 제공하지 않는 고객님께서는 다음의 금융투자상품에 대한 투자권유 및 일반투자자로서 보호받지 못할 수 있음을 \n알려드립니다.',
                   expanded: expandInvestorInfo,
-                  onToggle: () => setState(() => expandInvestorInfo = !expandInvestorInfo),
+                  onToggle: () {
+                    setState(() {
+                      expandInvestorInfo = !expandInvestorInfo;
+                      if (expandInvestorInfo) {
+                        _startAgreeCountdown();
+                      } else {
+                        _agreeTimer?.cancel();
+                        _canCheckAgree = false;
+                        _agreeRemain = 0;
+                        // ❌ 이전에는 여기서 agreeInvestorInfo = false 로 체크 해제했음
+                        // ✅ 이제는 유지되도록 주석 처리/삭제
+                      }
+                    });
+                  },
                   body: const _AccordionBody(),
                   titleStyle: titleStyleUnified,
                 ),
@@ -113,20 +153,35 @@ class _ConsentStepPageState extends State<ConsentStepPage> {
                   children: [
                     Checkbox(
                       value: agreeInvestorInfo,
-                      onChanged: (val) {
-                        setState(() => agreeInvestorInfo = val ?? false);
-                      },
+                      onChanged: (_canCheckAgree && !submitting)
+                          ? (val) => setState(() => agreeInvestorInfo = val ?? false)
+                          : null,
                       activeColor: AppColors.primaryBlue,
                     ),
                     GestureDetector(
                       behavior: HitTestBehavior.translucent,
-                      onTap: () {
-                        setState(() => agreeInvestorInfo = !agreeInvestorInfo);
-                      },
+                      onTap: (_canCheckAgree && !submitting)
+                          ? () => setState(() => agreeInvestorInfo = !agreeInvestorInfo)
+                          : null,
                       child: Text('투자자정보확인서 작성 동의', style: theme.textTheme.bodyMedium),
                     ),
                   ],
                 ),
+                if (expandInvestorInfo && !_canCheckAgree)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12, top: 4),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 4),
+                        Icon(Icons.access_time, size: 14, color: Colors.grey.shade600),
+                        const SizedBox(width: 6),
+                        Text(
+                          '안내를 확인한 뒤 ${_agreeRemain}초 후 동의 체크가 활성화됩니다.',
+                          style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -145,7 +200,7 @@ class _ConsentStepPageState extends State<ConsentStepPage> {
                     (agreeInvestorInfo && !submitting) ? Colors.white : Colors.grey.shade600,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
                   ),
-                  onPressed: (agreeInvestorInfo && !submitting) ? _handleNext : null, // ✅ 통일
+                  onPressed: (agreeInvestorInfo && !submitting) ? _handleNext : null,
                   child: const Text('다음', style: TextStyle(fontSize: 17)),
                 ),
               ),

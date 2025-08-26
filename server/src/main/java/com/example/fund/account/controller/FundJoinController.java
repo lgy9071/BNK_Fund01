@@ -15,9 +15,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.fund.account.dto.AgreementConfirmRequest;
 import com.example.fund.account.dto.DocumentInfoDto;
 import com.example.fund.account.dto.FundJoinRequest;
 import com.example.fund.account.dto.JoinCheckResponse;
+import com.example.fund.account.entity.TermsAgreement;
 import com.example.fund.account.service.FundInfoService;
 import com.example.fund.account.service.FundJoinService;
 import com.example.fund.common.CurrentUid;
@@ -99,6 +101,27 @@ public class FundJoinController {
 		    public List<DocumentInfoDto> getDocs(@PathVariable String fundId) {
 		        return fundInfoService.getRequiredDocs(fundId);
 		    }
+		 
+		 @PostMapping("/confirm")
+		    public ResponseEntity<TermsAgreement> confirm(@CurrentUid Integer uid,
+		    											  @RequestBody AgreementConfirmRequest req) {
+		        // 1) 프런트에서 두 체크를 동시에 보냈는지 1차 검증
+		        if (!req.termsAgreed() || !req.docConfirmed()) {
+		            return ResponseEntity.badRequest().build();
+		        }
+
+		        // 2) 서비스 호출 (당일 유효한 동의가 있으면 그대로 반환, 없으면 새로 생성)
+		        TermsAgreement saved = fundJoinService.createActiveAfterCompletion(uid, req.productId());
+
+		        return ResponseEntity.ok(saved);
+		    }
+		 @GetMapping("/confirm")
+		 public ResponseEntity<?> hasTodayAgreement(@CurrentUid Integer uid,
+		                                            @RequestParam Long productId) {
+		     boolean exists = fundJoinService.hasActiveAgreementToday(uid, productId);
+		     if (exists) return ResponseEntity.ok().build();
+		     return ResponseEntity.noContent().build(); // 204
+		 }
 
 	
 	// 지점 관리

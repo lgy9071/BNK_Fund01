@@ -9,7 +9,8 @@ import 'fund_non_deposit.dart';
 
 class FundJoinPage extends StatefulWidget {
   final String fundId;
-  const FundJoinPage({super.key, required this.fundId});
+  final int productId;
+  const FundJoinPage({super.key, required this.fundId, required this.productId});
 
   @override
   State<FundJoinPage> createState() => _FundJoinPageState();
@@ -311,6 +312,7 @@ class _FundJoinPageState extends State<FundJoinPage> {
                     builder: (context) =>
                         NonDepositGuidePage(
                           fundId: widget.fundId,
+                          productId: widget.productId,
                         ),
                   ),
                 );
