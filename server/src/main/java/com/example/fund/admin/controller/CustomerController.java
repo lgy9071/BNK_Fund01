@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.fund.admin.service.CustomerService;
+import com.example.fund.admin.service.CustomerService.Detail;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,7 +26,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}")
-    public CustomerService.Detail detail(@PathVariable Long id){
-        return service.getDetail(id);
+    public Detail getDetail(@PathVariable("id") Long userId) {
+        return service.getDetail(userId);
     }
 }
