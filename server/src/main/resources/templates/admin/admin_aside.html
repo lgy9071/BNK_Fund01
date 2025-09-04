@@ -351,6 +351,16 @@ function openCustomerDetailFlyout(detail, anchorEl){
   const wrap = document.createElement('div');
   wrap.id = 'customerDetailFlyout';
   wrap.className = 'customer-detail-flyout';
+
+  let html = '';
+  try {
+    console.debug('[customer.detail] incoming detail:', detail);
+    html = renderCustomerDetailV2(detail);
+  } catch (e) {
+    console.error('[customer.detail] render failed', e);
+    html = '<div class="modal__empty" style="color:#c00">상세 렌더링 중 오류</div>';
+  }
+
   wrap.innerHTML = `
     <div class="flyout__header">
       <h4 class="flyout__title">고객 상세</h4>
@@ -360,7 +370,7 @@ function openCustomerDetailFlyout(detail, anchorEl){
       </div>
     </div>
     <div class="flyout__content" id="customerDetailContent">
-      ${renderCustomerDetailV2(detail)}
+      ${html}
     </div>
   `;
   body.appendChild(wrap);
@@ -388,28 +398,105 @@ function closeCustomerDetailFlyout(opts={}){ const el=document.getElementById('c
 /* =========================
    렌더(기본+가입 정보)
 ========================= */
-function renderCustomerDetailV2(d){
-  const funds = Array.isArray(d?.funds) ? d.funds : [];
-  const totalAmt = Number.isFinite(Number(d?.totalAssetAmount))
-    ? Number(d.totalAssetAmount)
-    : funds.reduce((s,f)=> s + (Number(f?.assetAmount)||0), 0);
-  const firstDt = d?.firstSubscribedAt || (funds.map(f=>f?.firstSubscribedAt).filter(Boolean).sort()[0] || null);
+// 유틸: 안전한 키 선택자
+function pickId(o){ return o?.id ?? o?.userId ?? o?.memberId ?? o?.uid ?? null; }
+function pickName(o){ return o?.name ?? o?.fullName ?? o?.username ?? '-'; }
+function pickEmail(o){ return o?.email ?? o?.mail ?? '-'; }
+function pickPhone(o){ return o?.phone ?? o?.phoneNumber ?? o?.tel ?? o?.mobile ?? '-'; }
+
+function nnum(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
+function safeFormatMoney(n){
+  try { return Number(n).toLocaleString('ko-KR'); } // MDN 권장 방식. :contentReference[oaicite:0]{index=0}
+  catch { return String(n ?? 0); }
+}
+function safeFormatDate(s){
+  try {
+    if(!s) return '-';
+    const d = new Date(s);
+    if (isNaN(d)) return '-';
+    const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  } catch { return '-'; }
+}
+
+function calcFirstDateFromFunds(funds){
+  const list = [];
+  for(const f of (Array.isArray(funds) ? funds : [])){ // Array.isArray 사용. :contentReference[oaicite:1]{index=1}
+    const dt = f?.firstSubscribedAt ?? f?.joinedAt ?? f?.startDate ?? null;
+    if (dt) list.push(dt);
+  }
+  return list.sort()[0] || null;
+}
+
+function renderCustomerDetailV2(detail){
+  // 1) 디버깅: 실제 들어온 값 확인
+  console.debug('[detail.raw]', detail);
+
+  // 2) 안전 추출 (백엔드가 이미 포맷팅해준 phone 사용)
+  const name     = detail?.name ?? '-';
+  const email    = detail?.email ?? '-';
+  const phone    = detail?.phone ?? '-';
+  const username = detail?.username ?? '-';
+
+  const funds = Array.isArray(detail?.funds) ? detail.funds : [];
+
+  // 3) 총액: 서버 totalAssetAmount가 있으면 우선 사용, 없으면 합산
+  let totalAmt = Number(detail?.totalAssetAmount);
+  if (!Number.isFinite(totalAmt)) {
+    totalAmt = funds.reduce((sum, f) => {
+      const n = Number(f?.assetAmount);
+      return sum + (Number.isFinite(n) ? n : 0);
+    }, 0);
+  }
+
+  // 4) 최초 가입일: top-level 우선, 없으면 funds에서 가장 빠른 날짜
+  const topFirst = detail?.firstSubscribedAt || null;
+  // ISO 날짜 문자열(yyyy-MM-dd) → Date
+  const toDate = (v) => {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d) ? null : d;
+  };
+
+  let firstDt = toDate(topFirst);
+  if (!firstDt && funds.length) {
+    const candidates = funds
+      .map(f => toDate(f?.firstSubscribedAt))
+      .filter(Boolean)
+      .sort((a, b) => a - b);
+    firstDt = candidates[0] || null;
+  }
 
   const chips = funds.length
-    ? `<div class="chips">${funds.map(f=>`<span class="chip">${escapeHtml(f?.name||'-')}</span>`).join('')}</div>`
+    ? `<div class="chips">${funds.map(f => `<span class="chip">${escapeHtml(f?.name ?? '-')}</span>`).join('')}</div>`
     : '-';
 
+  const days = firstDt ? Math.max(0, Math.floor((Date.now() - firstDt.getTime()) / 86400000)) : null;
+
+  // 5) 날짜 포매터(없으면 추가)
+  if (typeof formatDate !== 'function') {
+    window.formatDate = function(s){
+      if (!s) return '-';
+      const d = toDate(s);
+      if (!d) return '-';
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      return `${d.getFullYear()}-${mm}-${dd}`;
+    }
+  }
+
+  // 6) 렌더링
   return `
     <h4 class="section-title" style="margin-top:0">기본 정보</h4>
-    <div class="kv"><b>이름</b><span>${escapeHtml(d?.name ?? '-')}</span></div>
-    <div class="kv"><b>이메일</b><span>${escapeHtml(d?.email ?? '-')}</span></div>
-    <div class="kv"><b>전화</b><span>${formatPhone(d?.phone)}</span></div>
-    <div class="kv"><b>아이디</b><span>${escapeHtml(d?.username ?? '-')}</span></div>
+    <div class="kv"><b>이름</b><span>${escapeHtml(name)}</span></div>
+    <div class="kv"><b>이메일</b><span>${escapeHtml(email)}</span></div>
+    <div class="kv"><b>전화</b><span>${escapeHtml(phone)}</span></div>
+    <div class="kv"><b>아이디</b><span>${escapeHtml(username)}</span></div>
 
     <h4 class="section-title">펀드 가입 정보</h4>
     <div class="kv"><b>가입 펀드</b><span>${chips}</span></div>
-    <div class="kv"><b>자산 규모</b><span>${totalAmt.toLocaleString('ko-KR')}원</span></div>
-    <div class="kv"><b>가입 기간</b><span>${firstDt ? `D+${Math.max(0,Math.floor((new Date()-new Date(firstDt))/86400000))} (최초 ${formatDate(firstDt)})` : '-'}</span></div>
+    <div class="kv"><b>자산 규모</b><span>${Number.isFinite(totalAmt) ? totalAmt.toLocaleString('ko-KR')+'원' : '-'}</span></div>
+    <div class="kv"><b>가입 기간</b><span>${firstDt ? `D+${days} (최초 ${formatDate(firstDt)})` : '-'}</span></div>
   `;
 }
 

@@ -957,6 +957,7 @@ class _TotalAssetsCard extends StatelessWidget {
     // 총 자산이 0원일 때는 기존 “빈 상태” 메시지 유지
     if (total <= 0) {
       return Container(
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Column(
           children: [
