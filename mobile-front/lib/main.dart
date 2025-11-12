@@ -22,7 +22,7 @@ Future<void> main() async {
     clientId: 'e3twx8ckch',
     onAuthFailed: (ex) => debugPrint('NAVER AUTH FAIL: $ex'),
   );
-  runApp(const MyApp()); // ✅ 여기서는 MyApp만
+  runApp(const MyApp()); // 여기서는 MyApp만
 }
 
 class MyApp extends StatefulWidget {
@@ -36,7 +36,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ ScreenUtilInit를 MaterialApp "바깥"에 둔다.
+    // ScreenUtilInit를 MaterialApp "바깥"에 둔다.
     return ScreenUtilInit(
       designSize: const Size(411.4, 891.4), // 너 폰에서 찍힌 dp
       minTextAdapt: true,
