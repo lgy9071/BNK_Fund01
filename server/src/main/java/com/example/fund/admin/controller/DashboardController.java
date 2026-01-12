@@ -58,8 +58,9 @@ public class DashboardController {
                     .getApprovalsByStatus(admin.getAdminname(), "결재대기", 0)
                     .getTotalElements();
             model.addAttribute("myPendingCount", myPending);
-            model.addAttribute("recentMyRequests",
-                    approvalService.findRecentByWriter(admin.getAdminname(), 5));
+// 오류로 임시 주석
+//            model.addAttribute("recentMyRequests",
+//                    approvalService.findRecentByWriter(admin.getAdminname(), 5));
         }
 
         // Approver + super: 승인 대기
@@ -68,9 +69,9 @@ public class DashboardController {
                     .getApprovalsByStatus("결재대기", 0)
                     .getTotalElements();
             model.addAttribute("waitingApproveCount", waiting);
-
-            model.addAttribute("oldestApprovals",
-                    approvalService.findOldestApprovals("결재대기", 5));
+// 오류로 임시 주석
+//            model.addAttribute("oldestApprovals",
+//                    approvalService.findOldestApprovals("결재대기", 5));
             model.addAttribute("avgApprovalDays",
                     approvalService.calculateAverageApprovalDays());
 
@@ -80,14 +81,15 @@ public class DashboardController {
         }
 
         // Super 전용: 결재 흐름 요약, FAQ 건수
-        if ("super".equals(role)) {
-            Map<String, Integer> flowSummary = approvalService.getFlowSummary();
-            model.addAttribute("flowSummary", flowSummary);
-
-            Integer faqCount = (int) faqAdminService.countAllFaqs();
-            model.addAttribute("faqCount", faqCount);
-            dashSvc.populateSuperMetrics(model);
-        }
+// 오류로 임시 주석
+//        if ("super".equals(role)) {
+//            Map<String, Integer> flowSummary = approvalService.getFlowSummary();
+//            model.addAttribute("flowSummary", flowSummary);
+//
+//            Integer faqCount = (int) faqAdminService.countAllFaqs();
+//            model.addAttribute("faqCount", faqCount);
+//            dashSvc.populateSuperMetrics(model);
+//        }
 
         // 관리자(super) + CS 권한: FAQ 카테고리별 집계
         if ("super".equals(role) || "cs".equals(role)) {
