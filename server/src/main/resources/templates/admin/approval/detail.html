@@ -1,17 +1,29 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
+  <!-- ===============================
+       문서 기본 설정
+       =============================== -->
   <meta charset="UTF-8" />
   <title>결재 상세 보기</title>
 
-  <!-- 공통 스타일 -->
+  <!-- ===============================
+       공통 관리자 레이아웃 CSS
+       =============================== -->
   <link rel="stylesheet" href="/css/admin/admin_layout.css" />
+
+  <!-- FontAwesome 아이콘 라이브러리 -->
   <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
   />
+
+  <!-- SweetAlert2 (확인/경고 모달용) -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+  <!-- ===============================
+       페이지 전용 스타일
+       =============================== -->
   <style>
     :root {
       --primary: #337D89;
@@ -20,19 +32,27 @@
       --border: #ddd;
       --shadow: rgba(0, 0, 0, .06);
     }
+
+    /* 기본 리셋 */
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
+
     body {
       background: var(--bg);
       font-family: "Segoe UI", sans-serif;
       color: #333;
     }
+
+    /* 레이아웃 구조 */
     .layout { display: flex; flex-direction: column; }
     .main-wrapper { flex: 1; }
 
+    /* ===============================
+       결재 상세 카드 컨테이너
+       =============================== */
     .detail-container {
       max-width: 1300px;
       margin: 40px auto;
@@ -42,12 +62,14 @@
       box-shadow: 0 8px 24px var(--shadow);
     }
 
+    /* 헤더 (제목 + 로그 버튼) */
     .detail-header {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
       margin-bottom: 24px;
     }
+
     .detail-header h1.title1 {
       display: flex;
       align-items: center;
@@ -55,30 +77,39 @@
       font-size: 28px;
       color: var(--primary);
     }
-    .detail-header h1.title i { font-size: 24px; }
 
+    /* 좌/우 콘텐츠 영역 */
     .detail-content { display: flex; gap: 24px; }
     .detail-left { flex: 2; }
     .detail-right { flex: 1.5; max-height: 400px; overflow-y: auto; }
 
+    /* ===============================
+       테이블 스타일
+       =============================== */
     table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 24px;
     }
+
     th, td {
       padding: 12px;
       border-bottom: 1px solid var(--border);
       text-align: left;
     }
+
     th {
       width: 120px;
       background: var(--primary);
       color: #fff;
       font-weight: 600;
     }
+
     tr:last-child td { border-bottom: none; }
 
+    /* ===============================
+       상태 뱃지 (상태별 색상)
+       =============================== */
     .badge {
       padding: 4px 10px;
       border-radius: 12px;
@@ -87,11 +118,15 @@
       color: #fff;
       display: inline-block;
     }
+
     .badge-결재대기 { background: #f39c12; }
     .badge-배포대기 { background: #2980b9; }
     .badge-반려     { background: #e74c3c; }
     .badge-배포     { background: #2ecc71; }
 
+    /* ===============================
+       승인 / 반려 액션 박스
+       =============================== */
     .action-box {
       display: flex;
       gap: 16px;
@@ -102,6 +137,7 @@
       border: 1px dashed #ccc;
       border-radius: 8px;
     }
+
     .action-box textarea {
       width: 100%;
       padding: 10px;
@@ -109,6 +145,7 @@
       border-radius: 6px;
       resize: none;
     }
+
     .action-box .btn {
       display: inline-flex;
       align-items: center;
@@ -122,10 +159,14 @@
       cursor: pointer;
       transition: filter .2s;
     }
+
     .btn-approve { background: #2ecc71; }
     .btn-reject  { background: #e74c3c; }
     .btn:hover   { filter: brightness(.9); }
 
+    /* ===============================
+       로그 테이블 캡션
+       =============================== */
     .logs-table caption.log-title {
       caption-side: top;
       text-align: center;
@@ -135,6 +176,7 @@
       padding-bottom: 12px;
     }
 
+    /* 상태 변경 이력 토글 버튼 */
     .btn-toggle-logs {
       background: var(--primary);
       border-radius: 8px;
@@ -148,20 +190,37 @@
       align-items: center;
       gap: 6px;
     }
+
     .btn-toggle-logs:hover { filter: brightness(.9); }
   </style>
 </head>
 
 <body>
 <div class="layout">
+
+  <!-- ===============================
+       관리자 헤더
+       =============================== -->
   <div th:replace="admin/admin_header :: adminHeader"></div>
+
   <div class="main-wrapper">
+
+    <!-- 관리자 사이드바 -->
     <div th:replace="admin/admin_aside :: adminAside"></div>
 
     <main class="content">
       <div class="detail-container">
+
+        <!-- ===============================
+             페이지 제목 + 로그 토글 버튼
+             =============================== -->
         <div class="detail-header">
-          <h1 class="title1"><i class="far fa-file-alt"></i> 결재 상세 보기</h1>
+          <h1 class="title1">
+            <i class="far fa-file-alt"></i>
+            결재 상세 보기
+          </h1>
+
+          <!-- 상태 변경 이력이 있을 때만 표시 -->
           <button
                   id="toggleLogsBtn"
                   class="btn-toggle-logs"
@@ -171,10 +230,23 @@
         </div>
 
         <div class="detail-content">
+
+          <!-- ===============================
+               좌측: 결재 정보 영역
+               =============================== -->
           <div class="detail-left">
             <table>
-              <tr><th>제목</th><td th:text="${approval.title}"></td></tr>
-              <tr><th>내용</th><td th:text="${approval.content}"></td></tr>
+              <tr>
+                <th>제목</th>
+                <td th:text="${approval.title}"></td>
+              </tr>
+
+              <tr>
+                <th>내용</th>
+                <td th:text="${approval.content}"></td>
+              </tr>
+
+              <!-- 펀드가 존재할 경우만 표시 -->
               <tr th:if="${approval.fund != null}">
                 <th>펀드명</th>
                 <td>
@@ -184,7 +256,10 @@
                   </a>
                 </td>
               </tr>
-              <tr><th>작성자</th>
+
+              <!-- 작성자 -->
+              <tr>
+                <th>작성자</th>
                 <td>
                   <a th:if="${approval.writer != null}"
                      th:href="@{'/admin/approval/writer/' + ${approval.writer.adminname}}"
@@ -192,33 +267,55 @@
                   <span th:if="${approval.writer == null}">알 수 없음</span>
                 </td>
               </tr>
-              <tr><th>상태</th>
+
+              <!-- 결재 상태 -->
+              <tr>
+                <th>상태</th>
                 <td>
-                    <span class="badge"
-                          th:classappend="' badge-' + ${approval.status}"
-                          th:text="${approval.status}"></span>
+                  <span class="badge"
+                        th:classappend="' badge-' + ${approval.status}"
+                        th:text="${approval.status}"></span>
                 </td>
               </tr>
+
+              <!-- 반려 사유 (반려 시에만 표시) -->
               <tr th:if="${approval.rejectReason != null}">
-                <th>반려 사유</th><td th:text="${approval.rejectReason}"></td>
+                <th>반려 사유</th>
+                <td th:text="${approval.rejectReason}"></td>
               </tr>
-              <tr><th>작성일</th>
+
+              <!-- 작성일 -->
+              <tr>
+                <th>작성일</th>
                 <td th:text="${#temporals.format(approval.regDate,'yyyy-MM-dd HH:mm')}"></td>
               </tr>
             </table>
 
+            <!-- ===============================
+                 승인 / 반려 버튼 영역
+                 (승인권한자 + 결재대기 상태일 때만)
+                 =============================== -->
             <div
                     class="action-box"
                     th:if="${admin != null && (admin.role=='approver'||admin.role=='super') && approval.status=='결재대기'}">
-              <form th:action="@{'/admin/approval/approve/' + ${approval.approvalId}}" method="post">
-                <textarea name="reason" rows="3" placeholder="승인 사유(선택)"></textarea>
+
+              <!-- 승인 폼 -->
+              <form th:action="@{'/admin/approval/approve/' + ${approval.approvalId}}"
+                    method="post">
+                <textarea name="reason" rows="3"
+                          placeholder="승인 사유(선택)"></textarea>
                 <button type="submit"
                         class="btn btn-approve btn-confirm-approve">
                   <i class="fas fa-check"></i> 승인 (배포대기)
                 </button>
               </form>
-              <form th:action="@{'/admin/approval/reject/' + ${approval.approvalId}}" method="post">
-                <textarea name="reason" rows="3" placeholder="반려 사유" required></textarea>
+
+              <!-- 반려 폼 -->
+              <form th:action="@{'/admin/approval/reject/' + ${approval.approvalId}}"
+                    method="post">
+                <textarea name="reason" rows="3"
+                          placeholder="반려 사유"
+                          required></textarea>
                 <button type="submit"
                         class="btn btn-reject btn-confirm-reject">
                   <i class="fas fa-times"></i> 반려
@@ -227,6 +324,9 @@
             </div>
           </div>
 
+          <!-- ===============================
+               우측: 상태 변경 이력
+               =============================== -->
           <div
                   class="detail-right"
                   th:if="${logs != null && #lists.size(logs) > 0}"
@@ -234,7 +334,12 @@
             <table class="logs-table">
               <caption class="log-title">결재 상태 변경 이력</caption>
               <thead>
-              <tr><th>변경자</th><th>상태</th><th>사유</th><th>일시</th></tr>
+              <tr>
+                <th>변경자</th>
+                <th>상태</th>
+                <th>사유</th>
+                <th>일시</th>
+              </tr>
               </thead>
               <tbody>
               <tr th:each="log : ${logs}">
@@ -248,12 +353,16 @@
           </div>
         </div>
 
+        <!-- ===============================
+             하단 네비게이션
+             =============================== -->
         <div style="margin-top:20px;">
           <a th:if="${admin.role=='super' or admin.role=='approver'}"
              th:href="@{/admin/approval/manage}"
              style="color:var(--primary); font-weight:600; text-decoration:none;">
             ← 관리 목록으로
           </a>
+
           <a th:if="${admin.role=='planner'}"
              th:href="@{/admin/approval/my-list}"
              style="color:var(--primary); font-weight:600; text-decoration:none;">
@@ -265,11 +374,18 @@
   </div>
 </div>
 
+<!-- ===============================
+     JavaScript
+     =============================== -->
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // 로그 토글
+
+    // ===============================
+    // 상태 변경 이력 토글 처리
+    // ===============================
     const toggleBtn = document.getElementById('toggleLogsBtn');
     const logs = document.querySelector('.detail-right');
+
     if (toggleBtn && logs) {
       toggleBtn.addEventListener('click', function() {
         if (logs.style.display === 'none' || logs.style.display === '') {
@@ -282,7 +398,9 @@
       });
     }
 
-    // 승인 확인 모달
+    // ===============================
+    // 승인 버튼 확인 모달
+    // ===============================
     document.querySelectorAll('.btn-confirm-approve').forEach(btn => {
       btn.addEventListener('click', function(e) {
         e.preventDefault();
@@ -299,7 +417,9 @@
       });
     });
 
-    // 반려 확인 모달
+    // ===============================
+    // 반려 버튼 확인 모달
+    // ===============================
     document.querySelectorAll('.btn-confirm-reject').forEach(btn => {
       btn.addEventListener('click', function(e) {
         e.preventDefault();
