@@ -22,18 +22,22 @@ public class FaqAdminService {
     private final FaqRepository faqRepository;
     private final FaqCategoryMapRepository mapRepository;
 
+    // 전체 FAQ 조회
     public List<Faq> findAll() {
         return faqRepository.findAll();
     }
 
+    // FAQ 저장 (등록 / 수정 공용)
     public void save(Faq faq) {
         faqRepository.save(faq);
     }
 
+    // ID로 FAQ 조회
     public Faq findById(Integer id) {
         return faqRepository.findById(id).orElse(null);
     }
 
+    // FAQ 수정 (기본 필드만)
     public void update(Integer id, Faq newFaq) {
         Faq existing = faqRepository.findById(id).orElseThrow();
         existing.setQuestion(newFaq.getQuestion());
@@ -41,41 +45,51 @@ public class FaqAdminService {
         faqRepository.save(existing);
     }
 
+    /**
+     * FAQ 삭제
+     * 1) FAQ 테이블 삭제
+     * 2) FAQ-카테고리 매핑 테이블 삭제
+     */
     public void delete(Integer id) {
-        // 1) FAQ 엔티티 삭제
         faqRepository.deleteById(id);
-        // 2) 매핑 테이블에서 동일 faqId 로 된 모든 레코드 삭제
         mapRepository.deleteByFaqId(id);
     }
 
+    // 활성화된 FAQ만 조회 (사용자용)
     public List<Faq> findActiveFaqs() {
         return faqRepository.findByActiveTrue();
     }
 
+    // FAQ 검색 + 페이징
     public Page<Faq> search(String keyword, Pageable pageable) {
         return faqRepository.searchActiveFaqs(keyword, pageable);
     }
 
+    // 전체 FAQ 페이징 조회
     public Page<Faq> findAllWithPaging(Pageable pageable) {
         return faqRepository.findAll(pageable);
     }
 
-    /* 전체 FAQ 건수 반환 */
+    // 전체 FAQ 개수
     public long countAllFaqs() {
         return faqRepository.count();
     }
 
-    /* 관리자 전용: FAQ 카테고리별 건수 집계 */
+    /**
+     * 카테고리별 FAQ 개수 반환
+     */
     public Map<String, Integer> getFaqCountsByCategory() {
         return mapRepository.countByCategory()
                 .stream()
                 .collect(Collectors.toMap(
                         FaqCategoryCount::getCategory,
-                        c -> c.getCnt().intValue()  // Long → Integer 변환
+                        c -> c.getCnt().intValue()
                 ));
     }
 
-    /* 관리자 전용: FAQ에 카테고리 매핑 */
+    /**
+     * FAQ와 카테고리 매핑 저장
+     */
     public void mapCategory(Integer faqId, String category) {
         mapRepository.save(FaqCategoryMap.builder()
                 .faqId(faqId)

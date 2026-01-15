@@ -10,8 +10,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface FaqCategoryMapRepository extends JpaRepository<FaqCategoryMap, FaqCategoryMapId> {
+public interface FaqCategoryMapRepository
+        extends JpaRepository<FaqCategoryMap, FaqCategoryMapId> {
 
+    /**
+     * FAQ 카테고리별 개수 조회
+     */
     @Query("""
       SELECT m.category AS category,
              COUNT(m)    AS cnt
@@ -20,6 +24,8 @@ public interface FaqCategoryMapRepository extends JpaRepository<FaqCategoryMap, 
     """)
     List<FaqCategoryCount> countByCategory();
 
-    /* faqId 로 매핑된 모든 카테고리 레코드 삭제 */
+    /**
+     * 특정 FAQ에 매핑된 모든 카테고리 삭제
+     */
     void deleteByFaqId(Integer faqId);
 }
