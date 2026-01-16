@@ -40,53 +40,81 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MainAdminController {
 
+    // 펀드 문서 관련 Repository
     private final FundDocumentRepository fundDocumentRepository;
+
+    // 관리자 관련 비즈니스 로직 Service
     private final AdminService_A adminService_a;
+
+    // Q&A 관련 Service
     private final QnaService qnaService;
+
+    // 펀드 관련 Service
     private final FundService fundService;
 
 
-    /* 1) /admin/ → 세션 O : 대시보드로 / 세션 X : 로그인 */
+    /*
+     * 1) /admin/ 또는 /admin
+     * - 세션에 admin 정보가 있으면 대시보드로 이동
+     * - 없으면 관리자 로그인 페이지 반환
+     */
     @GetMapping({ "/", "" })
     public String root(HttpSession session) {
         return (session.getAttribute("admin") != null)
                 ? "redirect:/admin/dashboard"
                 : "admin/login";
-
     }
 
-    /* 2) /admin/main → 과거 주소로 들어와도 대시보드로 보냄 */
+    /*
+     * 2) /admin/main
+     * - 과거에 사용하던 주소
+     * - 접근 시 무조건 대시보드로 리다이렉트
+     */
     @GetMapping("/main")
     public String legacyMain() {
         return "redirect:/admin/dashboard";
     }
 
-    /* 3) 로그인 성공 후 → /admin/dashboard */
+    /*
+     * 3) 관리자 로그인 처리
+     * - 로그인 성공 시 세션에 admin 정보 저장
+     * - 실패 시 로그인 페이지로 리다이렉트하며 에러 메시지 전달
+     */
     @PostMapping("/login")
     public String login(
-            AdminDTO adminDTO,
-            HttpServletRequest request,
-            RedirectAttributes rttr
+            AdminDTO adminDTO,                // 로그인 폼에서 전달된 관리자 정보
+            HttpServletRequest request,       // 세션 접근을 위한 request 객체
+            RedirectAttributes rttr            // 리다이렉트 시 메시지 전달용
     ) {
 
+        // 로그인 실패 시
         if (!adminService_a.login(adminDTO)) {
             rttr.addFlashAttribute("msg", "아이디 또는 비밀번호를 확인하세요");
             return "redirect:/admin/";
         }
 
+        // 로그인 성공 시 관리자 엔티티 조회
         Admin adminEntity = adminService_a.searchAdmin(adminDTO);
 
+        // 세션에 저장할 DTO 객체 생성
         AdminDTO sess = new AdminDTO();
         sess.setRole(adminEntity.getRole());
         sess.setAdmin_id(adminEntity.getAdmin_id());
         sess.setName(adminEntity.getName());
         sess.setAdminname(adminEntity.getAdminname());
 
+        // 세션에 관리자 정보 저장
         request.getSession().setAttribute("admin", sess);
 
-        return "redirect:/admin/dashboard"; // ★ 대시보드로 이동
+        // 로그인 성공 후 관리자 대시보드로 이동
+        return "redirect:/admin/dashboard";
     }
 
+    /*
+     * 관리자 로그아웃
+     * - 세션에서 admin 정보 제거
+     * - 로그아웃 메시지 전달 후 로그인 페이지로 이동
+     */
     @GetMapping("/logout")
     public String logout(HttpServletRequest request, RedirectAttributes rttr) {
         request.getSession().removeAttribute("admin");
@@ -94,21 +122,36 @@ public class MainAdminController {
         return "redirect:/admin/";
     }
 
+    /*
+     * 관리자 아이디(관리자명) 중복 체크
+     * - AJAX 요청용
+     * - true / false 반환
+     */
     @GetMapping("/check-id")
     public ResponseEntity<Boolean> checkDuplicateAdminname(@RequestParam String adminname) {
         return ResponseEntity.ok(adminService_a.check_id(adminname));
     }
 
+    /*
+     * 관리자 등록 폼으로 이동 (슈퍼 관리자 전용)
+     */
     @GetMapping("/adminRegistForm")
     public String adminRegistForm() {
         return "admin/super/admin_register";
     }
 
+    /*
+     * 관리자 설정 페이지 이동
+     */
     @GetMapping("/adminSetting")
     public String adminSetting() {
         return "admin/super/adminSetting";
     }
 
+    /*
+     * 관리자 등록 처리
+     * - 등록 완료 후 메시지 전달
+     */
     @PostMapping("/adminRegist")
     public String adminRegist(
             AdminDTO adminDTO,
@@ -119,25 +162,37 @@ public class MainAdminController {
         return "admin/super/adminSetting";
     }
 
-    // 관리자 리스트 컨트롤러(role 파라미터는 필수값 X) + 페이지네이션
+    /*
+     * 관리자 리스트 조회
+     * - role 파라미터 선택값
+     * - 페이지네이션 처리
+     */
     @GetMapping("/list")
     public String getAdminList(
-            @RequestParam(required = false) String role,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String role,  // 관리자 권한 필터
+            @RequestParam(defaultValue = "0") int page,   // 페이지 번호
+            @RequestParam(defaultValue = "10") int size,  // 페이지 크기
             Model model
     ) {
         Pageable pageable = PageRequest.of(page, size);
+
+        // role 유무에 따라 전체 조회 또는 권한별 조회
         Page<AdminDTO> adminPage = (role == null || role.isEmpty())
                 ? adminService_a.getAllAdmins(pageable)
                 : adminService_a.getAdminsByRole(role, pageable);
 
+        // 페이지 정보 및 리스트 전달
         model.addAttribute("adminPage", adminPage);
         model.addAttribute("adminList", adminPage.getContent());
+
+        // Thymeleaf fragment 반환
         return "admin/super/adminList :: admin-list-content";
     }
 
-    // 관리자 리스트 >> 상세정보 조회
+    /*
+     * 관리자 상세 정보 조회
+     * - 관리자 수정 모달용
+     */
     @GetMapping("/detail/{id}")
     public String getAdminDetail(
             @PathVariable Integer id,
@@ -147,6 +202,10 @@ public class MainAdminController {
         return "admin/super/adminList :: admin-modify-modal";
     }
 
+    /*
+     * 관리자 권한(role) 변경
+     * - AJAX 요청 처리
+     */
     @PostMapping("/updateRole")
     @ResponseBody
     public String updateRole(@RequestBody AdminDTO adminDTO) {
@@ -154,6 +213,10 @@ public class MainAdminController {
         return "success";
     }
 
+    /*
+     * 관리자 삭제
+     * - AJAX 요청 처리
+     */
     @DeleteMapping("/delete/{id}")
     @ResponseBody
     public String deleteAdmin(@PathVariable Integer id) {
@@ -161,33 +224,44 @@ public class MainAdminController {
         return "success";
     }
 
+    /*
+     * Q&A 관리 페이지 이동
+     */
     @GetMapping("/qnaList")
     public String qnaList() {
         return "admin/cs/qnaSetting";
     }
 
-    // 펀드 등록 폼으로 이동
+    /*
+     * 펀드 신규 등록 폼 이동
+     */
     @GetMapping("/fund/new")
     public String newFundForm() {
         return "fund/fundRegister";
     }
 
+    /*
+     * 펀드 리스트 페이지
+     * - 현재는 공사 중 페이지 반환
+     */
     @GetMapping("/fund/list")
     public String fundListPage(
             @PageableDefault(size = 10) Pageable pageable,
             Model model
     ) {
-        // Page<FundPolicy> policyPage = fundPolicyRepository.findAllWithFund(pageable);
-        // model.addAttribute("policyPage", policyPage);
-        // return "fund/fundRegistList";
+        // 펀드 정책 리스트 조회 예정
         return "admin/constructionPage";
     }
 
-    // 공사 페이지
+    /*
+     * 펀드 통계 페이지 (공사 페이지)
+     */
     @GetMapping("/fund_statistics")
     public String construction() {
         return "admin/fund_statistics";
     }
+}
+
 
 //    @GetMapping("/fund/view/{id}")
 //    public String viewFundDetail(@PathVariable Long id, Model model) {
@@ -305,4 +379,3 @@ public class MainAdminController {
         return "redirect:/admin/fund/view/" + id;
     }
     */
-}
