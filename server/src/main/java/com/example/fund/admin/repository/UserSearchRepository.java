@@ -10,8 +10,17 @@ import org.springframework.data.repository.query.Param;
 
 import com.example.fund.user.entity.User;
 
+/**
+ * 사용자 검색 / 상세 / 가입 펀드 조회 Repository
+ */
 public interface UserSearchRepository extends JpaRepository<User, Long> {
 
+    /**
+     * 사용자 검색
+     * - 이메일 / 이름 (부분 검색)
+     * - 전화번호 (숫자/하이픈 기준)
+     * - 최대 100건 제한
+     */
     @Query(value = """
         SELECT u.USER_ID AS userId,
             u.EMAIL   AS email,
@@ -31,17 +40,28 @@ public interface UserSearchRepository extends JpaRepository<User, Long> {
         FETCH FIRST 100 ROWS ONLY
         """, nativeQuery = true)
     List<UserListRow> searchList(@Param("qLower") String qLower,
-                                @Param("digits") String digits,
-                                @Param("hyphen") String hyphen);
+                                 @Param("digits") String digits,
+                                 @Param("hyphen") String hyphen);
 
-    interface UserListRow {              // ← 프로젝션 이름도 searchList에 맞춤
+    /**
+     * 사용자 목록 Projection
+     */
+    interface UserListRow {
         Long getUserId();
         String getEmail();
         String getName();
         String getPhone();
     }
 
-    // ── 펀드 가입 집계 (그대로 OK)
+    // ===========================
+    // 사용자 펀드 가입 집계
+    // ===========================
+
+    /**
+     * 사용자가 가입한 펀드별 순투자금액 집계
+     * - 매수/추가매수 : +
+     * - 환매 : -
+     */
     @Query(value = """
         SELECT
             f.FUND_ID          AS fundId,
@@ -66,6 +86,9 @@ public interface UserSearchRepository extends JpaRepository<User, Long> {
         """, nativeQuery = true)
     List<UserFundAggRow> findUserFundAgg(@Param("userId") Long userId);
 
+    /**
+     * 사용자별 펀드 집계 Projection
+     */
     interface UserFundAggRow {
         Long getFundId();
         String getFundName();
@@ -73,6 +96,13 @@ public interface UserSearchRepository extends JpaRepository<User, Long> {
         Timestamp getFirstSubscribedAt();
     }
 
+    // ===========================
+    // 사용자 상세 조회
+    // ===========================
+
+    /**
+     * 사용자 단건 상세 조회
+     */
     @Query(value = """
         SELECT u.USER_ID   AS userId,
                u.NAME      AS name,
@@ -84,6 +114,9 @@ public interface UserSearchRepository extends JpaRepository<User, Long> {
         """, nativeQuery = true)
     UserDetailRow findDetail(@Param("id") Long id);
 
+    /**
+     * 사용자 상세 Projection
+     */
     interface UserDetailRow {
         Long getUserId();
         String getName();
@@ -92,5 +125,3 @@ public interface UserSearchRepository extends JpaRepository<User, Long> {
         String getUsername();
     }
 }
-
-
