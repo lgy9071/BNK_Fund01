@@ -1,38 +1,63 @@
-<!-- src/main/resources/templates/admin/super/admin_register.html -->
+<!-- ===================================================== -->
+<!-- 관리자 등록 Fragment -->
+<!-- 관리자 설정 페이지의 탭2에서 th:replace 로 불러옴 -->
+<!-- ===================================================== -->
 <div th:fragment="admin-register-content" class="admin-register-content">
+
+  <!-- 관리자 등록 폼 -->
+  <!-- action: 관리자 등록 처리 컨트롤러 -->
+  <!-- method: POST -->
   <form action="/admin/adminRegist" method="post" id="adminForm">
-    
+
+    <!-- ============================= -->
+    <!-- 관리자 ID 입력 영역 -->
+    <!-- ============================= -->
     <div class="form-group">
       <label for="adminname">ID</label>
+
+      <!-- ID 입력창 + 중복확인 버튼 묶음 -->
       <div class="input-wrapper">
         <input
-          type="text"
-          name="adminname"
-          id="adminname"
-          placeholder="ID 설정"
-          required
-          oninvalid="this.setCustomValidity('아이디를 입력해주세요')"
-          oninput="this.setCustomValidity('')">
+                type="text"
+                name="adminname"
+                id="adminname"
+                placeholder="ID 설정"
+                required
+        <!-- 입력값 없을 때 브라우저 기본 검증 메시지 -->
+        oninvalid="this.setCustomValidity('아이디를 입력해주세요')"
+        <!-- 입력 시 검증 메시지 초기화 -->
+        oninput="this.setCustomValidity('')">
+
+        <!-- 아이디 중복 확인 버튼 -->
+        <!-- 클릭 시 checkDuplicate() JS 함수 실행 -->
         <button
-          type="button"
-          id="id_check"
-          onclick="checkDuplicate()">중복확인</button>
+                type="button"
+                id="id_check"
+                onclick="checkDuplicate()">중복확인</button>
       </div>
+
+      <!-- 중복 확인 결과 메시지 출력 -->
       <p id="notice_p"></p>
     </div>
-    
+
+    <!-- ============================= -->
+    <!-- 관리자 이름 입력 -->
+    <!-- ============================= -->
     <div class="form-group">
       <label for="name">성명</label>
       <input
-        type="text"
-        name="name"
-        id="name"
-        placeholder="성명 입력"
-        required
-        oninvalid="this.setCustomValidity('성명을 입력해주세요')"
-        oninput="this.setCustomValidity('')">
+              type="text"
+              name="name"
+              id="name"
+              placeholder="성명 입력"
+              required
+              oninvalid="this.setCustomValidity('성명을 입력해주세요')"
+              oninput="this.setCustomValidity('')">
     </div>
-    
+
+    <!-- ============================= -->
+    <!-- 관리자 권한(Role) 선택 -->
+    <!-- ============================= -->
     <div class="form-group">
       <label for="role">ROLE 지정</label>
       <select name="role" id="role" required>
@@ -43,13 +68,19 @@
         <option value="cs">cs</option>
       </select>
     </div>
-    
+
+    <!-- ============================= -->
+    <!-- 관리자 등록 버튼 -->
+    <!-- ============================= -->
     <div class="form-actions">
       <input type="submit" value="등록">
     </div>
-    
+
   </form>
 
+  <!-- ============================= -->
+  <!-- 관리자 등록 안내 문구 -->
+  <!-- ============================= -->
   <div class="notes">
     <p><strong>※ Notice ※</strong></p>
     <p>초기 비밀번호는 '1234'로 저장됩니다.</p>
